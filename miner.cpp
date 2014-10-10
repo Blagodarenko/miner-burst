@@ -17,6 +17,7 @@
 #include <io.h>
 #include "pthread.h"
 #include <algorithm>
+#include <lmerr.h>
 
 #include "sph_shabal.h"
 #include "shabal.c"
@@ -81,7 +82,9 @@ FILE * fp_Log;					// указатель на лог-файл
 unsigned int can_connect = 1;	// уже установлено соединение?
 unsigned int send_interval = 300;			// время ожидания между отправками
 unsigned int update_interval = 300;			// время ожидания между апдейтами
-unsigned long long max_deadline = 86400*10;  // максимальный дедлайн (секунд_в_сутках * 10 дней)
+unsigned long long max_deadline = 86400*10; // максимальный дедлайн (секунд_в_сутках * 10 дней)
+bool use_response_max_time = false;
+unsigned long response_max_time = 60;	// максимальное время ожидания ответа сервера (секунд)
 SYSTEMTIME cur_time;			// Текущее время
 unsigned work_done = 0;			// Поток закончил работу
 
@@ -144,26 +147,29 @@ void Log(char * strLog)
 
 void Log_server(char * strLog)
 {
-	char * Msg_log = (char *) malloc(sizeof(char)*strlen(strLog)*2);
-	memset(Msg_log, 0, strlen(strLog)*2);
-	for(int i=0, j=0; i<strlen(strLog); i++, j++)
+	if(strlen(strLog) > 0)
 	{
-		if(strLog[i] == '\r')
-		{	
-			Msg_log[j] = '\\'; 
-			j++;
-			Msg_log[j] = 'r';}
-		else 
-			if(strLog[i] == '\n') 
-			{ 
+		char * Msg_log = (char *) malloc(sizeof(char)*strlen(strLog)*2);
+		memset(Msg_log, 0, strlen(strLog)*2);
+		for(int i=0, j=0; i<strlen(strLog); i++, j++)
+		{
+			if(strLog[i] == '\r')
+			{	
 				Msg_log[j] = '\\'; 
 				j++;
-				Msg_log[j] = 'n';
-			}
-			else Msg_log[j] = strLog[i];
+				Msg_log[j] = 'r';}
+			else 
+				if(strLog[i] == '\n') 
+				{ 
+					Msg_log[j] = '\\'; 
+					j++;
+					Msg_log[j] = 'n';
+				}
+				else Msg_log[j] = strLog[i];
+		}
+		fprintf(fp_Log, Msg_log);
+		free(Msg_log);
 	}
-	fprintf(fp_Log, Msg_log);
-	free(Msg_log);
 }
 
 void Log_llu(unsigned long long llu_num)
@@ -275,12 +281,61 @@ int load_config(char *filename)
 			update_interval = document["UpdateInterval"].GetUint();
 		Log_u(update_interval);
 
+		Log("\nResponseMaxTime: "); 
+		if(document.HasMember("ResponseMaxTime") && (document["ResponseMaxTime"].IsUint()))		// In this case, IsUint()/IsInt64()/IsUInt64() also return true.
+			response_max_time = document["ResponseMaxTime"].GetUint();
+		Log_u(response_max_time);
+
+		if(document.HasMember("UseResponseMaxTime") && (document["UseResponseMaxTime"].IsBool()))		
+			use_response_max_time = document["UseResponseMaxTime"].GetBool();
+		Log("\nUseResponseMaxTime: "); Log_u(use_response_max_time);
+		
 	}
 	// параметры по-умолчанию
-	Log("\nПараметры загружены");
+	Log("\nConfig loaded");
 	return 1;
 }
 
+
+LPSTR DisplayErrorText( DWORD dwLastError )
+{ 
+	HMODULE hModule = NULL; // default to system source 
+	LPSTR MessageBuffer; 
+	DWORD dwBufferLength; 
+	DWORD dwFormatFlags = FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_FROM_SYSTEM ;
+	// 
+	// If dwLastError is in the network range, 
+	// load the message source. 
+	// 
+	if(dwLastError >= NERR_BASE && dwLastError <= MAX_NERR) 
+	{ 
+		hModule = LoadLibraryEx( TEXT("netmsg.dll"), NULL, LOAD_LIBRARY_AS_DATAFILE );
+		if(hModule != NULL) dwFormatFlags |= FORMAT_MESSAGE_FROM_HMODULE;
+	} 
+	//
+	// Call FormatMessage() to allow for message 
+	// text to be acquired from the system 
+	// or from the supplied module handle. 
+	// 
+	if(dwBufferLength = FormatMessageA( dwFormatFlags, hModule, dwLastError, MAKELANGID(LANG_SYSTEM_DEFAULT, SUBLANG_SYS_DEFAULT), (LPSTR) &MessageBuffer, 0, NULL )) 
+	{ 
+		DWORD dwBytesWritten; 
+		// 
+		// Output message string on stderr. 
+		// 
+		//WriteFile( GetStdHandle(STD_ERROR_HANDLE), MessageBuffer, dwBufferLength, &dwBytesWritten, NULL ); 
+
+		// 
+		// Free the buffer allocated by the system. 
+		// 
+		//LocalFree(MessageBuffer); 
+	} 
+	//
+	// If we loaded a message source, unload it. 
+	// 
+	if(hModule != NULL) FreeLibrary(hModule); 
+	return MessageBuffer;
+}
 
 
 unsigned long long procscoop(unsigned long long nonce, unsigned long long n, char *data, unsigned long long account_id, char * file_name) {
@@ -302,13 +357,13 @@ unsigned long long procscoop(unsigned long long nonce, unsigned long long n, cha
 				 
                 unsigned long long *wertung = (unsigned long long*)res;
  
-                if(bestn == 0 || *wertung <= best) 
+                if(bestn == 0 || *wertung < best) 
 				{
                     best = *wertung;
                     bestn = nonce;
 					    if(best < baseTarget * max_deadline) // Has to be this good before we inform the node
 						{       
-							Log("\nНайден deadline: ");	Log_llu(best/baseTarget); Log(" для: "); Log_llu(account_id);
+							Log("\nfound deadline=");	Log_llu(best/baseTarget); Log("\nnonce=");	Log_llu(bestn); Log(" for account: "); Log_llu(account_id);
 							pthread_mutex_lock(&byteLock);
 								shares[num_shares].best = best;
 								shares[num_shares].nonce = bestn;
@@ -472,6 +527,7 @@ void *send_i(void *x_void_ptr)
 {
 	int iResult;
 	char buffer[1000];
+	char tmp_buffer[1000];
 	unsigned int i=0;
 	for (;; i++ )
 	{
@@ -494,8 +550,8 @@ void *send_i(void *x_void_ptr)
 				shares[i].to_send = 0;
 				sent_num_shares++;
 				cls();
-				printf_s("\rdeadline > targetDeadline. %llu > %llu\n", shares[i].best / baseTarget, targetDeadline);
-				Log("\nSender: Найден дедлайн, но он больше минимума сервера. Deadline ="); Log_llu(shares[i].best / baseTarget); 
+				printf_s("\rdeadline > targetDeadline. %llu > %llu\tn:%llu\n", shares[i].best / baseTarget, targetDeadline, shares[i].nonce);
+				Log("\nSender: Found deadline, but it's more server's minimum. Deadline ="); Log_llu(shares[i].best / baseTarget); 
 				//continue;
 			}
 			else   
@@ -509,20 +565,24 @@ void *send_i(void *x_void_ptr)
 				ss.sin_family = AF_INET;
 				ss.sin_port = htons(nodeport);
 								
-				//timeval tv;
-				//tv.tv_sec = 10;  // 30 sec timeout
-				//tv.tv_usec = 0;
-				//setsockopt(ConnectSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval));
+				if(use_response_max_time)
+				{
+					timeval tv;
+					tv.tv_sec = response_max_time;
+					tv.tv_usec = 0;
+					setsockopt(ConnectSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval));
+				}
 				//Log("\nSender: Коннектим отправщик");
 				iResult = connect(ConnectSocket, (struct sockaddr*)&ss, sizeof(struct sockaddr_in));
 				if (iResult == SOCKET_ERROR) 
 				{
-					Log("\nSender:! Ошибка коннекта отправщика");
+					Log("\nSender:! Error Sender's connect: "); Log(DisplayErrorText(WSAGetLastError()));
 					cls();
 					wprintf(L"\rconnect tread failed with error: %ld\n", WSAGetLastError());
 				}
 				else
 				{
+					iResult = bind(ConnectSocket, (struct sockaddr*)&ss, sizeof(struct sockaddr_in));
 					int bytes;
 					memset(buffer, 0, 1000);
 					if(miner_mode == 0)	bytes = sprintf_s(buffer, "POST /burst?requestType=submitNonce&secretPhrase=%s&nonce=%llu HTTP/1.0\r\nConnection: close\r\n\r\n",pass ,shares[i].nonce);
@@ -539,7 +599,7 @@ void *send_i(void *x_void_ptr)
 						free(str_len);
 					}   */
 					cls();
-					printf_s("\rsending... deadline: %u  (nonce:%llu) for account %llu", shares[i].best / baseTarget, shares[i].nonce, shares[i].account_id);
+					printf_s("\rsending... deadline: %u  (nonce:%llu) acc# %llu", shares[i].best / baseTarget, shares[i].nonce, shares[i].account_id);
 
 					// write some bytes
 					all_send_dl++;
@@ -548,9 +608,9 @@ void *send_i(void *x_void_ptr)
 					if (iResult == SOCKET_ERROR)
 					{
 						err_send_dl++;
-						Log("\nSender: ! Ошибка отправки шары");
+						Log("\nSender: ! Error deadline's sending: "); Log(DisplayErrorText(WSAGetLastError()));
 						cls();
-						printf_s("\rsend failed: %d\n", WSAGetLastError());
+						printf_s("\rsend failed: %ld\n", WSAGetLastError());
 					}
 					else
 					{
@@ -562,14 +622,21 @@ void *send_i(void *x_void_ptr)
 						all_rcv_dl++;
 						//Log("\nSender:  Получаем подтверждение шары");
 						memset(buffer,0,1000);
-						iResult = recv(ConnectSocket, buffer, 999, 0);
 						
-						if (iResult == 0)
+						cls();
+						printf_s("\rrecieving data...");
+						do{
+							memset(tmp_buffer,0,1000);
+							iResult = recv(ConnectSocket, tmp_buffer, 999, 0);
+							strcat(buffer, tmp_buffer);
+						}while((iResult > 0));
+						
+						if (iResult == SOCKET_ERROR)
 						{
 							err_rcv_dl++;
-							Log("\nSender: ! Ошибка получения подтверждения шары");
+							Log("\nSender: ! Error getting deadline's confirmation: "); Log(DisplayErrorText(WSAGetLastError()));
 							cls();
-							printf_s("\rreceive failed: %d\n", WSAGetLastError());
+							printf_s("\rreceiving confirmation failed: %ld\n", WSAGetLastError());
 						}
 						else
 						{
@@ -615,7 +682,7 @@ void *send_i(void *x_void_ptr)
 											//printf("\rrtargetDeadline: %s\n", rtargetDeadline);
 											targetDeadline = strtoull(rtargetDeadline, 0, 10);
 										}
-										Log("\nSender:  Подтверждение шары: "); Log_llu(ndeadline);
+										Log("\nSender:  deadline confirmed: "); Log_llu(ndeadline);
 										cls();
 										printf_s("\rconfirmed deadline: %llu\t(%s)\n", ndeadline, shares[i].file_name);
 										if(ndeadline < deadline || deadline == 0)  deadline = ndeadline;
@@ -637,11 +704,11 @@ void *send_i(void *x_void_ptr)
 					}
 				}
 			
-				iResult = shutdown(ConnectSocket, 2);
-				Log("\nSender: Обрубаем сокет отправщика. Код = "); Log_u(WSAGetLastError());
+			//	iResult = shutdown(ConnectSocket, 2);
+			//	Log("\nSender: Обрубаем сокет отправщика. Код = "); Log_u(WSAGetLastError());
 			
 				iResult = closesocket(ConnectSocket);
-				Log("\nSender:Закрываем сокет отправщика. Код = "); Log_u(WSAGetLastError());
+				Log("\nSender:Close socket. Code = "); Log_u(WSAGetLastError());
 				can_connect = 1;
 				Sleep(send_interval);
 			}
@@ -831,10 +898,11 @@ void *work_i(void *x_void_ptr) {
 
 		char *cache = (char*) malloc(cache_size * HASH_SIZE * 2);
 		clock_t start_time, end_time;			// Текущее время
-		Log("\nПоток запущен");
+		Log("\nThread started");
         if(cache == NULL) {
-                printf_s("\nError allocating memory                         \n");
-                exit(-1);
+			cls();
+            printf_s("\nError allocating memory\n");
+            exit(-1);
         }
 		
 		char* files[MAX_FILES];
@@ -855,7 +923,7 @@ void *work_i(void *x_void_ptr) {
 						
 			if (nonces != (files_size[files_count])/(1024*256)) continue;   // если размер файла не соответствует нонсам в имени файла - пропускаем
             
-			Log("\nЧитаем файл: ");	Log(files[files_count]);
+			Log("\nRead file: ");	Log(files[files_count]);
 			start_time = clock();
 
 			_set_fmode(_O_BINARY);
@@ -866,20 +934,20 @@ void *work_i(void *x_void_ptr) {
 				continue;
 			}
                         
-			unsigned long long size = stagger * HASH_SIZE * 2;
+			unsigned long long size = stagger * 64;
 												
 			for(n=0; n<nonces; n+=stagger) 
 			{
 				// Read one Scoop out of this block:
                 // start to start+size in steps of CACHESIZE * HASH_SIZE * 2
-				unsigned long long start = n * HASH_CAP * HASH_SIZE * 2 + scoop * size;
+				unsigned long long start = n * HASH_CAP * 64 + scoop * size;
 				unsigned long long i;
 				unsigned long long noffset = 0;
                                         
-				for(i = start; i < start + size; i += cache_size * HASH_SIZE * 2) 
+				for(i = start; i < start + size; i += cache_size * 64) 
 				{
 					//printf("start: %llu end:%llu step:%llu  ",i,start + size, CACHESIZE * HASH_SIZE * 2);
-					unsigned long long readsize = cache_size * HASH_SIZE * 2;
+					unsigned long long readsize = cache_size * 64;
 					if(readsize > start + size - i)	readsize = (unsigned int)(start + size - i);
 					unsigned long long bytes = 0, b;
 
@@ -892,12 +960,13 @@ void *work_i(void *x_void_ptr) {
 					
 					if(b > 0)
 					{
-						procscoop(n + nonce + noffset, readsize / (HASH_SIZE * 2), cache, key, files[files_count]);// Process block
+						procscoop(n + nonce + noffset, readsize / 64, cache, key, files[files_count]);// Process block
 						// Lock and add to totals
 						pthread_mutex_lock(&byteLock);
 						bytesRead += readsize;
 						pthread_mutex_unlock(&byteLock);
 					}
+					else printf("\r****  b=%llu, readsize=%llu, n=%llu, nonce=%llu\n", b, readsize, n, nonce);
 					noffset += cache_size;
 				}
 				if(stopThreads) // New block while processing: Stop.
@@ -908,7 +977,7 @@ void *work_i(void *x_void_ptr) {
 				}
 			}
 			end_time = clock();
-			Log("\nЗакрываем файл: ");	Log(files[files_count]); Log(" [@ "); Log_llu((end_time-start_time)*1000/CLOCKS_PER_SEC); Log(" ms]");
+			Log("\nClose file: ");	Log(files[files_count]); Log(" [@ "); Log_llu((end_time-start_time)*1000/CLOCKS_PER_SEC); Log(" ms]");
 			fclose(pFile);			
 		}
 		end_work_time = clock();
@@ -921,8 +990,9 @@ void *work_i(void *x_void_ptr) {
  
 int pollNode(void) {
 	char buffer[1000];      // Should be plenty
+	char tmp_buffer[1000];      // Should be plenty
 	int iResult;
-
+	
 	can_connect = 0;
     // Get Mininginfo from node:
     ConnectSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
@@ -930,6 +1000,7 @@ int pollNode(void) {
 	{
 		cls();
 		wprintf(L"\rsocket function failed with error: %ld\n", WSAGetLastError());
+		Log("\n*! Socket error: "); Log(DisplayErrorText(WSAGetLastError()));
 		can_connect = 1;
 		return 0;
 	}
@@ -939,15 +1010,19 @@ int pollNode(void) {
         ss.sin_family = AF_INET;
         ss.sin_port = htons( nodeport );
  
-		//timeval tv;
-		//tv.tv_sec = 10;  // 30 sec timeout
-		//tv.tv_usec = 0;
-		//setsockopt(ConnectSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval));
-		Log("\n* Коннект");
+		if(use_response_max_time)
+		{
+			timeval tv;
+			tv.tv_sec = response_max_time;
+			tv.tv_usec = 0;
+			setsockopt(ConnectSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval));
+		}
+		Log("\n*Connecting");
         iResult = connect(ConnectSocket, (struct sockaddr*)&ss, sizeof(struct sockaddr_in));
 		if (iResult == SOCKET_ERROR) {
 			cls();
 			wprintf(L"\rconnect function failed with error: %ld\n", WSAGetLastError());
+			Log("\n*! Connect error: "); Log(DisplayErrorText(WSAGetLastError()));
 			closesocket(ConnectSocket);
 			can_connect = 1;
 			return 0;
@@ -969,9 +1044,9 @@ int pollNode(void) {
          if (iResult == SOCKET_ERROR)
         {
             err_send_msg++;
-			Log("\n*! Ошибка отправки запроса. Всего ошибок отправки: "); Log_llu(err_send_msg);
+			Log("\n*! Error sending request: "); Log(DisplayErrorText(WSAGetLastError())); Log("Errors: "); Log_llu(err_send_msg); 
 			cls();
-			printf_s("\rsend request failed: %d\n", WSAGetLastError());
+			printf_s("\rsend request failed: %ld\n", WSAGetLastError());
 			closesocket(ConnectSocket);
 			can_connect = 1;
 			return 0;
@@ -984,19 +1059,25 @@ int pollNode(void) {
 		if(all_rcv_msg >= 1000) all_rcv_msg = 0;
 		//Log("\n*  Получение ответа. Всего получено ответов: "); Log_llu(all_rcv_msg);
 		memset(buffer,0,1000);
-		iResult = recv(ConnectSocket, buffer, 999, 0);
 		
+		unsigned pos = 0;
+		do{
+			memset(tmp_buffer,0,1000);
+			iResult = recv(ConnectSocket, tmp_buffer, 999, 0);
+			if (iResult == SOCKET_ERROR)
+			{
+				err_rcv_msg++;
+				Log("\n*! Error response: "); Log(DisplayErrorText(WSAGetLastError())); Log("Errors: "); Log_llu(err_rcv_msg);
+				cls();
+				printf_s("\rget mining info failed: %ld\n", WSAGetLastError());
+				closesocket(ConnectSocket);
+				can_connect = 1;
+				return 0;
+			}
+			strcat(buffer, tmp_buffer);
+			//pos += iResult; 
+		}while(iResult != 0);
 		Log("\n*   Recieved from server: "); Log_server(buffer);
-        if (iResult == 0)
-        {
-			err_rcv_msg++;
-			Log("\n*! Ошибка получения ответа. Всего получения ответов: "); Log_llu(err_rcv_msg);
-			cls();
-            printf_s("\rget mining info failed: %d\n", WSAGetLastError());
-			closesocket(ConnectSocket);
-			can_connect = 1;
-			return 0;
-        }
 		if (show_updates)  printf_s("\nReceived: \n%s\n", buffer);
 		
         // locate HTTP header
@@ -1073,14 +1154,14 @@ int pollNode(void) {
 		//printf("\rblock: %llu  BT: %llu   %s\n", height, baseTarget, generationSignature);
 		//Log("\n* Закрываем сокет");
 		iResult = closesocket(ConnectSocket);
-		Log("\n*Выходим из pollNode()");
+		Log("\n*End update");
 		can_connect = 1;
         return 1;
 }
  
 void update() {
 	while(can_connect == 0) Sleep(50);
-	if(pollNode() == 0) err_rcv_msg++;
+	pollNode();
 }
  
 
@@ -1143,7 +1224,7 @@ int main(int argc, char **argv) {
 		Log_init();
 
 		// находим путь к майнеру
-		Log("Определяем путь к майнеру: ");
+		Log("Miner path: ");
 		DWORD cwdsz = GetCurrentDirectoryA(0, 0);
 		p_minerPath = (char*)malloc(cwdsz);
 		GetCurrentDirectoryA(cwdsz, LPSTR(p_minerPath));
@@ -1152,7 +1233,7 @@ int main(int argc, char **argv) {
 		Log(p_minerPath);
 
 		// проверка на количество аргументов
-		printf_s("\nBURST miner, v1.141006\n Programming: dcct (Linux) & Blago (Windows)\n");
+		printf_s("\nBURST miner, v1.141009\n Programming: dcct (Linux) & Blago (Windows)\n");
 /*		if(argc < 4) {
                 printf_s("Usage: miner.exe solo <node url> <node port> <plot dir> [<plot dir> ..]\n");
 				printf_s("or: miner.exe pool <node url> <node port> <plot dir> [<plot dir> ..]\n");
@@ -1160,7 +1241,7 @@ int main(int argc, char **argv) {
                 exit(-1);
         }
 */
-		Log("\nЗагружаем параметры из конфига");
+		Log("\nLoading config");
 		char conf_filename[255];
 		memset(conf_filename, 0, 255);
 		if((argc >= 2) && (strcmp(argv[1], "-config")==0)){
@@ -1259,7 +1340,6 @@ int main(int argc, char **argv) {
 			printf_s("\nError creating thread. Out of memory? Try lower stagger size\n");
             exit(-1);
         }
-				
 
 		// Main loop
 		for(;;) {
@@ -1288,20 +1368,20 @@ int main(int argc, char **argv) {
  
 				if(targetDeadlineInfo > 0){
 					targetDeadline = targetDeadlineInfo;
-					Log("\nМеняем значение targetDeadline: "); Log_llu(targetDeadline);
+					Log("\nupdate targetDeadline: "); Log_llu(targetDeadline);
 				}
 				else {
 					targetDeadline = baseTarget;
-					Log("\ntargetDeadline не используем, baseTarget,: "); Log_llu(baseTarget);
+					Log("\ntargetDeadline did not use, baseTarget,: "); Log_llu(baseTarget);
 				}
 
 				for(i = 0; i < paths_num; i++) 
 				{
-					Log("\nЗапускаем поток #");	Log_u(i); Log(" с параметром: ");	Log(paths_dir[i]);
+					Log("\nStart thread #");	Log_u(i); Log(" with parameter: ");	Log(paths_dir[i]);
 					if(pthread_create(&worker[i], NULL, work_i, paths_dir[i])) 
 					{
 						printf_s("\nError creating thread. Out of memory? Try lower stagger size\n");
-						Log("\n! Ошибка запуска потока: ");	Log_u(i);
+						Log("\n! Error thread starting: ");	Log_u(i);
                         exit(-1);
                     }
 				}
@@ -1327,8 +1407,8 @@ int main(int argc, char **argv) {
                         //Log("\n\tUpdate()");
 						update();
                         //cls();
-                        if(deadline == 0) printf_s("\r[%llu%%] %llu GB. no deadline     sdl:%llu(%llu) cdl:%llu(%llu) ss:%llu(%llu) rs:%llu(%llu)", (bytesRead*4096*100 / total_size), (bytesRead / (256 * 1024)), all_send_dl, err_send_dl, all_rcv_dl, err_rcv_dl, all_send_msg, err_send_msg, all_rcv_msg, err_rcv_msg);
-                        else              printf_s("\r[%llu%%] %llu GB. deadline %llus  sdl:%llu(%llu) cdl:%llu(%llu) ss:%llu(%llu) rs:%llu(%llu)", (bytesRead*4096*100 / total_size), (bytesRead / (256 * 1024)), deadline, all_send_dl, err_send_dl, all_rcv_dl, err_rcv_dl, all_send_msg, err_send_msg, all_rcv_msg, err_rcv_msg);
+                        if(deadline == 0) printf_s("\r[%llu%%] %llu GB. no deadline     sdl:%llu/%llu(%llu) cdl:%llu(%llu) ss:%llu(%llu) rs:%llu(%llu)", (bytesRead*4096*100 / total_size), (bytesRead / (256 * 1024)), all_send_dl, num_shares, err_send_dl, all_rcv_dl, err_rcv_dl, all_send_msg, err_send_msg, all_rcv_msg, err_rcv_msg);
+                        else              printf_s("\r[%llu%%] %llu GB. deadline %llus  sdl:%llu/%llu(%llu) cdl:%llu(%llu) ss:%llu(%llu) rs:%llu(%llu)", (bytesRead*4096*100 / total_size), (bytesRead / (256 * 1024)), deadline, all_send_dl, num_shares, err_send_dl, all_rcv_dl, err_rcv_dl, all_send_msg, err_send_msg, all_rcv_msg, err_rcv_msg);
 						
                         Sleep(update_interval);
                 } while(memcmp(signature, oldSignature, 32) == 0);      // Wait until signature changed
@@ -1339,7 +1419,6 @@ int main(int argc, char **argv) {
 				printf_s("\n\n--------------    New block %llu, basetarget %llu    --------------\n", height, baseTarget);
 				if(miner_mode == 0) printf_s("*** Chance to find a block: %.5f%%\n", ((double)(total_size/1024/1024*100*60)*(double)baseTarget)/1152921504606846976);
 				if(num_shares > sent_num_shares) printf_s("\r %u shares had not time to send in the previous block\n", num_shares - sent_num_shares);
-				//if(num_shares > sent_num_shares) printf_s("\r %u shares proebali in the previous block\n", num_shares - sent_num_shares);
 				num_shares = 0;  // все шары, которые неуспели отправить сгорают
 				sent_num_shares = 0;
 				memset(&shares, 0, sizeof(t_shares)*1000*MaxTreads); // Обнуляем буфер шар
@@ -1351,12 +1430,14 @@ int main(int argc, char **argv) {
 					//Log("\nПрерываем поток: ");	Log_u(i-3);
 					if( pthread_join(worker[i], NULL) > 0 )
 					{
-						printf_s("\r Error stoping thread #%u of %u                                 ", i, paths_num);
-						Log("\n! Ошибка прерывания потока: ");	Log_u(i);
+						cls();
+						printf_s("\r Error stoping thread #%u of %u", i, paths_num);
+						Log("\n! Error thread stoping: ");	Log_u(i);
 					}
 				}
 				stopThreads = 0;
         }
 		pthread_join(sender, NULL);
 		free(p_minerPath);
+		WSACleanup();
 }

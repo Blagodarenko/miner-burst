@@ -50,8 +50,8 @@ unsigned long long startnonce;
 unsigned long nonces;
 int scoop;
  
-unsigned long long best;
-unsigned long long bestn;
+//unsigned long long best;
+//unsigned long long bestn;
 unsigned long long deadline;
 
 unsigned long long all_send_msg = 0;
@@ -94,9 +94,13 @@ struct t_shares{
 	unsigned long long best;
 	unsigned long long nonce;
 	unsigned to_send;
-} shares[1000*MaxTreads];
+	bool operator<(t_shares ob2)
+	{
+		return (best < ob2.best);
+	}
+} shares[10000*MaxTreads];
 
-unsigned num_shares = 0;
+unsigned long long num_shares = 0;
 unsigned sent_num_shares = 0;
 //unsigned lost_num_shares = 0;
 
@@ -338,49 +342,6 @@ LPSTR DisplayErrorText( DWORD dwLastError )
 }
 
 
-unsigned long long procscoop(unsigned long long nonce, unsigned long long n, char *data, unsigned long long account_id, char * file_name) {
-        char *cache;
-        char sig[32 + 64];
-        cache = data;
-        unsigned long long v;
- 
-        memmove(sig, signature, 32);
- 
-        for( v=0; v<n; v++) {
-                memmove(&sig[32], cache, 64);
-                char res[32];
- 
-                sph_shabal_context x;
-				shabal_init(&x, 256);
-                shabal_core(&x, (const unsigned char*) sig, 64 + 32);
-                shabal_close(&x, 0, 0, res, 8);
-				 
-                unsigned long long *wertung = (unsigned long long*)res;
- 
-                if(bestn == 0 || *wertung < best) 
-				{
-                    best = *wertung;
-                    bestn = nonce;
-					    if(best < baseTarget * max_deadline) // Has to be this good before we inform the node
-						{       
-							Log("\nfound deadline=");	Log_llu(best/baseTarget); Log("\nnonce=");	Log_llu(bestn); Log(" for account: "); Log_llu(account_id);
-							pthread_mutex_lock(&byteLock);
-								shares[num_shares].best = best;
-								shares[num_shares].nonce = bestn;
-								shares[num_shares].to_send = 1;
-								shares[num_shares].account_id = account_id;
-								shares[num_shares].file_name = file_name;
-								num_shares++;
-							pthread_mutex_unlock(&byteLock);
-                        }
-				}
-                nonce++;
-                cache += 64;
-        }
-		
-		return v;
-}
- 
 // Helper routines taken from http://stackoverflow.com/questions/1557400/hex-to-char-array-in-c
 int xdigit( char digit ){
   int val;
@@ -517,10 +478,10 @@ int GetFiles(char* p_strFolderPath, char* p_Name[], unsigned long long p_Size[])
 }
 
 
-int comp(t_shares a, t_shares b)
-{
-	return (b.best > a.best) ;
-}
+//int comp(t_shares a, t_shares b)
+//{
+//	return (b.best > a.best) ;
+//}
 
 
 void *send_i(void *x_void_ptr) 
@@ -540,8 +501,9 @@ void *send_i(void *x_void_ptr)
 
 		if( (can_connect == 1) && (shares[i].to_send == 1))
 		{
-			if((i+1 < num_shares) && (sent_num_shares != num_shares) && use_sorting){
-				std::sort(&shares[i], &shares[num_shares-1], comp);
+			if((num_shares - i > 1) && (sent_num_shares != num_shares) && use_sorting){
+				//std::sort(&shares[i], &shares[num_shares-1], comp);
+				std::sort(&shares[i], &shares[num_shares-1]);
 				//printf_s("\rSorted------ %u - %u ---------\n", i, num_shares);
 			}
 	
@@ -549,8 +511,8 @@ void *send_i(void *x_void_ptr)
 			{
 				shares[i].to_send = 0;
 				sent_num_shares++;
-				cls();
-				printf_s("\rdeadline > targetDeadline. %llu > %llu\tn:%llu\n", shares[i].best / baseTarget, targetDeadline, shares[i].nonce);
+				//cls();
+				//printf_s("\rdeadline > targetDeadline. %llu > %llu\tn:%llu\n", shares[i].best / baseTarget, targetDeadline, shares[i].nonce);
 				Log("\nSender: Found deadline, but it's more server's minimum. Deadline ="); Log_llu(shares[i].best / baseTarget); 
 				//continue;
 			}
@@ -886,6 +848,49 @@ void send_V2(void *x_void_ptr)
 
 */
 
+unsigned long long procscoop(unsigned long long nonce, unsigned long long n, char *data, unsigned long long best_local, unsigned long long bestn_local, unsigned long long account_id, char * file_name) {
+        char *cache;
+        char sig[32 + 64];
+        cache = data;
+        unsigned long long v;
+ 
+        memmove(sig, signature, 32);
+ 
+        for( v=0; v<n; v++) {
+                memmove(&sig[32], cache, 64);
+                char res[32];
+ 
+                sph_shabal_context x;
+				shabal_init(&x, 256);
+                shabal_core(&x, (const unsigned char*) sig, 64 + 32);
+                shabal_close(&x, 0, 0, res, 8);
+				 
+                unsigned long long *wertung = (unsigned long long*)res;
+ 
+                if(bestn_local == 0 || *wertung < best_local) 
+				{
+                    best_local = *wertung;
+                    bestn_local = nonce+v;
+					    if(best_local < baseTarget * max_deadline) // Has to be this good before we inform the node
+						{       
+							Log("\nfound deadline=");	Log_llu(best_local/baseTarget); Log("\nnonce=");	Log_llu(bestn_local); Log(" for account: "); Log_llu(account_id);
+							pthread_mutex_lock(&byteLock);
+								shares[num_shares].best = best_local;
+								shares[num_shares].nonce = bestn_local;
+								shares[num_shares].to_send = 1;
+								shares[num_shares].account_id = account_id;
+								shares[num_shares].file_name = file_name;
+								num_shares++;
+							pthread_mutex_unlock(&byteLock);
+                        }
+				}
+                nonce++;
+                cache += 64;
+        }
+		
+		return v;
+}
+ 
 
 
 void *work_i(void *x_void_ptr) {
@@ -904,6 +909,8 @@ void *work_i(void *x_void_ptr) {
             printf_s("\nError allocating memory\n");
             exit(-1);
         }
+		unsigned long long best_local = 0;
+		unsigned long long bestn_local = 0;
 		
 		char* files[MAX_FILES];
 		unsigned long long files_size[MAX_FILES];
@@ -911,8 +918,8 @@ void *work_i(void *x_void_ptr) {
 		//printf("\n%s", x_ptr);
 		int f_count = GetFiles(x_ptr, files, files_size);
 		//printf("\n   %i\n   %i  %s\n   %i  %s\n   %i  %s\n ",f_count, strlen(files[0]),files[0], strlen(files[1]), files[1], strlen(files[2]), files[2]);
-		
-        for(int files_count = 0; files_count < f_count; files_count++)
+		int files_count = 0;
+        for(files_count = 0; files_count < f_count; files_count++)
 		{
 			unsigned long long key, nonce, nonces, stagger, n;
 						
@@ -921,8 +928,11 @@ void *work_i(void *x_void_ptr) {
 			strcat(fullname, files[files_count]);
 			sscanf_s(files[files_count], "%llu_%llu_%llu_%llu", &key , &nonce, &nonces, &stagger);
 						
-			if (nonces != (files_size[files_count])/(1024*256)) continue;   // если размер файла не соответствует нонсам в имени файла - пропускаем
-            
+			if (nonces != (files_size[files_count])/(1024*256))
+			{
+				printf_s("\r! File \"%s\" have wrong size, skipped", files[files_count]);
+				continue;   // если размер файла не соответствует нонсам в имени файла - пропускаем
+			}
 			Log("\nRead file: ");	Log(files[files_count]);
 			start_time = clock();
 
@@ -960,7 +970,7 @@ void *work_i(void *x_void_ptr) {
 					
 					if(b > 0)
 					{
-						procscoop(n + nonce + noffset, readsize / 64, cache, key, files[files_count]);// Process block
+						procscoop(n + nonce + noffset, readsize / 64, cache, best_local, bestn_local, key, files[files_count]);// Process block
 						// Lock and add to totals
 						pthread_mutex_lock(&byteLock);
 						bytesRead += readsize;
@@ -982,7 +992,7 @@ void *work_i(void *x_void_ptr) {
 		}
 		end_work_time = clock();
 		cls();
-		printf_s("\rThread \"%s\" done! (~%llu sec)\n", x_ptr, (end_work_time-start_work_time)/CLOCKS_PER_SEC);
+		printf_s("\rThread \"%s\" done! [~%llu sec] (%u files)\n", x_ptr, (end_work_time-start_work_time)/CLOCKS_PER_SEC, files_count);
 		free(x_ptr);
         free(cache);
 }
@@ -1361,8 +1371,8 @@ int main(int argc, char **argv) {
                 scoop = (((unsigned char)xcache[31]) + 256 * (unsigned char)xcache[30]) % HASH_CAP;
  
                 // New block: reset stats
-                best = 0;
-				bestn = 0;
+                //best = 0;
+				//bestn = 0;
 				deadline = 0;
 				bytesRead = 0;
  
@@ -1407,8 +1417,9 @@ int main(int argc, char **argv) {
                         //Log("\n\tUpdate()");
 						update();
                         //cls();
-                        if(deadline == 0) printf_s("\r[%llu%%] %llu GB. no deadline     sdl:%llu/%llu(%llu) cdl:%llu(%llu) ss:%llu(%llu) rs:%llu(%llu)", (bytesRead*4096*100 / total_size), (bytesRead / (256 * 1024)), all_send_dl, num_shares, err_send_dl, all_rcv_dl, err_rcv_dl, all_send_msg, err_send_msg, all_rcv_msg, err_rcv_msg);
-                        else              printf_s("\r[%llu%%] %llu GB. deadline %llus  sdl:%llu/%llu(%llu) cdl:%llu(%llu) ss:%llu(%llu) rs:%llu(%llu)", (bytesRead*4096*100 / total_size), (bytesRead / (256 * 1024)), deadline, all_send_dl, num_shares, err_send_dl, all_rcv_dl, err_rcv_dl, all_send_msg, err_send_msg, all_rcv_msg, err_rcv_msg);
+                        //if(deadline == 0) printf_s("\r[%llu%%] %llu GB. no deadline     sdl:%llu/%llu(%llu) cdl:%llu(%llu) ss:%llu(%llu) rs:%llu(%llu)", (bytesRead*4096*100 / total_size), (bytesRead / (256 * 1024)), all_send_dl, num_shares, err_send_dl, all_rcv_dl, err_rcv_dl, all_send_msg, err_send_msg, all_rcv_msg, err_rcv_msg);
+                        //else              printf_s("\r[%llu%%] %llu GB. deadline %llus  sdl:%llu/%llu(%llu) cdl:%llu(%llu) ss:%llu(%llu) rs:%llu(%llu)", (bytesRead*4096*100 / total_size), (bytesRead / (256 * 1024)), deadline, all_send_dl, num_shares, err_send_dl, all_rcv_dl, err_rcv_dl, all_send_msg, err_send_msg, all_rcv_msg, err_rcv_msg);
+						printf_s("\r[%llu%%] %llu GB. targetDL: %llu  sdl:%llu/%llu(%llu) cdl:%llu(%llu) ss:%llu(%llu) rs:%llu(%llu)", (bytesRead*4096*100 / total_size), (bytesRead / (256 * 1024)), targetDeadline, all_send_dl, num_shares, err_send_dl, all_rcv_dl, err_rcv_dl, all_send_msg, err_send_msg, all_rcv_msg, err_rcv_msg);
 						
                         Sleep(update_interval);
                 } while(memcmp(signature, oldSignature, 32) == 0);      // Wait until signature changed

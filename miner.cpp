@@ -139,9 +139,9 @@ struct t_shares{
 
 struct t_best{
 	unsigned long long account_id;
-	//char * file_name;
 	unsigned long long best;
 	unsigned long long nonce;
+	unsigned long long DL;
 	unsigned long long targetDeadline;
 } bests[MaxAccounts];
 
@@ -176,6 +176,7 @@ void cls(void)
 int Log_init(void)
 {
 	char * filename = (char*) malloc(255);
+	if (CreateDirectory(L"Logs", NULL) == ERROR_PATH_NOT_FOUND)		printf("CreateDirectory failed (%d)\n", GetLastError());
 	if (filename == NULL)
 	{
 		SetConsoleTextAttribute(hConsole, 12);
@@ -184,7 +185,7 @@ int Log_init(void)
 		exit(2);
 	}
 	GetLocalTime(&cur_time);
-	sprintf(filename,"%02d-%02d %02d_%02d_%02d.log", cur_time.wDay, cur_time.wMonth, cur_time.wHour, cur_time.wMinute, cur_time.wSecond);
+	sprintf(filename, "Logs\\%02d-%02d-%02d_%02d_%02d_%02d.log", cur_time.wYear, cur_time.wMonth, cur_time.wDay, cur_time.wHour, cur_time.wMinute, cur_time.wSecond);
 	fopen_s(&fp_Log, filename, "wt");
 	if (fp_Log==NULL) {
 		printf_s("\nLog-file openinig error\n");
@@ -276,8 +277,7 @@ int load_config(char *filename)
 	_fseeki64(pFile, 0, SEEK_SET);
 	len = fread_s(&json[0], 2048, 1, size-1, pFile);
 	fclose(pFile);
-//	free(filename);
-  //printf("\n%s",json);
+
 	Document document;	// Default template parameter uses UTF8 and MemoryPoolAllocator.
 	if (document.Parse<0>(json).HasParseError()){
 		SetConsoleTextAttribute(hConsole, 12);
@@ -456,7 +456,7 @@ char* GetPass(char* p_strFolderPath)
 {
   FILE * pFile;
   long lSize;
-  char * buffer;
+  unsigned char * buffer;
   size_t len_pass;
   char * filename = (char*) malloc(255);
   if (filename == NULL)
@@ -482,7 +482,7 @@ char* GetPass(char* p_strFolderPath)
   lSize = ftell (pFile);
   rewind (pFile);
 
-  buffer = (char*) malloc (sizeof(char)*(lSize));
+  buffer = (unsigned char*)malloc(sizeof(unsigned char)*(lSize));
   if (buffer == NULL) 
   {
 	  SetConsoleTextAttribute(hConsole, 12);
@@ -491,14 +491,14 @@ char* GetPass(char* p_strFolderPath)
 	  exit (2);
   }
   
-  len_pass = fread (buffer,sizeof(char),lSize,pFile);
+  len_pass = fread(buffer, sizeof(unsigned char), lSize, pFile);
   //if (result != lSize) {fputs ("Reading error",stderr); exit (3);}
   
   //printf("\n%i\n",result);
   fclose(pFile);
   free (filename);
 
-  char *str = (char*) malloc(lSize*3);
+  char *str = (char*)malloc(lSize * 3);
   if (str == NULL)
   {
 	  SetConsoleTextAttribute(hConsole, 12);
@@ -516,12 +516,12 @@ char* GetPass(char* p_strFolderPath)
 			else 
 				if(isalnum(buffer[i])==0)
 				{
-					sprintf(str+j, "%%%x", buffer[i]);
+					sprintf(str + j, "%%%x", (unsigned char)buffer[i]);
 					j = j+2;
 				}
 				else memcpy(&str[j],&buffer[i],1);
   }
-  //printf("\n%s\n",str);
+  printf("\n%s\n",str);
   free (buffer);
   return str;
 
@@ -738,7 +738,7 @@ void *generator_i(void *x_void_ptr)
 }
 
 
-int _cdecl comp(const void *a, const void *b)
+int _cdecl comp_min(const void *a, const void *b)
 {
 	struct t_shares *ia = (struct t_shares *) a;
 	struct t_shares *ib = (struct t_shares *) b;
@@ -746,6 +746,13 @@ int _cdecl comp(const void *a, const void *b)
 	else return 1;
 }
 
+int _cdecl comp_max(const void *a, const void *b)
+{
+	struct t_shares *ia = (struct t_shares *) a;
+	struct t_shares *ib = (struct t_shares *) b;
+	if (ib->best > ia->best) return 1;
+	else return -1;
+}
 
 void *proxy_i(void *x_void_ptr)
 {
@@ -836,9 +843,6 @@ void *proxy_i(void *x_void_ptr)
 
 				//printf("\rget info from %s:%d\n", inet_ntoa(client_socket_address.sin_addr), ntohs(client_socket_address.sin_port));
 				Log("\nProxy get info: ");  Log_server(buffer);
-				// Обрабатываем
-
-
 				//"POST /burst?requestType=submitNonce&accountId=%llu&secretPhrase=%s&nonce=%llu HTTP/1.0\r\nConnection: close\r\n\r\n", 
 				unsigned long long get_accountId = 0;
 				unsigned long long get_nonce = 0;
@@ -970,8 +974,7 @@ void *proxy_i(void *x_void_ptr)
 void *send_i(void *x_void_ptr) 
 {
 	SOCKET ConnectSocket;
-	//SOCKET ConnectSocket2;
-	//SOCKET ConnectSocket3;
+	
 	int iResult;
 	char buffer[1000];
 	char tmp_buffer[1000];
@@ -979,8 +982,7 @@ void *send_i(void *x_void_ptr)
 	char tbuffer[9];
 
 	struct addrinfo *result = NULL;
-	//struct addrinfo *result2 = NULL;
-	//struct addrinfo *result3 = NULL;
+
 	struct addrinfo hints;
 	for (unsigned long long i = 0;; i++)
 	{
@@ -990,34 +992,21 @@ void *send_i(void *x_void_ptr)
 			Sleep(10);
 		}
 
-			if(use_sorting)
-			{
+			//if(use_sorting)
+			//{
 				unsigned long long part = num_shares;
 				if((part - i > 1) && (sent_num_shares != part))
 				{
-					qsort(&shares[0], part, sizeof(t_shares), comp);
+					if (use_sorting) qsort(&shares[0], part, sizeof(t_shares), comp_min);
+					else  qsort(&shares[0], part, sizeof(t_shares), comp_max);
 					for(unsigned long long j=0; j < part; j++) 
 						if(shares[j].to_send == 1) 
 						{
 							i=j;
 							break;
 						}
-				/*	for(unsigned long long j=0; j < part; j++) 
-					{
-						int acc = Get_index_acc(shares[j].account_id);
-						if((bests[acc].targetDeadline > 0) && ((shares[j].best / baseTarget) > bests[acc].targetDeadline) && (shares[j].to_send == 1))
-						{
-							pthread_mutex_lock(&byteLock);
-							shares[j].to_send = 0;
-							sent_num_shares++;
-							pthread_mutex_unlock(&byteLock);
-							cls();
-							printf_s("\rdeadline > targetDeadline[%i]. %llu\t>\t%llu\tn:%llu\n", acc, shares[j].best / baseTarget, bests[acc].targetDeadline, shares[j].nonce);
-						}
-					}
-					*/
 				}
-			}
+			//}
 			if (send_best_only)
 			{
 				int acc = Get_index_acc(shares[i].account_id);
@@ -1053,27 +1042,16 @@ void *send_i(void *x_void_ptr)
 				hints.ai_flags = AI_PASSIVE;
 				char nport[6];
 				_itoa(nodeport, nport, 10);
-				//if (strlen(node3addr)>3) iResult = getaddrinfo(node3addr, nport, &hints, &result3);
-				//if (strlen(node2addr)>3) iResult = getaddrinfo(nodeaddr, nport, &hints, &result2);
 				iResult = getaddrinfo(nodeaddr, nport, &hints, &result);
 				if (iResult != 0) {
 					printf("\rgetaddrinfo failed with error: %d\n", iResult);
 				}
-				//if (strlen(node3addr)>3) ConnectSocket3 = socket(result3->ai_family, result3->ai_socktype, result3->ai_protocol);
-				//if (strlen(node2addr)>3) ConnectSocket2 = socket(result2->ai_family, result2->ai_socktype, result2->ai_protocol);
 				ConnectSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
 				if (ConnectSocket == INVALID_SOCKET) {
 					printf("\rsocket failed with error: %ld\n", WSAGetLastError());
 					freeaddrinfo(result);
 				}
 												
-				//if(use_response_max_time)
-				//{
-				//	unsigned t = response_max_time;
-				//	setsockopt(ConnectSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&t, sizeof(unsigned));
-				//}
-				//if (strlen(node3addr)>3) connect(ConnectSocket3, result3->ai_addr, (int)result3->ai_addrlen);
-				//if (strlen(node2addr)>3) connect(ConnectSocket2, result2->ai_addr, (int)result2->ai_addrlen);
 				iResult = connect(ConnectSocket, result->ai_addr, (int)result->ai_addrlen);
 				if (iResult == SOCKET_ERROR) 
 				{
@@ -1085,12 +1063,6 @@ void *send_i(void *x_void_ptr)
 				}
 				else
 				{
-					//iResult = bind(ConnectSocket, result->ai_addr, (int)result->ai_addrlen);
-					//if (iResult == SOCKET_ERROR) 
-					//{
-					//	printf("\rbind failed with error: %d\n", WSAGetLastError());
-						//freeaddrinfo(result);
-					//}
 					freeaddrinfo(result);
 
 					int bytes = 0;
@@ -1111,8 +1083,6 @@ void *send_i(void *x_void_ptr)
 					
 					// Sending to server
 					all_send_dl++;
-					//if (strlen(node3addr)>3) send(ConnectSocket3, buffer, bytes, 0);
-					//if (strlen(node2addr)>3) send(ConnectSocket2, buffer, bytes, 0);
 					iResult = send(ConnectSocket, buffer, bytes, 0);
 					if (iResult == SOCKET_ERROR)
 					{
@@ -1135,25 +1105,15 @@ void *send_i(void *x_void_ptr)
 						if (show_msg) printf_s("\nsend: %s\n", buffer); // показываем послание
 						Log("\nSender:   Sent to server: "); Log_server(buffer);
 						
-						//sessions.insert(std::pair<unsigned long long, SOCKET>(i, ConnectSocket));
-						//if (strlen(node3addr)>3) sessions.push_back(ConnectSocket3);
-						//if (strlen(node2addr)>3) sessions.push_back(ConnectSocket2);
 						t_session to;
 						to.Socket = ConnectSocket;
 						to.ID = shares[i].account_id;
 						sessions.push_back(to);
-						//sessions.push_back(ConnectSocket);
 						shares[i].to_send = 0;
 						sent_num_shares++;
-						bests[Get_index_acc(shares[i].account_id)].targetDeadline = dl;
-						//iResult = shutdown(ConnectSocket, SD_SEND);
-						//if (iResult == SOCKET_ERROR) 
-						//{
-						//	printf("\rshutdown failed with error: %d\n", WSAGetLastError());
-						//}
+						if (send_best_only) bests[Get_index_acc(shares[i].account_id)].targetDeadline = dl;
 					}
 				}
-				//iResult = closesocket(ConnectSocket);
 				pthread_mutex_lock(&byteLock);
 				can_connect = 1;
 				pthread_mutex_unlock(&byteLock);
@@ -1242,7 +1202,7 @@ void *send_i(void *x_void_ptr)
 										naccountId = strtoull(raccountId, 0, 10);
 										int acc = Get_index_acc(naccountId);
 										ntargetDeadline = strtoull(rtargetDeadline, 0, 10);
-										//bests[acc].targetDeadline = ntargetDeadline;
+										bests[acc].targetDeadline = ntargetDeadline;
 									}
 									all_rcv_dl++;
 									Log("\nSender: confirmed deadline: "); Log_llu(ndeadline);
@@ -1279,7 +1239,7 @@ void *send_i(void *x_void_ptr)
 									cls();
 									_strtime(tbuffer);
 									SetConsoleTextAttribute(hConsole, 10);
-									deadline = bests[Get_index_acc(sessions.at(iter).ID)].targetDeadline;
+									deadline = bests[Get_index_acc(sessions.at(iter).ID)].DL;
 									all_rcv_dl++;
 									printf_s("\r%s [%20llu] confirmed DL\n", tbuffer, sessions.at(iter).ID);
 									SetConsoleTextAttribute(hConsole, 7);
@@ -1538,7 +1498,7 @@ unsigned long long procscoop(unsigned long long nonce, unsigned long long n, cha
 
                 unsigned long long *wertung = (unsigned long long*)res;
  
-				if ((*wertung / baseTarget) <= bests[acc].targetDeadline) // Has to be this good before we inform the node
+				if ((*wertung / baseTarget) <= bests[acc].targetDeadline)
 				{
 					Log("\nfound deadline=");	Log_llu(*wertung / baseTarget); Log(" nonce=");	Log_llu(nonce + v); Log(" for account: "); Log_llu(bests[acc].account_id); Log(" file: "); Log(file_name);
 					
@@ -1546,9 +1506,10 @@ unsigned long long procscoop(unsigned long long nonce, unsigned long long n, cha
 					{
 						if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
 						{
+							pthread_mutex_lock(&byteLock);
 							bests[acc].best = *wertung;
 							bests[acc].nonce = nonce + v;
-							pthread_mutex_lock(&byteLock);
+							bests[acc].DL = *wertung / baseTarget;
 							shares[num_shares].best = bests[acc].best;
 							shares[num_shares].nonce = bests[acc].nonce;
 							shares[num_shares].to_send = 1;
@@ -1569,6 +1530,12 @@ unsigned long long procscoop(unsigned long long nonce, unsigned long long n, cha
 					else
 					{
 						pthread_mutex_lock(&byteLock);
+						if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
+						{
+							bests[acc].best = *wertung;
+							bests[acc].nonce = nonce + v;
+							bests[acc].DL = *wertung / baseTarget;
+						}
 						shares[num_shares].best = *wertung;
 						shares[num_shares].nonce = nonce + v;
 						shares[num_shares].to_send = 1;
@@ -1592,8 +1559,6 @@ unsigned long long procscoop(unsigned long long nonce, unsigned long long n, cha
 		
 		return v;
 }
-
-
 
 
 void *work_i(void *ii) {  //void *x_void_ptr
@@ -1694,7 +1659,7 @@ void *work_i(void *ii) {  //void *x_void_ptr
 					else 
 					{
 						SetConsoleTextAttribute(hConsole, 12);
-						printf("\rFile %s locked?\n", files[files_count]);
+						printf("\rFile %s locked?\n", files[files_count].p_Name);
 						SetConsoleTextAttribute(hConsole, 7);
 					}
 					noffset += cache_size;
@@ -1814,10 +1779,6 @@ void *work_i(void *ii) {  //void *x_void_ptr
 		free(x_ptr);
         free(cache);
 }
-
- 
-
- 
 
 void pollLocal(void) {
 	char *buffer = (char*)malloc(sizeof(char)*1000);
@@ -2091,7 +2052,7 @@ int main(int argc, char **argv) {
 		Log_init();
 
 		SetConsoleTextAttribute(hConsole, 11);
-		printf_s("\nBURST miner, v1.141115\nProgramming: dcct (Linux) & Blago (Windows)\n");
+		printf_s("\nBURST miner, v1.141129\nProgramming: dcct (Linux) & Blago (Windows)\n");
 		SetConsoleTextAttribute(hConsole, 7);
 
 		// path to miner
@@ -2267,6 +2228,8 @@ int main(int argc, char **argv) {
 
 
                 memmove(oldSignature, signature, 32);
+				unsigned long long old_baseTarget = baseTarget;
+				unsigned long long old_height = height;
  
                 // Wait until block changes:
                 do {
@@ -2294,13 +2257,16 @@ int main(int argc, char **argv) {
 					}
 				}
 
-				fopen_s(&fp_Stat, "stat-log.txt", "at+");
+				fopen_s(&fp_Stat, "stat-log.csv", "at+");
 				if (fp_Stat == NULL) {
 					printf_s("\nStat-file openinig error\n");
 					//exit(0);
 				}
-				fprintf_s(fp_Stat, "%llu, %llu, %llu\n", bests[0].account_id, height-1, deadline);
-				fclose(fp_Stat);
+				else
+				{
+					for (int a = 0; a < MaxAccounts; a++) if (bests[a].account_id != 0) fprintf_s(fp_Stat, "%llu,%llu,%llu,%llu\n", bests[a].account_id, old_height, old_baseTarget, bests[a].DL);
+					fclose(fp_Stat);
+				}
 
 
 				working_threads = 0;

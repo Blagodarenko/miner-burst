@@ -1,4 +1,5 @@
 ﻿
+//#include <vld.h> 
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
@@ -19,15 +20,13 @@
 #include "pthread.h"
 #include <algorithm>
 #include <lmerr.h>
+#include <map>
 
-//#include "sph_shabal.h"
 #include "sph_shabal.c"
 //#include "mshabal_sse4.c"
 //#include "mshabal_avx1.c"
 //#include "mshabal_avx2.c"
 //#include "mshabal256_avx2.c"
-
-//#include <map>
 
 #include "InstructionSet.h"
 // Initialize static member data
@@ -38,19 +37,15 @@ const InstructionSet::InstructionSet_Internal InstructionSet::CPU_Rep;
 #include "rapidjson/filestream.h"	// wrapper of C stream for prettywriter as output
 using namespace rapidjson;
 
+//#include "GPU\OpenclDevice.cpp"
+//#include <CL\opencl.h>
+#include "PurgeStandbyList.cpp"
+
 #define strtoll     _strtoi64
 #define strtoull    _strtoui64
 
 #pragma warning( disable : 4715 4996)
 
-// These are fixed for BURST. Dont change!
-//#define HASH_SIZE       32
-//#define HASH_CAP        4096
-//#define PLOT_SIZE       (4096 * 64)
-//#define MAXDEADLINE		1000000 
-// Read this many nonces at once. 100k = 6.4MB per directory/thread.
-// More may speedup things a little.
-//#define CACHESIZE       200000  // 100000*64 б
 #define MAX_FILES		1000 
 #define MaxTreads		24
 unsigned threads[MaxTreads] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23}; 
@@ -58,14 +53,12 @@ unsigned threads[MaxTreads] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19
 
 HANDLE hConsole;
 
-//unsigned long long addr;
+char *version = "v1.150223";
+
 unsigned long long startnonce = 0;
 unsigned long nonces = 0;
-int scoop = 0;
+unsigned int scoop = 0;
  
-//unsigned long long best;
-//unsigned long long bestn;
-
 unsigned long long deadline = 0;
 
 unsigned long long all_send_msg = 0;
@@ -83,39 +76,42 @@ char str_signature[65];
 char oldSignature[33];
  
 char nodeaddr[100] = "localhost";	// адрес пула
-//char node2addr[100] = "";	// адрес пула
-//char node3addr[100] = "";	// адрес пула
-char nodeip[50] = "";		// IP пула
-unsigned nodeport = 8125;		// порт пула
+char nodeip[50] = "";				// IP пула
+unsigned nodeport = 8125;			// порт пула
 
-char updateraddr[100] = "";	// адрес пула
-char updaterip[50] = "";		// IP пула
+char updateraddr[100] = "localhost";// адрес пула
+char updaterip[50] = "";			// IP пула
 unsigned updaterport = 8125;		// порт пула
 
-unsigned proxyport = 8126;		// порт пула
+unsigned proxyport = 8126;			// порт пула
 
-char *p_minerPath;				// путь к папке майнера
-unsigned miner_mode = 0;				// режим майнера. 0=соло, 1=пул
-unsigned cache_size = 100000;	// размер кэша чтения плотов
-unsigned paths_num = 0;			// количество параметров пути к файлам
-//char paths_dir[MaxTreads][255];	// массив строк параметра пути к файлам
+char *p_minerPath;					// путь к папке майнера
+unsigned miner_mode = 0;			// режим майнера. 0=соло, 1=пул
+unsigned cache_size = 100000;		// размер кэша чтения плотов
+unsigned paths_num = 0;				// количество параметров пути к файлам
 char* paths_dir[MaxTreads];
-bool use_sorting = false;		// Использовать сортировку в отправщике
-bool show_msg = false;			// Показать общение с сервером в отправщике
-bool show_updates = false;		// Показать общение с сервером в апдейтере
-FILE * fp_Log;					// указатель на лог-файл
-FILE * fp_Stat;
-unsigned int can_connect = 1;	// уже установлено соединение?
-unsigned int send_interval = 300;			// время ожидания между отправками
-unsigned int update_interval = 300;			// время ожидания между апдейтами
+bool use_sorting = false;			// Использовать сортировку в отправщике
+bool show_msg = false;				// Показать общение с сервером в отправщике
+bool show_updates = false;			// Показать общение с сервером в апдейтере
+FILE * fp_Log;						// указатель на лог-файл
+FILE * fp_Stat;						// указатель на стат-файл
+unsigned int can_connect = 1;		// уже установлено соединение?
+unsigned int send_interval = 300;	// время ожидания между отправками
+unsigned int update_interval = 1000;// время ожидания между апдейтами
 bool use_fast_rcv = false;
 bool use_debug = false;
 bool enable_proxy = false;
 bool use_generator = false;
 bool send_best_only = true;
+bool use_log = true;
+bool skip_bad_plots = true;			// Пропускать плохие или поврежденные плоты
+
 unsigned int my_target_deadline = 4294967295;
-SYSTEMTIME cur_time;			// Текущее время
-unsigned working_threads = 0;	// Поток закончил работу
+SYSTEMTIME cur_time;				// Текущее время
+unsigned int working_threads = 0;	// Поток закончил работу
+unsigned long long total_size = 0;		// Общий объем плотов
+
+std::map <char*, unsigned long long> satellite_size; // Структура с объемами плотов сателлитов
 
 struct t_files{
 	char* Path = NULL; 
@@ -150,8 +146,7 @@ struct t_session{
 	unsigned long long ID;
 	unsigned long long deadline;
 };
-//std::map<unsigned long long, SOCKET> sessions;
-//std::vector<SOCKET> sessions;
+
 std::vector<t_session> sessions;
 
 unsigned long long num_shares = 0;
@@ -162,7 +157,6 @@ unsigned long long height = 0;
 unsigned long long baseTarget = 0;
 unsigned long long targetDeadlineInfo = 0; // Максимальный дедлайн пула
 int stopThreads = 0;
-//SOCKET ConnectSocket;
 char *pass = (char*)malloc(300);		// пароль
  
 pthread_mutex_t byteLock = PTHREAD_MUTEX_INITIALIZER;
@@ -174,44 +168,49 @@ void cls(void)
 	printf_s("\r\t\t\t\t\t\t\t\t\t       \r");
 }
 
-int Log_init(void)
+void Log_init(void)
 {
-	char * filename = (char*) malloc(255);
-	if (CreateDirectory(L"Logs", NULL) == ERROR_PATH_NOT_FOUND)		printf("CreateDirectory failed (%d)\n", GetLastError());
-	if (filename == NULL)
+	if (use_log)
 	{
-		SetConsoleTextAttribute(hConsole, 12);
-		printf_s("Memory allocation error");
-		SetConsoleTextAttribute(hConsole, 7);
-		exit(2);
+
+		char * filename = (char*)malloc(255);
+		if (CreateDirectory(L"Logs", NULL) == ERROR_PATH_NOT_FOUND)		printf("CreateDirectory failed (%d)\n", GetLastError());
+		if (filename == NULL)
+		{
+			SetConsoleTextAttribute(hConsole, 12);
+			printf_s("\nLOG: Memory allocation error\n");
+			SetConsoleTextAttribute(hConsole, 7);
+			use_log = false;
+		}
+		GetLocalTime(&cur_time);
+		sprintf(filename, "Logs\\%02d-%02d-%02d_%02d_%02d_%02d.log", cur_time.wYear, cur_time.wMonth, cur_time.wDay, cur_time.wHour, cur_time.wMinute, cur_time.wSecond);
+		fopen_s(&fp_Log, filename, "wt");
+		if (fp_Log == NULL) {
+			printf_s("\nLOG: file openinig error\n");
+			use_log = false;
+		}
+		free(filename);
 	}
-	GetLocalTime(&cur_time);
-	sprintf(filename, "Logs\\%02d-%02d-%02d_%02d_%02d_%02d.log", cur_time.wYear, cur_time.wMonth, cur_time.wDay, cur_time.wHour, cur_time.wMinute, cur_time.wSecond);
-	fopen_s(&fp_Log, filename, "wt");
-	if (fp_Log==NULL) {
-		printf_s("\nLog-file openinig error\n");
-		exit (0);
-	}
-	//fclose(fp_Log);
-	free(filename);
-	return 1;
 }
 
 void Log(char * strLog)
 {
-	// если строка содержит интер, то добавить время  
-	if(strLog[0]=='\n')
+	if (use_log)
 	{
-		GetLocalTime( &cur_time );
-		fprintf(fp_Log,"\n%02d:%02d:%02d %s", cur_time.wHour, cur_time.wMinute, cur_time.wSecond, strLog+1);
+		// если строка содержит интер, то добавить время  
+		if (strLog[0] == '\n')
+		{
+			GetLocalTime(&cur_time);
+			fprintf(fp_Log, "\n%02d:%02d:%02d %s", cur_time.wHour, cur_time.wMinute, cur_time.wSecond, strLog + 1);
+		}
+		else fprintf(fp_Log, "%s", strLog);
+		fflush(fp_Log);
 	}
-	else fprintf(fp_Log, "%s", strLog);
-	fflush(fp_Log);
 }
 
 void Log_server(char * strLog)
 {
-	if(strlen(strLog) > 0)
+	if((strlen(strLog) > 0) && use_log)
 	{
 		char * Msg_log = (char *) malloc(sizeof(char)*strlen(strLog)*2);
 		if (Msg_log == NULL)
@@ -247,19 +246,26 @@ void Log_server(char * strLog)
 		}
 		fprintf(fp_Log, "%s", Msg_log);
 		free(Msg_log);
+		fflush(fp_Log);
 	}
 }
 
 void Log_llu(unsigned long long llu_num)
 {
-	fprintf(fp_Log, "%llu", llu_num);
-	fflush(fp_Log);
+	if (use_log)
+	{
+		fprintf(fp_Log, "%llu", llu_num);
+		fflush(fp_Log);
+	}
 }
 
 void Log_u(unsigned u_num)
 {
-	fprintf(fp_Log, "%u", u_num);
-	fflush(fp_Log);
+	if (use_log)
+	{
+		fprintf(fp_Log, "%u", u_num);
+		fflush(fp_Log);
+	}
 }
 
 int load_config(char *filename)
@@ -302,8 +308,16 @@ int load_config(char *filename)
 	}
 	
 
-	if(document.IsObject()){	// Document is a JSON value represents the root of DOM. Root can be either an object or array.
-		if(document.HasMember("Mode") && document["Mode"].IsString()){
+	if(document.IsObject())
+	{	// Document is a JSON value represents the root of DOM. Root can be either an object or array.
+
+		if (document.HasMember("UseLog") && (document["UseLog"].IsBool()))
+			use_log = document["UseLog"].GetBool();
+
+		Log_init();
+
+		if(document.HasMember("Mode") && document["Mode"].IsString())
+		{
 			Log("\nMode: ");
 			//printf("\n-----------\Mode = %s\n", document["Mode"].GetString());
 			if(strcmp(document["Mode"].GetString(), "solo")==0) miner_mode = 0;
@@ -399,9 +413,9 @@ int load_config(char *filename)
 			proxyport = document["ProxyPort"].GetUint();
 		Log_u(proxyport);
 
-		if (document.HasMember("Generator") && (document["Generator"].IsBool()))
-			use_generator = document["Generator"].GetBool();
-		Log("\nGenerator: "); Log_u(use_generator);
+		//if (document.HasMember("Generator") && (document["Generator"].IsBool()))
+		//	use_generator = document["Generator"].GetBool();
+		//Log("\nGenerator: "); Log_u(use_generator);
 
 		if (document.HasMember("SendBestOnly") && (document["SendBestOnly"].IsBool()))
 			send_best_only = document["SendBestOnly"].GetBool();
@@ -411,7 +425,11 @@ int load_config(char *filename)
 			my_target_deadline = document["TargetDeadline"].GetUint();
 		Log("\nTargetDeadline: "); Log_llu(my_target_deadline);
 
+		if (document.HasMember("SkipBadPlots") && (document["SkipBadPlots"].IsBool()))
+			skip_bad_plots = document["SkipBadPlots"].GetBool();
+		Log("\nSkipBadPlots: "); Log_u(skip_bad_plots);
 		
+
 	}
 	// параметры по-умолчанию
 	Log("\nConfig loaded");
@@ -543,7 +561,6 @@ char* GetPass(char* p_strFolderPath)
 }
 
 
-//int GetFiles(char* p_strFolderPath, char* p_Name[], unsigned long long p_Size[])
 int GetFiles(char* p_strFolderPath, t_files p_files[])
 {
     HANDLE hFile = INVALID_HANDLE_VALUE;
@@ -644,8 +661,6 @@ int GetFiles(char* p_strFolderPath, t_files p_files[])
 	return i;
 }
 
-
-
 int Get_index_acc(unsigned long long key)
 {
 			int acc_index = -1;
@@ -679,7 +694,7 @@ void gen_nonce(unsigned long long addr, unsigned long long n, unsigned long long
 	gendata[PLOT_SIZE+4] = xv[3]; gendata[PLOT_SIZE+5] = xv[2]; gendata[PLOT_SIZE+6] = xv[1]; gendata[PLOT_SIZE+7] = xv[0];
 
 	sph_shabal_context x;
-	int i, len;
+	unsigned int i, len;
 	unsigned long long z;
 	for (z = n; (z < (n + size)) && (!stopThreads); z++)
 	{
@@ -795,6 +810,7 @@ int _cdecl comp_max(const void *a, const void *b)
 
 void *proxy_i(void *x_void_ptr)
 {
+	
 	int iResult;
 	char buffer[1000];
 	char tmp_buffer[1000];
@@ -873,20 +889,18 @@ void *proxy_i(void *x_void_ptr)
 			else
 			{
 				memset(buffer, 0, 1000);
-				//unsigned resp = 0;
 				do{
 					memset(tmp_buffer, 0, 1000);
 					iResult = recv(ClientSocket, tmp_buffer, 999, 0);
 					strcat(buffer, tmp_buffer);
-					//resp++;
 				}while ((iResult > 0) && !use_fast_rcv);
 
-				//printf("\rget info from %s:%d\n", inet_ntoa(client_socket_address.sin_addr), ntohs(client_socket_address.sin_port));
+				
 				Log("\nProxy get info: ");  Log_server(buffer);
-				//"POST /burst?requestType=submitNonce&accountId=%llu&secretPhrase=%s&nonce=%llu HTTP/1.0\r\nConnection: close\r\n\r\n", 
 				unsigned long long get_accountId = 0;
 				unsigned long long get_nonce = 0;
 				unsigned long long get_deadline = 0;
+				unsigned long long get_totalsize = 0;
 				// locate HTTP header
 				char *find = strstr(buffer, "\r\n\r\n");
 				if (find != NULL)
@@ -896,24 +910,34 @@ void *proxy_i(void *x_void_ptr)
 					if (startaccountId != NULL)
 					{
 						startaccountId = strpbrk(startaccountId, "0123456789");
-						char *endaccountId = strpbrk(startaccountId, "& ");
+						char *endaccountId = strpbrk(startaccountId, "& }\"");
 
 						char *startnonce = strstr(buffer, "nonce=");
 						char *startdl = strstr(buffer, "deadline=");
+						char *starttotalsize = strstr(buffer, "TotalSize");
 						if ((startnonce != NULL) && (startdl != NULL))
 						{
 							startnonce = strpbrk(startnonce, "0123456789");
-							char *endnonce = strpbrk(startnonce, "& ");
+							char *endnonce = strpbrk(startnonce, "& }\"");
 							startdl = strpbrk(startdl, "0123456789");
-							char *enddl = strpbrk(startdl, "& ");
+							char *enddl = strpbrk(startdl, "& }\"");
 
 							endaccountId[0] = 0;
 							endnonce[0] = 0;
 							enddl[0] = 0;
-							
+
 							get_accountId = strtoull(startaccountId, 0, 10);
 							get_nonce = strtoull(startnonce, 0, 10);
 							get_deadline = strtoull(startdl, 0, 10);
+
+							if (starttotalsize != NULL)
+							{
+								starttotalsize = strpbrk(starttotalsize, "0123456789");
+								char *endtotalsize = strpbrk(starttotalsize, "& }\"");
+								endtotalsize[0] = 0;
+								get_totalsize = strtoull(starttotalsize, 0, 10);
+								satellite_size.insert(std::pair <char*, unsigned long long>(inet_ntoa(client_socket_address.sin_addr), get_totalsize));
+							}
 
 							pthread_mutex_lock(&byteLock);
 							shares[num_shares].best = get_deadline;
@@ -921,12 +945,11 @@ void *proxy_i(void *x_void_ptr)
 							shares[num_shares].to_send = 1;
 							shares[num_shares].account_id = get_accountId;
 							shares[num_shares].file_name = inet_ntoa(client_socket_address.sin_addr);
-							//if (use_debug)
 							{
 								cls();
 								SetConsoleTextAttribute(hConsole, 2);
 								_strtime(tbuffer);
-								printf("\r%s [%20llu]\treceived DL: %11llu {%s}\n", tbuffer, get_accountId, shares[num_shares].best / baseTarget, inet_ntoa(client_socket_address.sin_addr));
+								printf_s("\r%s [%20llu]\treceived DL: %11llu {%s}\n", tbuffer, get_accountId, shares[num_shares].best / baseTarget, inet_ntoa(client_socket_address.sin_addr));
 								SetConsoleTextAttribute(hConsole, 7);
 								
 							}
@@ -964,11 +987,9 @@ void *proxy_i(void *x_void_ptr)
 					}
 					else
 					{
-						//char *startaccountId = strstr(buffer, "accountId=");
 						if (strstr(buffer, "getMiningInfo") != NULL)
 						{
 							memset(buffer, 0, 1000);
-							//int acc = Get_index_acc(get_accountId);
 							int bytes = sprintf_s(buffer, "HTTP/1.0 200 OK\r\nConnection: close\r\n\r\n{\"baseTarget\":\"%llu\",\"height\":\"%llu\",\"generationSignature\":\"%s\",\"targetDeadline\":%llu}", baseTarget, height, str_signature, targetDeadlineInfo);
 							iResult = send(ClientSocket, buffer, bytes, 0);
 							if (iResult == SOCKET_ERROR)
@@ -1032,8 +1053,6 @@ void *send_i(void *x_void_ptr)
 			Sleep(10);
 		}
 
-			//if(use_sorting)
-			//{
 				unsigned long long part = num_shares;
 				if((part - i > 1) && (sent_num_shares != part))
 				{
@@ -1046,7 +1065,6 @@ void *send_i(void *x_void_ptr)
 							break;
 						}
 				}
-			//}
 			if (send_best_only)
 			{
 				int acc = Get_index_acc(shares[i].account_id);
@@ -1062,8 +1080,7 @@ void *send_i(void *x_void_ptr)
 						SetConsoleTextAttribute(hConsole, 4);
 						_strtime(tbuffer);
 						printf_s("\r%s [%llu]\t%llu > %llu  discarded\n", tbuffer, shares[i].account_id, shares[i].best / baseTarget, bests[acc].targetDeadline);
-						SetConsoleTextAttribute(hConsole, 7);
-						//Log("\nSender: Found deadline, but it's more server's minimum. Deadline ="); Log_llu(shares[i].best / baseTarget); 
+						SetConsoleTextAttribute(hConsole, 7);						
 					}
 				}
 			}
@@ -1119,7 +1136,13 @@ void *send_i(void *x_void_ptr)
 						strcat(buffer, tmp);
 						//printf("\n%s\n",pass);
 					}
-					if (miner_mode == 1)	bytes = sprintf_s(buffer, "POST /burst?requestType=submitNonce&accountId=%llu&nonce=%llu&deadline=%llu HTTP/1.0\r\nConnection: close\r\n\r\n", shares[i].account_id, shares[i].nonce, (shares[i].best));
+					if (miner_mode == 1)
+					{
+						
+						unsigned long long total = total_size / 1024 / 1024 / 1024;
+						for (std::map <char*, unsigned long long>::iterator Iter = satellite_size.begin(); Iter != satellite_size.end(); Iter++) total = total + Iter->second;
+						bytes = sprintf_s(buffer, "POST /burst?requestType=submitNonce&accountId=%llu&nonce=%llu&deadline=%llu HTTP/1.0\r\nminer: Blago %s\r\nTotalSize: %llu\r\nConnection: close\r\n\r\n", shares[i].account_id, shares[i].nonce, (shares[i].best), version, total);
+					}
 					if(miner_mode == 2)
 					{
 						char *f1 = (char*) malloc(100);
@@ -1156,11 +1179,12 @@ void *send_i(void *x_void_ptr)
 						if (show_msg) printf_s("\nsend: %s\n", buffer); // показываем послание
 						Log("\nSender:   Sent to server: "); Log_server(buffer);
 						
-						t_session to;
-						to.Socket = ConnectSocket;
-						to.ID = shares[i].account_id;
-						to.deadline = dl;
-						sessions.push_back(to);
+						t_session *to = (t_session*) malloc(sizeof(t_session));
+						to->Socket = ConnectSocket;
+						to->ID = shares[i].account_id;
+						to->deadline = dl;
+						sessions.push_back(*to);
+						free(to);
 						shares[i].to_send = 0;
 						sent_num_shares++;
 						if (send_best_only) bests[Get_index_acc(shares[i].account_id)].targetDeadline = dl;
@@ -1183,8 +1207,6 @@ void *send_i(void *x_void_ptr)
 				{
 					ConnectSocket = sessions.at(iter).Socket;
 					
-					// read some bytes
-					// Set nonblocked mode
 					BOOL l = TRUE;
 					iResult = ioctlsocket(ConnectSocket, FIONBIO, (unsigned long*)&l);
 					if (iResult == SOCKET_ERROR)
@@ -1214,8 +1236,7 @@ void *send_i(void *x_void_ptr)
 							cls();
 							SetConsoleTextAttribute(hConsole, 12);
 							printf_s("\rreceiving confirmation failed: %ld\n", WSAGetLastError());
-							SetConsoleTextAttribute(hConsole, 7);
-							//sessions.erase(sessions.begin() + iter);
+							SetConsoleTextAttribute(hConsole, 7);							
 						}
 					}
 					else
@@ -1576,7 +1597,7 @@ unsigned long long procscoop(unsigned long long nonce, unsigned long long n, cha
 								cls();
 								_strtime(tbuffer);
 								SetConsoleTextAttribute(hConsole, 2);
-								printf("\r%s [%llu]\tfound deadline %llu\n", tbuffer, bests[acc].account_id, shares[num_shares].best / baseTarget);
+								printf("\r%s [%llu]\tfound deadline:    %llu\n", tbuffer, bests[acc].account_id, shares[num_shares].best / baseTarget);
 								SetConsoleTextAttribute(hConsole, 7);
 							}
 							num_shares++;
@@ -1618,6 +1639,8 @@ unsigned long long procscoop(unsigned long long nonce, unsigned long long n, cha
 
 
 void *work_i(void *ii) {  //void *x_void_ptr
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+	//pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 		unsigned local_num = *(unsigned *)ii;
 		Log("\nStart thread #");	Log_u(local_num); Log(" with parameter: ");	Log(paths_dir[local_num]);
 		clock_t start_work_time, end_work_time;
@@ -1653,11 +1676,21 @@ void *work_i(void *ii) {  //void *x_void_ptr
 						
 			if (nonces != (files[files_count].Size)/(1024*256))
 			{
-				SetConsoleTextAttribute(hConsole, 12);
-				cls();
-				printf_s("\r! File \"%s\" file name/size mismatch, skipped\n", files[files_count].Name);
-				SetConsoleTextAttribute(hConsole, 7);
-				continue;   // если размер файла не соответствует нонсам в имени файла - пропускаем
+				if (skip_bad_plots)
+				{
+					SetConsoleTextAttribute(hConsole, 12);
+					cls();
+					printf_s("\r! File \"%s\" file name/size mismatch, skipped\n", files[files_count].Name);
+					SetConsoleTextAttribute(hConsole, 7);
+					continue;   // если размер файла не соответствует нонсам в имени файла - пропускаем
+				}
+				else
+				{
+					SetConsoleTextAttribute(hConsole, 12);
+					cls();
+					printf_s("\r! File \"%s\" file name/size mismatch\n", files[files_count].Name);
+					SetConsoleTextAttribute(hConsole, 7);
+				}
 			}
 			Log("\nRead file: ");	Log(files[files_count].Name);
 			start_time = clock();
@@ -1717,6 +1750,7 @@ void *work_i(void *ii) {  //void *x_void_ptr
 					}
 					noffset += cache_size;
 				}
+				//pthread_testcancel();
 				if(stopThreads) // New block while processing: Stop.
 				{       
 					fclose(pFile);
@@ -1888,7 +1922,7 @@ void pollLocal(void) {
 									}
 
 									unsigned long long  heightInfo = strtoull(rheight, 0, 10);
-									if (heightInfo > height)
+									//if (heightInfo > height)
 									{
 										height = heightInfo;
 										baseTarget = strtoull(rbaseTarget, 0, 10);
@@ -2009,6 +2043,62 @@ void GetCPUInfo(void)
 		printf_s("\n");
 }
 
+
+int ClearMem(void)
+{
+	
+		HANDLE hProcess = GetCurrentProcess();
+		HANDLE hToken;
+		if (!OpenProcessToken(hProcess, TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES, &hToken))
+		{
+			fprintf(stderr, "\nCan't open current process token\n");
+			return 0;
+		}
+
+		if (!GetPrivilege(hToken, "SeProfileSingleProcessPrivilege", 1))
+		{
+			fprintf(stderr, "\nCan't get SeProfileSingleProcessPrivilege\n");
+			return 0;
+		}
+
+		CloseHandle(hToken);
+
+		HMODULE ntdll = LoadLibrary(L"ntdll.dll");
+		if (!ntdll)
+		{
+			fprintf(stderr, "\nCan't load ntdll.dll, wrong Windows version?\n");
+			return 0;
+		}
+
+		typedef DWORD NTSTATUS; // ?
+		NTSTATUS(WINAPI *NtSetSystemInformation)(INT, PVOID, ULONG) = (NTSTATUS(WINAPI *)(INT, PVOID, ULONG))GetProcAddress(ntdll, "NtSetSystemInformation");
+		NTSTATUS(WINAPI *NtQuerySystemInformation)(INT, PVOID, ULONG, PULONG) = (NTSTATUS(WINAPI *)(INT, PVOID, ULONG, PULONG))GetProcAddress(ntdll, "NtQuerySystemInformation");
+		if (!NtSetSystemInformation || !NtQuerySystemInformation)
+		{
+			fprintf(stderr, "\nCan't get function addresses, wrong Windows version?\n");
+			return 0;
+		}
+
+		SYSTEM_MEMORY_LIST_COMMAND command = MemoryPurgeStandbyList;
+		NTSTATUS status = NtSetSystemInformation(
+			SystemMemoryListInformation,
+			&command,
+			sizeof(SYSTEM_MEMORY_LIST_COMMAND)
+			);
+		if (status == STATUS_PRIVILEGE_NOT_HELD)
+		{
+			fprintf(stderr, "\nInsufficient privileges to execute the memory list command");
+		}
+		else if (!NT_SUCCESS(status))
+		{
+			fprintf(stderr, "\nUnable to execute the memory list command %p", status);
+		}
+		return NT_SUCCESS(status);
+	
+}
+
+
+
 int main(int argc, char **argv) {
 
 		pthread_t worker[MaxTreads];
@@ -2017,33 +2107,35 @@ int main(int argc, char **argv) {
 		pthread_t updater;
 		unsigned i = 0;
 		char tbuffer[9];
+		bool cleared = false;
 
 		hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-		Log_init();
+		
 
 		SetConsoleTextAttribute(hConsole, 11);
-		printf_s("\nBURST miner, v1.150106\nProgramming: dcct (Linux) & Blago (Windows)\n");
+		printf_s("\nBURST miner, %s\nProgramming: dcct (Linux) & Blago (Windows)\n", version);
 		SetConsoleTextAttribute(hConsole, 7);
 
 		// path to miner
-		Log("\nMiner path: ");
+		
 		DWORD cwdsz = GetCurrentDirectoryA(0, 0);
 		p_minerPath = (char*)malloc(cwdsz);
 		GetCurrentDirectoryA(cwdsz, LPSTR(p_minerPath));
 		strcat(p_minerPath, "\\");
-		Log(p_minerPath);
 		
-		Log("\nLoading config ");
-		char conf_filename[255];
-		memset(conf_filename, 0, 255);
+		
+		char* conf_filename = (char*)malloc(255);;
+		memset(conf_filename, 0, sizeof(conf_filename));
 		if((argc >= 2) && (strcmp(argv[1], "-config")==0)){
 			if(strstr(argv[2], ":\\")) sprintf(conf_filename,"%s", argv[2]);
 			else sprintf(conf_filename,"%s%s", p_minerPath, argv[2]);
 		}
 		else sprintf(conf_filename,"%s%s", p_minerPath, "miner.conf");
-		Log(conf_filename);
+
 		load_config(conf_filename);
-				
+		free(conf_filename);
+		Log("\nMiner path: "); Log(p_minerPath);
+
 		GetCPUInfo();
 
 		if(miner_mode == 0) pass = GetPass(p_minerPath);
@@ -2077,7 +2169,7 @@ int main(int argc, char **argv) {
 		SetConsoleTextAttribute(hConsole, 15);
 		printf_s("Using plots:\n");
 		SetConsoleTextAttribute(hConsole, 7);
-		unsigned long long total_size = 0;
+		total_size = 0;
 		for (i = 0; i < paths_num; i++)
 		{
 			t_files *files = (t_files*)malloc(sizeof(t_files)* MAX_FILES);
@@ -2134,8 +2226,11 @@ int main(int argc, char **argv) {
 		
 		// Main loop
 		for(;;) {
-				
+	
+				working_threads = 0;
+
                 // Get scoop:
+			    Log("\nCalculate scoop (Shabal) for \"New block\"");
                 char scoopgen[40];
                 memmove(scoopgen, signature, 32);
  
@@ -2151,10 +2246,7 @@ int main(int argc, char **argv) {
 				
                 scoop = (((unsigned char)xcache[31]) + 256 * (unsigned char)xcache[30]) % 4096;
  
-                // New block: reset stats
-                //best = 0;
-				//bestn = 0;
-				deadline = 0;
+ 				deadline = 0;
 				bytesRead = 0;
  
 				Log("\n------------------------    New block: "); Log_llu(height);
@@ -2174,12 +2266,12 @@ int main(int argc, char **argv) {
 
 
 				//unsigned long long targetDeadline;
-				if(targetDeadlineInfo > 0){
+				if ((targetDeadlineInfo > 0) && (targetDeadlineInfo < my_target_deadline)){
 					Log("\nUpdate targetDeadline: "); Log_llu(targetDeadlineInfo);
 				}
 				else {
 					targetDeadlineInfo = my_target_deadline;
-					Log("\ntargetDeadline not found, targetDeadline: "); Log_llu(targetDeadlineInfo);
+					//Log("\ntargetDeadline not found, targetDeadline: "); Log_llu(targetDeadlineInfo);
 				}
 				for(unsigned a=0; a < MaxAccounts; a++)
 					bests[a].targetDeadline = targetDeadlineInfo;
@@ -2210,14 +2302,22 @@ int main(int argc, char **argv) {
 						//printf_s("\r[%llu%%] %llu GB. tDL[%llu][%llu] sdl:%llu/%llu(%llu) cdl:%llu(%llu) ss:%llu(%llu) rs:%llu(%llu)", (bytesRead*4096*100 / total_size), (bytesRead / (256 * 1024)), bests[0].targetDeadline, bests[1].targetDeadline, all_send_dl, num_shares-sent_num_shares, err_send_dl, all_rcv_dl, err_rcv_dl, all_send_msg, err_send_msg, all_rcv_msg, err_rcv_msg);
 						SetConsoleTextAttribute(hConsole, 7);
                         Sleep(500);
+						if ((working_threads == 0) && (cleared == false))
+						{
+							ClearMem();
+							cleared = true;
+						}
                 } while(memcmp(signature, oldSignature, 32) == 0);      // Wait until signature changed
-								
+						
+				cleared = false;
+
                 // Tell all threads to stop:
                 stopThreads = 1;
-                for(i = 0; i < paths_num; i++)
+				for(i = 0; i < paths_num; i++)
 				{
-					//Log("\nПрерываем поток: ");	Log_u(i-3);
+					Log("\nПрерываем поток: ");	Log_u(i);
 					if( pthread_join(worker[i], NULL) > 0 )
+					//if (pthread_cancel(worker[i]) > 0)
 					{
 						cls();
 						SetConsoleTextAttribute(hConsole, 12);
@@ -2226,20 +2326,15 @@ int main(int argc, char **argv) {
 						Log("\n! Error thread stoping: ");	Log_u(i);
 					}
 				}
-
+				Log("\nWriting to stat-log.csv ");
 				fopen_s(&fp_Stat, "stat-log.csv", "at+");
-				if (fp_Stat == NULL) {
-					printf_s("\nStat-file openinig error\n");
-					//exit(0);
-				}
-				else
+				if (fp_Stat != NULL)
 				{
 					for (int a = 0; a < MaxAccounts; a++) if (bests[a].account_id != 0) fprintf_s(fp_Stat, "%llu,%llu,%llu,%llu\n", bests[a].account_id, old_height, old_baseTarget, bests[a].DL);
 					fclose(fp_Stat);
+					Log("\nWrote stat-log.csv ");
 				}
-
-
-				working_threads = 0;
+			
 				stopThreads = 0;
         }
 		pthread_join(sender, NULL);

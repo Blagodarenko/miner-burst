@@ -71,9 +71,10 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;C:\Program Files (x86)\Visual Leak Detector\include;$(WindowsSdkDir)include\um;$(WindowsSdkDir)include\shared;%AMDAPPSDKROOT%\include</IncludePath>
-    <LibraryPath>$(VCInstallDir)lib\amd64;$(VCInstallDir)atlmfc\lib\amd64;$(WindowsSdkDir)lib\x64;C:\Program Files (x86)\Visual Leak Detector\lib;$(WindowsSdkDir)lib\winv6.3\um\x64;%AMDAPPSDKROOT%\lib\x86_64</LibraryPath>
+    <IncludePath>$(VCInstallDir)include;$(VCInstallDir)atlmfc\include;$(WindowsSdkDir)include;$(FrameworkSDKDir)\include;C:\Program Files (x86)\Visual Leak Detector\include;$(WindowsSdkDir)include\um;$(WindowsSdkDir)include\shared;C:\Program Files (x86)\AMD APP SDK\3.0-0-Beta\include</IncludePath>
+    <LibraryPath>$(VCInstallDir)lib\amd64;$(VCInstallDir)atlmfc\lib\amd64;$(WindowsSdkDir)lib\x64;C:\Program Files (x86)\Visual Leak Detector\lib;$(WindowsSdkDir)lib\winv6.3\um\x64;%AMDAPPSDKROOT%\lib\x86_64;C:\Program Files (x86)\AMD APP SDK\3.0-0-Beta\lib\x86_64</LibraryPath>
     <RunCodeAnalysis>false</RunCodeAnalysis>
+    <ReferencePath>$(VC_ReferencesPath_x64);C:\Program Files (x86)\AMD APP SDK\3.0-0-Beta\bin\x86_64</ReferencePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -103,12 +104,14 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>C:\rapidjson\include</AdditionalIncludeDirectories>
       <EnablePREfast>false</EnablePREfast>
+      <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);pthreadVC2.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\Program Files (x86)\Visual Leak Detector\lib\Win64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);pthreadVC2.lib;OpenCL.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Program Files (x86)\Visual Leak Detector\lib\Win64;%(AdditionalLibraryDirectories);C:\Program Files (x86)\AMD APP SDK\3.0-0-Beta\lib\x86_64</AdditionalLibraryDirectories>
+      <UACExecutionLevel>HighestAvailable</UACExecutionLevel>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -147,12 +150,26 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="miner.cpp" />
+    <ClCompile Include="mshabal256_avx2.c" />
+    <ClCompile Include="mshabal_avx1.c" />
+    <ClCompile Include="mshabal_avx2.c" />
+    <ClCompile Include="mshabal_sse4.c" />
+    <ClCompile Include="OpenCL_Device.cpp" />
+    <ClCompile Include="OpenCL_Error.cpp" />
+    <ClCompile Include="OpenCL_Platform.cpp" />
+    <ClCompile Include="sph_shabal.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="mshabal.h" />
+    <ClInclude Include="mshabal256.h" />
+    <ClInclude Include="OpenCL_Device.h" />
+    <ClInclude Include="OpenCL_Error.h" />
+    <ClInclude Include="OpenCL_Platform.h" />
     <ClInclude Include="pthread.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="sched.h" />
     <ClInclude Include="semaphore.h" />
+    <ClInclude Include="sph_shabal.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="pthreadVC2.dll" />

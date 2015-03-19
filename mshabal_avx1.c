@@ -22,9 +22,9 @@
 
 #include "mshabal.h"
 
-//#ifdef  __cplusplus
-//extern "C" {
-//#endif
+#ifdef  __cplusplus
+extern "C" {
+#endif
 
 #ifdef _MSC_VER
 #pragma warning (disable: 4146)
@@ -399,6 +399,6 @@
     }
   }
 
-//#ifdef  __cplusplus
-//  extern "C" {
-//#endif
+#ifdef  __cplusplus
+  extern "C" {
+#endif

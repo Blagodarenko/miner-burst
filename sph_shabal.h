@@ -39,6 +39,10 @@
 #include <stddef.h>
 #include "sph_types.h"
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 /**
  * Output size (in bits) for Shabal-192.
  */
@@ -336,4 +340,7 @@ void sph_shabal512_addbits_and_close(
 //void shabal_init(void *cc, unsigned size);
 //void shabal(void *cc, const char *data, size_t len);
 //void shabal_close(void *cc, unsigned ub, unsigned n, void *dst, unsigned size_words);
+#ifdef  __cplusplus
+}
+#endif
 #endif

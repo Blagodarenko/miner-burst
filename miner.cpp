@@ -91,11 +91,11 @@ char str_signature[65];
 char oldSignature[33];
  
 char nodeaddr[100] = "localhost";	// адрес пула
-char nodeip[50] = "";				// IP пула
+//char nodeip[50] = "";				// IP пула
 unsigned nodeport = 8125;			// порт пула
 
 char updateraddr[100] = "localhost";// адрес пула
-char updaterip[50] = "";			// IP пула
+//char updaterip[50] = "";			// IP пула
 unsigned updaterport = 8125;		// порт пула
 
 char infoaddr[100] = "localhost";// адрес пула
@@ -179,7 +179,7 @@ unsigned long long height = 0;
 unsigned long long baseTarget = 0;
 unsigned long long targetDeadlineInfo = 0; // Максимальный дедлайн пула
 int stopThreads = 0;
-char *pass = (char*)malloc(300);		// пароль
+char *pass = (char*)calloc(300, 1);		// пароль
  
 pthread_mutex_t byteLock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -195,7 +195,7 @@ void Log_init(void)
 	if (use_log)
 	{
 
-		char * filename = (char*)malloc(255);
+		char * filename = (char*)calloc(MAX_PATH, 1);
 		if (CreateDirectory(L"Logs", NULL) == ERROR_PATH_NOT_FOUND)		printf_s("CreateDirectory failed (%d)\n", GetLastError());
 		if (filename == NULL)
 		{
@@ -234,7 +234,7 @@ void Log_server(char * strLog)
 {
 	if((strlen(strLog) > 0) && use_log)
 	{
-		char * Msg_log = (char *) malloc(sizeof(char)*strlen(strLog)*2);
+		char * Msg_log = (char *) calloc(sizeof(char)*strlen(strLog)*2+1, 1);
 		if (Msg_log == NULL)
 		{
 			SetConsoleTextAttribute(hConsole, 12);
@@ -242,7 +242,7 @@ void Log_server(char * strLog)
 			SetConsoleTextAttribute(hConsole, 7);
 			exit(2);
 		}
-		memset(Msg_log, 0, strlen(strLog)*2);
+		//memset(Msg_log, 0, strlen(strLog)*2+1);
 		for(int i=0, j=0; i<strlen(strLog); i++, j++)
 		{
 			if(strLog[i] == '\r')
@@ -295,7 +295,7 @@ int load_config(char *filename)
 	FILE * pFile;
 	size_t len;
 	
-	char json[2048];
+	//char json;
 	fopen_s(&pFile, filename, "rt");
 
 	if (pFile == NULL)
@@ -307,11 +307,12 @@ int load_config(char *filename)
 	}
 	
 	//len = 0;
-	memset(json, 0, 2048);
+	//memset(json, 0, 4096);
 	_fseeki64(pFile, 0, SEEK_END);
 	__int64 size = _ftelli64(pFile);
 	_fseeki64(pFile, 0, SEEK_SET);
-	len = fread_s(&json[0], 2048, 1, size-1, pFile);
+	json = (char*)calloc(size+1, 1);
+	len = fread_s(json, size, 1, size - 1, pFile);
 	fclose(pFile);
 
 	Document document;	// Default template parameter uses UTF8 and MemoryPoolAllocator.
@@ -365,10 +366,7 @@ int load_config(char *filename)
 			paths_num = (unsigned)Paths.Size();
 			Log("\nPaths: "); Log_u(paths_num);
 			for (SizeType i = 0; i < Paths.Size(); i++){	// rapidjson uses SizeType instead of size_t.
-				//memset(&paths_dir[i][0], 0, 255);
-				//strcpy(&paths_dir[i][0], Paths[i].GetString());
-				//if((paths_dir[i][strlen(paths_dir[i])]) != '\\') paths_dir[i][strlen(paths_dir[i])] = '\\';
-				paths_dir[i] = (char*) malloc(strlen(Paths[i].GetString())+1);
+				paths_dir[i] = (char*) calloc(strlen(Paths[i].GetString())+1, 1);
 				strcpy(paths_dir[i], Paths[i].GetString());
 				Log("\nPath: "); Log(paths_dir[i]);
 			}
@@ -462,6 +460,7 @@ int load_config(char *filename)
 	}
 	// параметры по-умолчанию
 	Log("\nConfig loaded");
+	free(json);
 	return 1;
 }
 
@@ -520,7 +519,7 @@ char* GetPass(char* p_strFolderPath)
   long lSize;
   unsigned char * buffer;
   size_t len_pass;
-  char * filename = (char*) malloc(255);
+  char * filename = (char*)calloc(MAX_PATH, 1);
   if (filename == NULL)
   {
 	  SetConsoleTextAttribute(hConsole, 12);
@@ -544,7 +543,7 @@ char* GetPass(char* p_strFolderPath)
   lSize = ftell (pFile);
   rewind (pFile);
 
-  buffer = (unsigned char*)malloc(sizeof(unsigned char)*(lSize));
+  buffer = (unsigned char*)calloc(lSize, sizeof(unsigned char));
   if (buffer == NULL) 
   {
 	  SetConsoleTextAttribute(hConsole, 12);
@@ -560,7 +559,7 @@ char* GetPass(char* p_strFolderPath)
   fclose(pFile);
   free (filename);
 
-  char *str = (char*)malloc(lSize * 3);
+  char *str = (char*)calloc(lSize * 3, 1);
   if (str == NULL)
   {
 	  SetConsoleTextAttribute(hConsole, 12);
@@ -568,7 +567,7 @@ char* GetPass(char* p_strFolderPath)
 	  SetConsoleTextAttribute(hConsole, 7);
 	  exit(2);
   }
-  memset(str, 0, sizeof(char)*(lSize*3));
+ // memset(str, 0, sizeof(char)*(lSize*3));
   
 	for(int i=0, j=0; i<len_pass; i++, j++) 
 	{
@@ -594,7 +593,7 @@ unsigned GetFiles(char* p_strFolderPath, t_files p_files[])
 {
     HANDLE hFile = INVALID_HANDLE_VALUE;
     WIN32_FIND_DATAA   FindFileData;
-	int i=0;
+	unsigned i=0;
 
 	char* start = p_strFolderPath;
 	char* end = NULL;
@@ -603,20 +602,20 @@ unsigned GetFiles(char* p_strFolderPath, t_files p_files[])
 	{
 		end = strpbrk(start, "+");
 		if (end == NULL) end = p_strFolderPath + strlen(p_strFolderPath);
-		
-			char *p = (char*)malloc(end-start+1);
-			memcpy(p, start, end - start);
-			p[end - start] = 0;
-			if (p[strlen(p)] != '\\') strcat(p, "\\"); // Добавляем "\" если не указан в пути
-			path.push_back(p);
-			start = end+1;
+
+		char *p = (char*)calloc(end - start + 1, 1);
+		memcpy(p, start, end - start);
+		p[end - start] = 0;
+		if (p[strlen(p)] != '\\') strcat(p, "\\"); // Добавляем "\" если не указан в пути
+		path.push_back(p);
+		start = end + 1;
 	} while (end != p_strFolderPath + strlen(p_strFolderPath));
 	
 
 	for (unsigned int iter = 0; iter < path.size(); iter++)
 	{
 
-		char *str = (char*)malloc(255);
+		char *str = (char*)calloc(MAX_PATH, 1);
 		if (str == NULL)
 		{
 			SetConsoleTextAttribute(hConsole, 12);
@@ -624,9 +623,8 @@ unsigned GetFiles(char* p_strFolderPath, t_files p_files[])
 			SetConsoleTextAttribute(hConsole, 7);
 			exit(2);
 		}
-		memset(str, 0, sizeof(char)*(255));
+		//memset(str, 0, MAX_PATH);
 		strcpy(str, path.at(iter));
-		//if(str[strlen(str)] != '\\') strcat(str,"\\"); // Добавляем "\" если не указан в пути
 		strcat(str, "*");
 		hFile = FindFirstFileA(LPCSTR(str), &FindFileData);
 		if (INVALID_HANDLE_VALUE != hFile)
@@ -636,7 +634,7 @@ unsigned GetFiles(char* p_strFolderPath, t_files p_files[])
 				//Skip directories
 				if (FILE_ATTRIBUTE_DIRECTORY & FindFileData.dwFileAttributes) continue;
 
-				char *test = (char*)malloc(255);
+				char *test = (char*)calloc(MAX_PATH, 1);
 				if (test == NULL)
 				{
 					SetConsoleTextAttribute(hConsole, 12);
@@ -644,6 +642,7 @@ unsigned GetFiles(char* p_strFolderPath, t_files p_files[])
 					SetConsoleTextAttribute(hConsole, 7);
 					exit(2);
 				}
+				//memset(test, 0, MAX_PATH);
 				strcpy(test, FindFileData.cFileName);
 				char* ekey = strstr(test, "_");
 				if (ekey != NULL){
@@ -659,8 +658,8 @@ unsigned GetFiles(char* p_strFolderPath, t_files p_files[])
 							memset(estart, 0, 1);
 							memset(enonces, 0, 1);
 							//printf_s("\n%s-%s-%s-%s", skey, sstart, snonces ,sstagger);
-							p_files[i].Name = (char*)malloc((strlen(FindFileData.cFileName)));
-							p_files[i].Path = (char*)malloc((strlen(path.at(iter))));
+							p_files[i].Name = (char*)calloc(strlen(FindFileData.cFileName)+1, 1);
+							p_files[i].Path = (char*)calloc(strlen(path.at(iter))+1, 1);
 							if ((p_files[i].Name == NULL) || (p_files[i].Path == NULL))
 							{
 								SetConsoleTextAttribute(hConsole, 12);
@@ -668,8 +667,8 @@ unsigned GetFiles(char* p_strFolderPath, t_files p_files[])
 								SetConsoleTextAttribute(hConsole, 7);
 								exit(2);
 							}
-							memset(p_files[i].Name, 0, sizeof(char)*(strlen(FindFileData.cFileName)));
-							memset(p_files[i].Path, 0, sizeof(char)*(strlen(path.at(iter))));
+							//(p_files[i].Name, 0, _msize(p_files[i].Name) + 1);//(strlen(FindFileData.cFileName))+1);
+							//memset(p_files[i].Path, 0, _msize(path.at(iter)) + 1);
 							p_files[i].Size = (((static_cast<ULONGLONG>(FindFileData.nFileSizeHigh) << sizeof(FindFileData.nFileSizeLow) * 8) | FindFileData.nFileSizeLow));
 
 							strcpy(p_files[i].Name, FindFileData.cFileName);
@@ -681,7 +680,6 @@ unsigned GetFiles(char* p_strFolderPath, t_files p_files[])
 				}
 				free(test);
 			} while (FindNextFileA(hFile, &FindFileData));
-
 			FindClose(hFile);
 		}
 		free(str);
@@ -1182,12 +1180,12 @@ void *send_i(void *x_void_ptr)
 					}
 					if(miner_mode == 2)
 					{
-						char *f1 = (char*) malloc(100);
-						char *str_len = (char*) malloc(10);
+						char *f1 = (char*) calloc(MAX_PATH, 1);
+						char *str_len = (char*)calloc(MAX_PATH, 1);
 						int len = sprintf(f1, "%llu:%llu:%llu\n", shares[i].account_id, shares[i].nonce, height);
 						_itoa_s(len, str_len, 10, 10);
 			
-						bytes = sprintf_s(buffer, "POST /pool/submitWork HTTP/1.0\r\nHost: %s:%i\r\nContent-Type: text/plain;charset=UTF-8\r\nContent-Length: %i\r\n\r\n%s", nodeip, nodeport, len, f1);
+						bytes = sprintf_s(buffer, "POST /pool/submitWork HTTP/1.0\r\nHost: %s:%i\r\nContent-Type: text/plain;charset=UTF-8\r\nContent-Length: %i\r\n\r\n%s", nodeaddr, nodeport, len, f1);
 						free(f1);
 						free(str_len);
 					}   
@@ -1216,7 +1214,7 @@ void *send_i(void *x_void_ptr)
 						if (show_msg) printf_s("\nsend: %s\n", buffer); // показываем послание
 						Log("\nSender:   Sent to server: "); Log_server(buffer);
 						
-						t_session *to = (t_session*) malloc(sizeof(t_session));
+						t_session *to = (t_session*) calloc(1, sizeof(t_session));
 						to->Socket = ConnectSocket;
 						to->ID = shares[i].account_id;
 						to->deadline = dl;
@@ -1680,7 +1678,7 @@ unsigned long long procscoop(unsigned long long nonce, unsigned long long n, cha
 }
 
 
-void *work_i(void *ii) {  //void *x_void_ptr
+void *work_i(void *ii) {  
 	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 	
 		unsigned local_num = *(unsigned *)ii;
@@ -1688,10 +1686,10 @@ void *work_i(void *ii) {  //void *x_void_ptr
 		clock_t start_work_time, end_work_time;
 		start_work_time = clock();
 		FILE * pFile;
-		char *x_ptr = (char*)malloc(sizeof(char)*255);
-		memset(x_ptr, 0, sizeof(char)*(255));
+		char *x_ptr = (char*)calloc(MAX_PATH, 1);
+		//memset(x_ptr, 0, MAX_PATH);
 		strcpy(x_ptr, paths_dir[local_num]);
-		char *cache = (char*) malloc(cache_size * 64);
+		char *cache = (char*) calloc(cache_size * 64, 1);
 		clock_t start_time, end_time;			// Текущее время
 		unsigned long long files_size_per_thread = 0;
 		if(cache == NULL) {
@@ -1701,9 +1699,8 @@ void *work_i(void *ii) {  //void *x_void_ptr
 			SetConsoleTextAttribute(hConsole, 7);
             exit(-1);
         }
-				
 		
-		t_files* files = (t_files*)malloc(sizeof(t_files)* MAX_FILES);
+		t_files* files = (t_files*)calloc(MAX_FILES, sizeof(t_files));
 		
 		unsigned f_count = GetFiles(x_ptr, files);
 		//printf("\n   %i\n   %i  %s\n   %i  %s\n   %i  %s\n ",f_count, strlen(files[0]),files[0], strlen(files[1]), files[1], strlen(files[2]), files[2]);
@@ -1712,7 +1709,7 @@ void *work_i(void *ii) {  //void *x_void_ptr
 		{
 			unsigned long long key, nonce, nonces, stagger, n;
 						
-            char fullname[255];
+			char fullname[MAX_PATH];
 			strcpy(fullname, files[files_count].Path);
 			strcat(fullname, files[files_count].Name);
 			sscanf_s(files[files_count].Name, "%llu_%llu_%llu_%llu", &key , &nonce, &nonces, &stagger);
@@ -1834,8 +1831,8 @@ void *work_i(void *ii) {  //void *x_void_ptr
 
 void GetJSON(char* req) {
 	unsigned BUF_SIZE = 1024;
-	char *buffer = (char*)malloc(sizeof(char)* BUF_SIZE);
-	char *tmp_buffer = (char*)malloc(sizeof(char)* BUF_SIZE);
+	char *buffer = (char*)calloc(BUF_SIZE, 1);
+	
 	char *find = NULL;
 	unsigned long long msg_len = 0;
 	int iResult;
@@ -1889,11 +1886,6 @@ void GetJSON(char* req) {
 			}
 			else 
 			{
-				//int bytes;
-				//memset(buffer, 0, BUF_SIZE);
-				//bytes = sprintf(buffer, req);
-
-				//iResult = send(WalletSocket, buffer, bytes, 0);
 				iResult = send(WalletSocket, req, (int)strlen(req), 0);
 				if (iResult == SOCKET_ERROR)
 				{
@@ -1905,8 +1897,8 @@ void GetJSON(char* req) {
 				}
 				else
 				{
-					memset(buffer, 0, BUF_SIZE);
-					
+					//memset(buffer, 0, BUF_SIZE);
+					char *tmp_buffer = (char*)calloc(BUF_SIZE, 1);
 					do{
 						memset(tmp_buffer, 0, BUF_SIZE);
 						iResult = recv(WalletSocket, tmp_buffer, BUF_SIZE-1, 0);
@@ -1923,7 +1915,7 @@ void GetJSON(char* req) {
 							strcat(buffer, tmp_buffer);
 						}
 					} while (iResult > 0);
-
+					free(tmp_buffer);
 					if (iResult == SOCKET_ERROR)
 					{
 						cls();
@@ -1954,7 +1946,7 @@ void GetJSON(char* req) {
 	can_connect = 1;
 	pthread_mutex_unlock(&byteLock);
 	//free(buffer);
-	free(tmp_buffer);
+	
 	//Log("\n_exit_");
 	//return json;// (find + 4);
 }
@@ -1971,10 +1963,10 @@ void GetBlockInfo(unsigned num_block) {
 	char* pool_name = NULL;
 	unsigned long long timestamp0 = 0;
 	unsigned long long timestamp1 = 0;
-	//unsigned BUF_SIZE = 16*1024;
+	unsigned req_size = 255;
 	// Запрос двух последних блоков из блокчейна
 	//json = (char*)calloc(BUF_SIZE, sizeof(char));
-	str_req = (char*)malloc(255);
+	str_req = (char*)calloc(req_size, 1);
 	sprintf(str_req, "POST /burst?requestType=getBlocks&firstIndex=%u&lastIndex=%u HTTP/1.0\r\nConnection: close\r\n\r\n", num_block, num_block + 1);
 	GetJSON(str_req);
 	Log("\n getBlocks: ");
@@ -1997,9 +1989,9 @@ void GetBlockInfo(unsigned num_block) {
 			{
 				const Value& bl_0 = blocks[SizeType(0)];
 				const Value& bl_1 = blocks[SizeType(1)];
-				generatorRS = (char*)malloc(strlen(bl_0["generatorRS"].GetString()) + 1);
+				generatorRS = (char*)calloc(strlen(bl_0["generatorRS"].GetString()) + 1, 1);
 				strcpy(generatorRS, bl_0["generatorRS"].GetString());
-				generator = (char*)malloc(strlen(bl_0["generator"].GetString()) + 1);
+				generator = (char*)calloc(strlen(bl_0["generator"].GetString()) + 1, 1);
 				strcpy(generator, bl_0["generator"].GetString());
 				last_block_height = bl_0["height"].GetUint();
 				timestamp0 = bl_0["timestamp"].GetUint64();
@@ -2014,8 +2006,8 @@ void GetBlockInfo(unsigned num_block) {
 		if (last_block_height == height - 1)
 		{
 				// Запрос данных аккаунта
-			//json = (char*)malloc(sizeof(char)* BUF_SIZE);
-				str_req = (char*)malloc(255);
+			
+			str_req = (char*)calloc(req_size, 1);
 				sprintf(str_req, "POST /burst?requestType=getAccount&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", generator);
 				GetJSON(str_req);
 				Log("\n getAccount: ");
@@ -2031,7 +2023,7 @@ void GetBlockInfo(unsigned num_block) {
 					{
 						if (doc_acc.HasMember("name"))
 						{
-							name = (char*)malloc(strlen(doc_acc["name"].GetString()) + 1);
+							name = (char*)calloc(strlen(doc_acc["name"].GetString()) + 1, 1);
 							strcpy(name, doc_acc["name"].GetString());
 						}
 					}
@@ -2041,8 +2033,8 @@ void GetBlockInfo(unsigned num_block) {
 				free(json);
 
 				// Запрос RewardAssighnment по данному аккаунту
-				//json = (char*)malloc(sizeof(char)* BUF_SIZE);
-				str_req = (char*)malloc(255);
+				
+				str_req = (char*)calloc(req_size, 1);
 				sprintf(str_req, "POST /burst?requestType=getRewardRecipient&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", generator);
 				GetJSON(str_req);
 				
@@ -2059,7 +2051,7 @@ void GetBlockInfo(unsigned num_block) {
 					{
 						if (doc_reward.HasMember("rewardRecipient"))
 						{
-							rewardRecipient = (char*)malloc(strlen(doc_reward["rewardRecipient"].GetString()) + 1);
+							rewardRecipient = (char*)calloc(strlen(doc_reward["rewardRecipient"].GetString()) + 1, 1);
 							strcpy(rewardRecipient, doc_reward["rewardRecipient"].GetString());
 						}
 					}
@@ -2075,8 +2067,8 @@ void GetBlockInfo(unsigned num_block) {
 					if (strcmp(generator, rewardRecipient) != 0)
 					{
 						// Запрос данных аккаунта пула
-						//json = (char*)malloc(sizeof(char)* BUF_SIZE);
-						str_req = (char*)malloc(255);
+						
+						str_req = (char*)calloc(req_size, 1);
 						sprintf(str_req, "POST /burst?requestType=getAccount&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", rewardRecipient);
 						GetJSON(str_req);
 						Log("\n getAccount: ");
@@ -2090,11 +2082,11 @@ void GetBlockInfo(unsigned num_block) {
 							rapidjson::Document doc_pool;
 							if (doc_pool.Parse<0>(json).HasParseError() == false)
 							{
-								pool_accountRS = (char*)malloc(strlen(doc_pool["accountRS"].GetString()) + 1);
+								pool_accountRS = (char*)calloc(strlen(doc_pool["accountRS"].GetString()) + 1, 1);
 								strcpy(pool_accountRS, doc_pool["accountRS"].GetString());
 								if (doc_pool.HasMember("name"))
 								{
-									pool_name = (char*)malloc(strlen(doc_pool["name"].GetString()) + 1);
+									pool_name = (char*)calloc(strlen(doc_pool["name"].GetString()) + 1, 1);
 									strcpy(pool_name, doc_pool["name"].GetString());
 								}
 							}
@@ -2133,8 +2125,8 @@ void GetBlockInfo(unsigned num_block) {
 
 
 void pollLocal(void) {
-	char *buffer = (char*)malloc(sizeof(char)*1000);
-	char *tmp_buffer = (char*)malloc(sizeof(char)* 1000);
+	char *buffer = (char*)calloc(1000, 1);
+	char *tmp_buffer = (char*)calloc(1000, 1);
 	int iResult;
 	struct addrinfo *result = NULL;
 	struct addrinfo hints;
@@ -2167,12 +2159,12 @@ void pollLocal(void) {
 		else {
 				unsigned t = 60000;
 				setsockopt(UpdaterSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&t, sizeof(unsigned));
-			Log("\n*Connecting to server: "); Log(updaterip); Log(":"); Log_u(updaterport);
+				Log("\n*Connecting to server: "); Log(updateraddr); Log(":"); Log_u(updaterport);
 			iResult = connect(UpdaterSocket, result->ai_addr, (int)result->ai_addrlen);
 			if (iResult == SOCKET_ERROR) {
 				cls();
 				printf_s("\rconnect function failed with error: %ld\n", WSAGetLastError());
-				Log("\n*! Connect server error "); //Log(DisplayErrorText(WSAGetLastError()));
+				Log("\n*! Connect server error "); Log(DisplayErrorText(WSAGetLastError()));
 			}
 			else {
 				// wrire some bytes
@@ -2180,8 +2172,8 @@ void pollLocal(void) {
 				if (all_send_msg >= 1000) all_send_msg = 0;
 
 				int bytes;
-				memset(buffer, 0, 1000);
-				if (miner_mode == 2) bytes = sprintf(buffer, "GET /pool/getMiningInfo HTTP/1.0\r\nHost: %s:%i\r\nContent-Type: text/plain;charset=UTF-8\r\n\r\n", nodeip, nodeport);
+				//memset(buffer, 0, 1000);
+				if (miner_mode == 2) bytes = sprintf(buffer, "GET /pool/getMiningInfo HTTP/1.0\r\nHost: %s:%i\r\nContent-Type: text/plain;charset=UTF-8\r\n\r\n", nodeaddr, nodeport);
 				else bytes = sprintf(buffer, "POST /burst?requestType=getMiningInfo HTTP/1.0\r\nConnection: close\r\n\r\n");
 
 				iResult = send(UpdaterSocket, buffer, bytes, 0);
@@ -2298,7 +2290,7 @@ void pollLocal(void) {
 
 void *updater_i(void * path) {
 	do{
-		if ((can_connect == 1) && (strlen(updaterip) > 3) && (updaterport > 0)) pollLocal();
+		if ((can_connect == 1) && (strlen(updateraddr) > 3) && (updaterport > 0)) pollLocal();
 		Sleep(update_interval);
 	} while (true);
 	Log("\nС хуя ли?");
@@ -2306,47 +2298,26 @@ void *updater_i(void * path) {
 }
  
 
-char * hostname_to_ip(char * hostname)
+void hostname_to_ip(char * in, char* out)
 {
     struct hostent *remoteHost = NULL;
     struct in_addr addr;
-    int i;
+    int i = 0;
 	DWORD dwError;
-	char str[50];
-	memset(str, 0, 50);
 
-    if ( (remoteHost = gethostbyname( hostname ) ) == NULL)
-    {
-        // get the host info
-        printf_s("\n ERROR gethostbyname %s\n", hostname);
-        dwError = WSAGetLastError();
-        if (dwError != 0) {
-            if (dwError == WSAHOST_NOT_FOUND) {
-                printf_s("Host not found\n");
-                return NULL;
-            } else if (dwError == WSANO_DATA) {
-                printf_s("No data record found\n");
-                return NULL;
-            } else {
-                printf_s("Function failed with error: %ld\n", dwError);
-                return NULL;
-            }
-        }
-		return NULL;
-    }
-	
-    i = 0;
-    if (remoteHost->h_addrtype == AF_INET)
-    {
-            while (remoteHost->h_addr_list[i] != 0) {
-                addr.s_addr = *(u_long *) remoteHost->h_addr_list[i++];
-				std::strcpy(str, inet_ntoa(addr));
-				Log("\nAddress: "); Log(hostname); Log(" defined as: "); Log(str);
-            }
-    }
-    else if (remoteHost->h_addrtype == AF_NETBIOS) printf_s("NETBIOS address was returned\n");  
-    
-	return  &str[0];
+	if ((remoteHost = gethostbyname(in)) != NULL)
+	{
+		if (remoteHost->h_addrtype == AF_INET)
+		{
+			while (remoteHost->h_addr_list[i] != 0) {
+				addr.s_addr = *(u_long *)remoteHost->h_addr_list[i++];
+				strcpy(out, inet_ntoa(addr));
+				Log("\nAddress: "); Log(in); Log(" defined as: "); Log(out);
+			}
+		}
+		else if (remoteHost->h_addrtype == AF_NETBIOS) printf_s("NETBIOS address was returned\n");
+	}
+	else strcpy(out, "Error");
 }
 
 
@@ -2691,13 +2662,14 @@ int main(int argc, char **argv) {
 //		GPU();
 				
 		DWORD cwdsz = GetCurrentDirectoryA(0, 0);
-		p_minerPath = (char*)malloc(cwdsz);
+		p_minerPath = (char*)calloc(cwdsz+2, 1);
+		//memset(p_minerPath, 0, sizeof(p_minerPath)+2);
 		GetCurrentDirectoryA(cwdsz, LPSTR(p_minerPath));
 		strcat(p_minerPath, "\\");
 		
 		
-		char* conf_filename = (char*)malloc(255);;
-		memset(conf_filename, 0, sizeof(conf_filename));
+		char* conf_filename = (char*)calloc(MAX_PATH, 1);
+		//memset(conf_filename, 0, MAX_PATH);
 		if((argc >= 2) && (strcmp(argv[1], "-config")==0)){
 			if(strstr(argv[2], ":\\")) sprintf(conf_filename,"%s", argv[2]);
 			else sprintf(conf_filename,"%s%s", p_minerPath, argv[2]);
@@ -2721,17 +2693,21 @@ int main(int argc, char **argv) {
 			exit(-1);
 		}
 		
-		memset(updaterip, 0, 50);
-		memset(nodeip, 0, 50);
+		//memset(updaterip, 0, 50);
+		char* updaterip = (char*)calloc(50, 1);
+		char* nodeip = (char*)calloc(50, 1);
+		//memset(nodeip, 0, 50);
 		SetConsoleTextAttribute(hConsole, 11);
-		strcpy(nodeip, hostname_to_ip(nodeaddr));
-		printf_s("Pool address:    %s (ip: %s)\n", nodeaddr, nodeip);
+		//strcpy(nodeip, hostname_to_ip(nodeaddr));
+		hostname_to_ip(nodeaddr, nodeip);
+		printf_s("Pool address    %s (ip %s:%u)\n", nodeaddr, nodeip, nodeport);
 
-		if (strlen(updateraddr) > 3) strcpy(updaterip, hostname_to_ip(updateraddr));
-		printf_s("Updater address: %s (ip: %s)\n", updateraddr, updaterip);
+		if (strlen(updateraddr) > 3) hostname_to_ip(updateraddr, updaterip); //strcpy(updaterip, hostname_to_ip(updateraddr));
+		printf_s("Updater address %s (ip %s:%u)\n", updateraddr, updaterip, updaterport);
 
 		SetConsoleTextAttribute(hConsole, 7);
-
+		free(updaterip);
+		free(nodeip);
 
 		
         // обнуляем сигнатуру
@@ -2745,7 +2721,7 @@ int main(int argc, char **argv) {
 		total_size = 0;
 		for (i = 0; i < paths_num; i++)
 		{
-			t_files *files = (t_files*)malloc(sizeof(t_files)* MAX_FILES);
+			t_files *files = (t_files*)calloc(MAX_FILES, sizeof(t_files));
 			int count = GetFiles(paths_dir[i], files);
 			unsigned long long tot_size = 0;
 			for (int j = 0; j < count; j++) 	tot_size += files[j].Size;

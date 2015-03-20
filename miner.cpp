@@ -38,9 +38,6 @@
 //#define __cplusplus
 #include "sph_shabal.h"
 #include "mshabal.h"
-//#include "mshabal_sse4.c"
-//#include "mshabal_avx1.c"
-//#include "mshabal_avx2.c"
 #include "mshabal256.h"
 
 #include "InstructionSet.h"
@@ -51,8 +48,6 @@ const InstructionSet::InstructionSet_Internal InstructionSet::CPU_Rep;
 #include "rapidjson/prettywriter.h"	// for stringify JSON
 #include "rapidjson/filestream.h"	// wrapper of C stream for prettywriter as output
 using namespace rapidjson;
-//using namespace std;
-
 
 #include "PurgeStandbyList.cpp"
 
@@ -91,11 +86,9 @@ char str_signature[65];
 char oldSignature[33];
  
 char nodeaddr[100] = "localhost";	// адрес пула
-//char nodeip[50] = "";				// IP пула
 unsigned nodeport = 8125;			// порт пула
 
 char updateraddr[100] = "localhost";// адрес пула
-//char updaterip[50] = "";			// IP пула
 unsigned updaterport = 8125;		// порт пула
 
 char infoaddr[100] = "localhost";// адрес пула
@@ -186,7 +179,6 @@ pthread_mutex_t byteLock = PTHREAD_MUTEX_INITIALIZER;
 
 void cls(void)
 {
-	//printf_s("\r                                                                               \r");
 	printf_s("\r\t\t\t\t\t\t\t\t\t       \r");
 }
 
@@ -242,7 +234,6 @@ void Log_server(char * strLog)
 			SetConsoleTextAttribute(hConsole, 7);
 			exit(2);
 		}
-		//memset(Msg_log, 0, strlen(strLog)*2+1);
 		for(int i=0, j=0; i<strlen(strLog); i++, j++)
 		{
 			if(strLog[i] == '\r')
@@ -294,8 +285,7 @@ int load_config(char *filename)
 {
 	FILE * pFile;
 	size_t len;
-	
-	//char json;
+
 	fopen_s(&pFile, filename, "rt");
 
 	if (pFile == NULL)
@@ -305,9 +295,7 @@ int load_config(char *filename)
 		SetConsoleTextAttribute(hConsole, 7);
 		return -1;
 	}
-	
-	//len = 0;
-	//memset(json, 0, 4096);
+
 	_fseeki64(pFile, 0, SEEK_END);
 	__int64 size = _ftelli64(pFile);
 	_fseeki64(pFile, 0, SEEK_SET);
@@ -342,7 +330,6 @@ int load_config(char *filename)
 		if(document.HasMember("Mode") && document["Mode"].IsString())
 		{
 			Log("\nMode: ");
-			//printf("\n-----------\Mode = %s\n", document["Mode"].GetString());
 			if(strcmp(document["Mode"].GetString(), "solo")==0) miner_mode = 0;
 			else 
 				if(strcmp(document["Mode"].GetString(), "pool")==0) miner_mode = 1;
@@ -374,7 +361,7 @@ int load_config(char *filename)
 		
 		if(document.HasMember("CacheSize") && (document["CacheSize"].IsUint()))		// In this case, IsUint()/IsInt64()/IsUInt64() also return true.
 			cache_size = document["CacheSize"].GetUint();
-			//printf("Port = %d\n", document["CashSize"].GetUint());		// Alternative (int)document["i"]
+
 		Log("\nCacheSize: "); Log_u(cache_size);
 		
 		if(document.HasMember("UseSorting") && (document["UseSorting"].IsBool()))		
@@ -553,9 +540,7 @@ char* GetPass(char* p_strFolderPath)
   }
   
   len_pass = fread(buffer, sizeof(unsigned char), lSize, pFile);
-  //if (result != lSize) {fputs ("Reading error",stderr); exit (3);}
-  
-  //printf("\n%i\n",result);
+
   fclose(pFile);
   free (filename);
 
@@ -567,7 +552,6 @@ char* GetPass(char* p_strFolderPath)
 	  SetConsoleTextAttribute(hConsole, 7);
 	  exit(2);
   }
- // memset(str, 0, sizeof(char)*(lSize*3));
   
 	for(int i=0, j=0; i<len_pass; i++, j++) 
 	{
@@ -623,7 +607,6 @@ unsigned GetFiles(char* p_strFolderPath, t_files p_files[])
 			SetConsoleTextAttribute(hConsole, 7);
 			exit(2);
 		}
-		//memset(str, 0, MAX_PATH);
 		strcpy(str, path.at(iter));
 		strcat(str, "*");
 		hFile = FindFirstFileA(LPCSTR(str), &FindFileData);
@@ -642,7 +625,6 @@ unsigned GetFiles(char* p_strFolderPath, t_files p_files[])
 					SetConsoleTextAttribute(hConsole, 7);
 					exit(2);
 				}
-				//memset(test, 0, MAX_PATH);
 				strcpy(test, FindFileData.cFileName);
 				char* ekey = strstr(test, "_");
 				if (ekey != NULL){
@@ -667,8 +649,6 @@ unsigned GetFiles(char* p_strFolderPath, t_files p_files[])
 								SetConsoleTextAttribute(hConsole, 7);
 								exit(2);
 							}
-							//(p_files[i].Name, 0, _msize(p_files[i].Name) + 1);//(strlen(FindFileData.cFileName))+1);
-							//memset(p_files[i].Path, 0, _msize(path.at(iter)) + 1);
 							p_files[i].Size = (((static_cast<ULONGLONG>(FindFileData.nFileSizeHigh) << sizeof(FindFileData.nFileSizeLow) * 8) | FindFileData.nFileSizeLow));
 
 							strcpy(p_files[i].Name, FindFileData.cFileName);
@@ -1032,11 +1012,6 @@ void *proxy_i(void *x_void_ptr)
 							}
 							else
 							{
-								//cls();
-								//SetConsoleTextAttribute(hConsole, 9);
-								//_strtime(tbuffer);
-								//printf_s("\r%s [%llu]\tsent confirmation to %s\n", tbuffer, get_accountId, inet_ntoa(client_socket_address.sin_addr));
-								//SetConsoleTextAttribute(hConsole, 7);
 								Log("\nProxy: sent update to "); Log(inet_ntoa(client_socket_address.sin_addr));
 							}
 						}
@@ -1687,7 +1662,6 @@ void *work_i(void *ii) {
 		start_work_time = clock();
 		FILE * pFile;
 		char *x_ptr = (char*)calloc(MAX_PATH, 1);
-		//memset(x_ptr, 0, MAX_PATH);
 		strcpy(x_ptr, paths_dir[local_num]);
 		char *cache = (char*) calloc(cache_size * 64, 1);
 		clock_t start_time, end_time;			// Текущее время
@@ -1790,7 +1764,6 @@ void *work_i(void *ii) {
 					}
 					noffset += cache_size;
 
-					//pthread_testcancel();
 					if (stopThreads) // New block while processing: Stop.
 					{
 						fclose(pFile);
@@ -1803,7 +1776,6 @@ void *work_i(void *ii) {
 						return 0;
 					}
 				}
-				//pthread_testcancel();
 			}
 			end_time = clock();
 			Log("\nClose file: ");	Log(files[files_count].Name); Log(" [@ "); Log_llu((end_time-start_time)*1000/CLOCKS_PER_SEC); Log(" ms]");
@@ -1882,7 +1854,7 @@ void GetJSON(char* req) {
 				SetConsoleTextAttribute(hConsole, 12);
 				printf_s("\rWinner. Connect function failed with error: %ld\n", WSAGetLastError());
 				SetConsoleTextAttribute(hConsole, 7);
-				Log("\nWinner: Connect server error "); //Log(DisplayErrorText(WSAGetLastError()));
+				Log("\nWinner: Connect server error "); Log(DisplayErrorText(WSAGetLastError()));
 			}
 			else 
 			{
@@ -1897,7 +1869,6 @@ void GetJSON(char* req) {
 				}
 				else
 				{
-					//memset(buffer, 0, BUF_SIZE);
 					char *tmp_buffer = (char*)calloc(BUF_SIZE, 1);
 					do{
 						memset(tmp_buffer, 0, BUF_SIZE);
@@ -1929,10 +1900,8 @@ void GetJSON(char* req) {
 						find = strstr(buffer, "\r\n\r\n");
 						if (find != NULL)
 						{
-							//free(json);
 							json = (char*)calloc((msg_len), sizeof(char));
 							sprintf(json, find + 4);
-							//Log(&json[0]);
 						}
 						
 					} // recv() != SOCKET_ERROR
@@ -1945,14 +1914,9 @@ void GetJSON(char* req) {
 	pthread_mutex_lock(&byteLock);
 	can_connect = 1;
 	pthread_mutex_unlock(&byteLock);
-	//free(buffer);
-	
-	//Log("\n_exit_");
-	//return json;// (find + 4);
 }
 
 void GetBlockInfo(unsigned num_block) {
-//	char *json = NULL;
 	char* str_req = NULL;
 	char* generator = NULL;
 	char* generatorRS = NULL;
@@ -1965,7 +1929,7 @@ void GetBlockInfo(unsigned num_block) {
 	unsigned long long timestamp1 = 0;
 	unsigned req_size = 255;
 	// Запрос двух последних блоков из блокчейна
-	//json = (char*)calloc(BUF_SIZE, sizeof(char));
+
 	str_req = (char*)calloc(req_size, 1);
 	sprintf(str_req, "POST /burst?requestType=getBlocks&firstIndex=%u&lastIndex=%u HTTP/1.0\r\nConnection: close\r\n\r\n", num_block, num_block + 1);
 	GetJSON(str_req);
@@ -1977,10 +1941,6 @@ void GetBlockInfo(unsigned num_block) {
 	}
 	else
 	{
-		//Log("\nlen: ");  Log_u(strlen(json));
-		
-		//Log_u(_msize(json));  
-		
 		rapidjson::Document doc_block;
 		if (doc_block.Parse<0>(json).HasParseError() == false)
 		{
@@ -2114,7 +2074,6 @@ void GetBlockInfo(unsigned num_block) {
 			printf_s("\r\nWinner: no info yet");
 			SetConsoleTextAttribute(hConsole, 7);
 		}
-	
 	free(generatorRS);
 	free(generator);
 	free(name);
@@ -2170,9 +2129,7 @@ void pollLocal(void) {
 				// wrire some bytes
 				all_send_msg++;
 				if (all_send_msg >= 1000) all_send_msg = 0;
-
 				int bytes;
-				//memset(buffer, 0, 1000);
 				if (miner_mode == 2) bytes = sprintf(buffer, "GET /pool/getMiningInfo HTTP/1.0\r\nHost: %s:%i\r\nContent-Type: text/plain;charset=UTF-8\r\n\r\n", nodeaddr, nodeport);
 				else bytes = sprintf(buffer, "POST /burst?requestType=getMiningInfo HTTP/1.0\r\nConnection: close\r\n\r\n");
 
@@ -2281,7 +2238,6 @@ void pollLocal(void) {
 	pthread_mutex_lock(&byteLock);
 	can_connect = 1;
 	pthread_mutex_unlock(&byteLock);
-	//Log("\n*End update");
 	
 	free(buffer);
 	free(tmp_buffer);
@@ -2663,13 +2619,10 @@ int main(int argc, char **argv) {
 				
 		DWORD cwdsz = GetCurrentDirectoryA(0, 0);
 		p_minerPath = (char*)calloc(cwdsz+2, 1);
-		//memset(p_minerPath, 0, sizeof(p_minerPath)+2);
 		GetCurrentDirectoryA(cwdsz, LPSTR(p_minerPath));
 		strcat(p_minerPath, "\\");
 		
-		
 		char* conf_filename = (char*)calloc(MAX_PATH, 1);
-		//memset(conf_filename, 0, MAX_PATH);
 		if((argc >= 2) && (strcmp(argv[1], "-config")==0)){
 			if(strstr(argv[2], ":\\")) sprintf(conf_filename,"%s", argv[2]);
 			else sprintf(conf_filename,"%s%s", p_minerPath, argv[2]);
@@ -2693,16 +2646,13 @@ int main(int argc, char **argv) {
 			exit(-1);
 		}
 		
-		//memset(updaterip, 0, 50);
 		char* updaterip = (char*)calloc(50, 1);
 		char* nodeip = (char*)calloc(50, 1);
-		//memset(nodeip, 0, 50);
 		SetConsoleTextAttribute(hConsole, 11);
-		//strcpy(nodeip, hostname_to_ip(nodeaddr));
 		hostname_to_ip(nodeaddr, nodeip);
 		printf_s("Pool address    %s (ip %s:%u)\n", nodeaddr, nodeip, nodeport);
 
-		if (strlen(updateraddr) > 3) hostname_to_ip(updateraddr, updaterip); //strcpy(updaterip, hostname_to_ip(updateraddr));
+		if (strlen(updateraddr) > 3) hostname_to_ip(updateraddr, updaterip); 
 		printf_s("Updater address %s (ip %s:%u)\n", updateraddr, updaterip, updaterport);
 
 		SetConsoleTextAttribute(hConsole, 7);
@@ -2762,7 +2712,6 @@ int main(int argc, char **argv) {
 		Log("\nUpdater thread started");
 		
 		do{ ; } while (height == 0);
-		
 		
 		// Run Sender
 		if(pthread_create(&sender, NULL, send_i, p_minerPath)) 
@@ -2864,15 +2813,13 @@ int main(int argc, char **argv) {
 					do{ Sleep(10); } while (can_connect == 0);
 					GetBlockInfo(0);
 				}
-				
-
+	
                 // Tell all threads to stop:
                 stopThreads = 1;
 				for(i = 0; i < paths_num; i++)
 				{
 					//Log("\nПрерываем поток: ");	Log_u(i);
 					if( pthread_join(worker[i], NULL) > 0 )
-					//if (pthread_cancel(worker[i]) > 0)
 					{
 						cls();
 						SetConsoleTextAttribute(hConsole, 12);

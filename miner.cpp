@@ -12,6 +12,7 @@
 #include <time.h>
 #include <fcntl.h>
 #include <sys/types.h>
+//#include <curses.h> 
 
 #pragma comment(lib,"Ws2_32.lib")
 #include <winsock2.h>
@@ -51,19 +52,9 @@ using namespace rapidjson;
 
 #include "PurgeStandbyList.cpp"
 
-#define strtoll     _strtoi64
-#define strtoull    _strtoui64
-
-
-
-#define MAX_FILES		1000 
-#define MaxTreads		48
-unsigned threads[MaxTreads] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47}; 
-#define MaxAccounts		100
-
 HANDLE hConsole;
 
-char *version = "v1.150319";
+char *version = "v1.150401";
 
 unsigned long long startnonce = 0;
 unsigned long nonces = 0;
@@ -86,75 +77,80 @@ char str_signature[65];
 char oldSignature[33];
  
 char nodeaddr[100] = "localhost";	// адрес пула
-unsigned nodeport = 8125;			// порт пула
+size_t nodeport = 8125;				// порт пула
 
 char updateraddr[100] = "localhost";// адрес пула
-unsigned updaterport = 8125;		// порт пула
+size_t updaterport = 8125;			// порт пула
 
-char infoaddr[100] = "localhost";// адрес пула
-unsigned infoport = 8125;		// порт пула
+char infoaddr[100] = "localhost";	// адрес пула
+size_t infoport = 8125;				// порт пула
 
-unsigned proxyport = 8126;			// порт пула
+size_t proxyport = 8126;			// порт пула
 
 char *p_minerPath;					// путь к папке майнера
-unsigned miner_mode = 0;			// режим майнера. 0=соло, 1=пул
-unsigned cache_size = 100000;		// размер кэша чтения плотов
-unsigned paths_num = 0;				// количество параметров пути к файлам
-char* paths_dir[MaxTreads];
+size_t miner_mode = 0;				// режим майнера. 0=соло, 1=пул
+size_t cache_size = 100000;			// размер кэша чтения плотов
+size_t paths_num = 0;				// количество параметров пути к файлам
+std::vector<std::string> paths_dir;
+std::vector<double> thread_times;
 bool use_sorting = false;			// Использовать сортировку в отправщике
 bool show_msg = false;				// Показать общение с сервером в отправщике
 bool show_updates = false;			// Показать общение с сервером в апдейтере
 FILE * fp_Log;						// указатель на лог-файл
 FILE * fp_Stat;						// указатель на стат-файл
-unsigned int can_connect = 1;		// уже установлено соединение?
-unsigned int send_interval = 300;	// время ожидания между отправками
-unsigned int update_interval = 1000;// время ожидания между апдейтами
+FILE * fp_Time;						// указатель на стат-файл
+size_t can_connect = 1;				// уже установлено соединение?
+size_t send_interval = 300;			// время ожидания между отправками
+size_t update_interval = 1000;		// время ожидания между апдейтами
 bool use_fast_rcv = false;
 bool use_debug = false;
 bool enable_proxy = false;
 bool use_generator = false;
 bool send_best_only = true;
 bool use_log = true;				// Вести лог
-bool skip_bad_plots = true;			// Пропускать плохие или поврежденные плоты
+bool use_boost = false;			// Использовать повышенный приоритет для потоков
 bool use_clean_mem = true;			// Очищать память
 bool show_winner = true;			// показывать победителя
 
 unsigned long long my_target_deadline = 4294967295;
 SYSTEMTIME cur_time;				// Текущее время
-unsigned int working_threads = 0;	// Поток закончил работу
-unsigned long long total_size = 0;		// Общий объем плотов
+size_t working_threads = 0;			// Поток закончил работу
+unsigned long long total_size = 0;	// Общий объем плотов
 
 char *json = NULL;
 
 std::map <char*, unsigned long long> satellite_size; // Структура с объемами плотов сателлитов
 
 struct t_files{
-	char* Path = NULL; 
-	char* Name = NULL;
+	std::string Path;
+	std::string Name;
 	unsigned long long Size = 0;
 	unsigned State = 0;
+	t_files(std::string p_Path, std::string p_Name, unsigned long long p_Size, unsigned p_State) : Path(std::move(p_Path)), Name(std::move(p_Name)), Size(p_Size), State(p_State){};
+	//t_files(t_files &&fill) : Path(std::move(fill.Path)), Name(std::move(fill.Name)), Size(fill.Size), State(fill.State){};
+	//t_files& operator=(const t_files& fill) = default;
 };
 
 struct t_shares{
-	unsigned long long account_id;
-	char * file_name;
-	unsigned long long best;
-	unsigned long long nonce;
-	unsigned to_send;
-	bool operator<(t_shares ob2)
-	{
-		return (best < ob2.best);
-	}
-} shares[100000*MaxTreads];
+	std::string file_name;
+	unsigned long long account_id = 0;
+	unsigned long long best = 0;
+	unsigned long long nonce = 0;
+	t_shares(std::string p_file_name, unsigned long long p_account_id, unsigned long long p_best, unsigned long long p_nonce) : file_name(std::move(p_file_name)), account_id(p_account_id), best(p_best), nonce(p_nonce){};
+}; 
 
+std::vector<t_shares> shares;
 
 struct t_best{
-	unsigned long long account_id;
-	unsigned long long best;
-	unsigned long long nonce;
-	unsigned long long DL;
-	unsigned long long targetDeadline;
-} bests[MaxAccounts];
+	unsigned long long account_id = 0;
+	unsigned long long best = 0;
+	unsigned long long nonce = 0;
+	unsigned long long DL = 0;
+	unsigned long long targetDeadline = 0;
+	t_best(unsigned long long p_account_id, unsigned long long p_best, unsigned long long p_nonce, unsigned long long p_DL, unsigned long long p_targetDeadline) : account_id(p_account_id), best(p_best), nonce(p_nonce), DL(p_DL), targetDeadline(p_targetDeadline){};
+};
+
+std::vector<t_best> bests;
 
 struct t_session{
 	SOCKET Socket;
@@ -164,21 +160,22 @@ struct t_session{
 
 std::vector<t_session> sessions;
 
-unsigned long long num_shares = 0;
-unsigned sent_num_shares = 0;
 
 unsigned long long bytesRead = 0;
 unsigned long long height = 0;
 unsigned long long baseTarget = 0;
 unsigned long long targetDeadlineInfo = 0; // Максимальный дедлайн пула
 int stopThreads = 0;
-char *pass = (char*)calloc(300, 1);		// пароль
+char *pass;		// пароль
  
-pthread_mutex_t byteLock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t byteLock = PTHREAD_MUTEX_INITIALIZER;	// прочитанные байты
+pthread_mutex_t connectLock = PTHREAD_MUTEX_INITIALIZER;// можно ли коннектиться
+pthread_mutex_t bestsLock = PTHREAD_MUTEX_INITIALIZER;	// обновление bests
 
 
 void cls(void)
 {
+	SetConsoleTextAttribute(hConsole, 7);
 	printf_s("\r\t\t\t\t\t\t\t\t\t       \r");
 }
 
@@ -186,7 +183,6 @@ void Log_init(void)
 {
 	if (use_log)
 	{
-
 		char * filename = (char*)calloc(MAX_PATH, 1);
 		if (CreateDirectory(L"Logs", NULL) == ERROR_PATH_NOT_FOUND)		printf_s("CreateDirectory failed (%d)\n", GetLastError());
 		if (filename == NULL)
@@ -195,6 +191,7 @@ void Log_init(void)
 			printf_s("\nLOG: Memory allocation error\n");
 			SetConsoleTextAttribute(hConsole, 7);
 			use_log = false;
+			return;
 		}
 		GetLocalTime(&cur_time);
 		sprintf(filename, "Logs\\%02d-%02d-%02d_%02d_%02d_%02d.log", cur_time.wYear, cur_time.wMonth, cur_time.wDay, cur_time.wHour, cur_time.wMinute, cur_time.wSecond);
@@ -224,17 +221,19 @@ void Log(char * strLog)
 
 void Log_server(char * strLog)
 {
-	if((strlen(strLog) > 0) && use_log)
+	size_t len_str = strlen(strLog);
+	if ((len_str> 0) && use_log)
 	{
-		char * Msg_log = (char *) calloc(sizeof(char)*strlen(strLog)*2+1, 1);
+		char * Msg_log = (char *)calloc(len_str * 2 + 1, 1);
 		if (Msg_log == NULL)
 		{
+			cls();
 			SetConsoleTextAttribute(hConsole, 12);
-			printf_s("Memory allocation error");
+			printf_s("\nError allocating memory\n");
 			SetConsoleTextAttribute(hConsole, 7);
-			exit(2);
+			exit(-1);
 		}
-		for(int i=0, j=0; i<strlen(strLog); i++, j++)
+		for (size_t i = 0, j = 0; i<len_str; i++, j++)
 		{
 			if(strLog[i] == '\r')
 			{	
@@ -257,6 +256,7 @@ void Log_server(char * strLog)
 				}
 				else Msg_log[j] = strLog[i];
 		}
+		
 		fprintf(fp_Log, "%s", Msg_log);
 		free(Msg_log);
 		fflush(fp_Log);
@@ -272,11 +272,11 @@ void Log_llu(unsigned long long llu_num)
 	}
 }
 
-void Log_u(unsigned u_num)
+void Log_u(size_t u_num)
 {
 	if (use_log)
 	{
-		fprintf(fp_Log, "%u", u_num);
+		fprintf(fp_Log, "%u", (unsigned)u_num);
 		fflush(fp_Log);
 	}
 }
@@ -300,6 +300,13 @@ int load_config(char *filename)
 	__int64 size = _ftelli64(pFile);
 	_fseeki64(pFile, 0, SEEK_SET);
 	json = (char*)calloc(size+1, 1);
+	if (json == NULL) {
+		cls();
+		SetConsoleTextAttribute(hConsole, 12);
+		printf_s("\nError allocating memory\n");
+		SetConsoleTextAttribute(hConsole, 7);
+		exit(-1);
+	}
 	len = fread_s(json, size, 1, size - 1, pFile);
 	fclose(pFile);
 
@@ -350,17 +357,16 @@ int load_config(char *filename)
 
 		if(document.HasMember("Paths") && document["Paths"].IsArray()){
 			const Value& Paths = document["Paths"];	// Using a reference for consecutive access is handy and faster.
-			paths_num = (unsigned)Paths.Size();
+			paths_num = Paths.Size();
 			Log("\nPaths: "); Log_u(paths_num);
 			for (SizeType i = 0; i < Paths.Size(); i++){	// rapidjson uses SizeType instead of size_t.
-				paths_dir[i] = (char*) calloc(strlen(Paths[i].GetString())+1, 1);
-				strcpy(paths_dir[i], Paths[i].GetString());
-				Log("\nPath: "); Log(paths_dir[i]);
+				paths_dir.push_back(Paths[i].GetString());
+				Log("\nPath: "); Log((char*)paths_dir[i].c_str());
 			}
 		}
 		
-		if(document.HasMember("CacheSize") && (document["CacheSize"].IsUint()))		// In this case, IsUint()/IsInt64()/IsUInt64() also return true.
-			cache_size = document["CacheSize"].GetUint();
+		if(document.HasMember("CacheSize") && (document["CacheSize"].IsUint64()))		// In this case, IsUint()/IsInt64()/IsUInt64() also return true.
+			cache_size = document["CacheSize"].GetUint64();
 
 		Log("\nCacheSize: "); Log_u(cache_size);
 		
@@ -434,20 +440,18 @@ int load_config(char *filename)
 			my_target_deadline = document["TargetDeadline"].GetUint64();
 		Log("\nTargetDeadline: "); Log_llu(my_target_deadline);
 
-		if (document.HasMember("SkipBadPlots") && (document["SkipBadPlots"].IsBool()))
-			skip_bad_plots = document["SkipBadPlots"].GetBool();
-		Log("\nSkipBadPlots: "); Log_u(skip_bad_plots);
-
 		if (document.HasMember("UseCleanMem") && (document["UseCleanMem"].IsBool()))
 			use_clean_mem = document["UseCleanMem"].GetBool();
 		Log("\nUseCleanMem: "); Log_u(use_clean_mem);
 		
-		
+		if (document.HasMember("UseBoost") && (document["UseBoost"].IsBool()))
+			use_boost = document["UseBoost"].GetBool();
+		Log("\nUseBoost: "); Log_u(use_boost);
 
 	}
 	// параметры по-умолчанию
 	Log("\nConfig loaded");
-	free(json);
+	if(json != NULL) free(json);
 	return 1;
 }
 
@@ -455,7 +459,7 @@ int load_config(char *filename)
 LPSTR DisplayErrorText( DWORD dwLastError )
 { 
 	HMODULE hModule = NULL; // default to system source 
-	LPSTR MessageBuffer; 
+	LPSTR MessageBuffer = NULL; 
 	DWORD dwBufferLength; 
 	DWORD dwFormatFlags = FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_FROM_SYSTEM ;
 
@@ -480,17 +484,17 @@ int xdigit( char digit ){
   return val;
 }
  
-int xstr2strr(char *buf, unsigned bufsize, const char *in) {
-  if( !in ) return -1; // missing input string
+size_t xstr2strr(char *buf, size_t bufsize, const char *in) {
+  if( !in ) return 0; // missing input string
  
-  unsigned inlen = (unsigned)strlen(in);
+  size_t inlen = (size_t)strlen(in);
   if( inlen%2 != 0 ) inlen--; // hex string must even sized
  
-  unsigned int i,j;
+  size_t i,j;
   for(i=0; i<inlen; i++ )
-    if( xdigit(in[i])<0 ) return -3; // bad character in hex string
+    if( xdigit(in[i])<0 ) return 0; // bad character in hex string
  
-  if( !buf || bufsize<inlen/2+1 ) return -4; // no buffer or too small
+  if( !buf || bufsize<inlen/2+1 ) return 0; // no buffer or too small
  
   for(i=0,j=0; i<inlen; i+=2,j++ )
     buf[j] = xdigit(in[i])*16 + xdigit(in[i+1]);
@@ -500,19 +504,20 @@ int xstr2strr(char *buf, unsigned bufsize, const char *in) {
 }
 // End helper routines
  
-char* GetPass(char* p_strFolderPath)
+void GetPass(char* p_strFolderPath)
 {
   FILE * pFile;
-  long lSize;
+  size_t lSize;
   unsigned char * buffer;
   size_t len_pass;
   char * filename = (char*)calloc(MAX_PATH, 1);
   if (filename == NULL)
   {
+	  cls();
 	  SetConsoleTextAttribute(hConsole, 12);
-	  printf_s("Memory allocation error");
+	  printf_s("\nError allocating memory\n");
 	  SetConsoleTextAttribute(hConsole, 7);
-	  exit(2);
+	  exit(-1);
   }
   sprintf(filename,"%s%s", p_strFolderPath, "passphrases.txt");
   
@@ -526,90 +531,76 @@ char* GetPass(char* p_strFolderPath)
 	  exit (1);
   }
 
-  fseek (pFile , 0 , SEEK_END);
-  lSize = ftell (pFile);
+  _fseeki64(pFile , 0 , SEEK_END);
+  lSize = _ftelli64(pFile);
   rewind (pFile);
 
-  buffer = (unsigned char*)calloc(lSize, sizeof(unsigned char));
+  buffer = (unsigned char*)calloc(lSize+1, 1);
   if (buffer == NULL) 
   {
+	  cls();
 	  SetConsoleTextAttribute(hConsole, 12);
-	  printf_s("Memory error"); 
+	  printf_s("\nError allocating memory\n");
 	  SetConsoleTextAttribute(hConsole, 7);
-	  exit (2);
+	  exit(-1);
   }
   
-  len_pass = fread(buffer, sizeof(unsigned char), lSize, pFile);
+  len_pass = fread(buffer, 1, lSize, pFile);
 
   fclose(pFile);
   free (filename);
-
-  char *str = (char*)calloc(lSize * 3, 1);
-  if (str == NULL)
+  char *pass = (char*)calloc(lSize * 3, 1);
+  if (pass == NULL)
   {
+	  cls();
 	  SetConsoleTextAttribute(hConsole, 12);
-	  printf_s("Memory allocation error");
+	  printf_s("\nError allocating memory\n");
 	  SetConsoleTextAttribute(hConsole, 7);
-	  exit(2);
+	  exit(-1);
   }
   
-	for(int i=0, j=0; i<len_pass; i++, j++) 
+	for(size_t i=0, j=0; i<len_pass; i++, j++) 
 	{
-		if (buffer[i] == '\n') j--;
+		if ((buffer[i] == '\n') || (buffer[i] == '\r') || (buffer[i] == '\t')) j--; // Пропускаем символы, переделать buffer[i] < 20
 		else
-			if (buffer[i] == ' ') str[j] = '+';
+			if (buffer[i] == ' ') pass[j] = '+';
 			else 
 				if(isalnum(buffer[i])==0)
 				{
-					sprintf(str + j, "%%%x", (unsigned char)buffer[i]);
+					sprintf(pass + j, "%%%x", (unsigned char)buffer[i]);
 					j = j+2;
 				}
-				else memcpy(&str[j],&buffer[i],1);
+				else memcpy(&pass[j],&buffer[i],1);
   }
-  printf_s("\n%s\n",str);
+  printf_s("\n%s\n",pass);
   free (buffer);
-  return str;
+ // return str;
 
 }
 
 
-unsigned GetFiles(char* p_strFolderPath, t_files p_files[])
+
+size_t GetFiles(const std::string &str, std::vector <t_files> *p_files)
 {
     HANDLE hFile = INVALID_HANDLE_VALUE;
     WIN32_FIND_DATAA   FindFileData;
-	unsigned i=0;
-
-	char* start = p_strFolderPath;
-	char* end = NULL;
-	std::vector<char*> path;
-	do
-	{
-		end = strpbrk(start, "+");
-		if (end == NULL) end = p_strFolderPath + strlen(p_strFolderPath);
-
-		char *p = (char*)calloc(end - start + 1, 1);
-		memcpy(p, start, end - start);
-		p[end - start] = 0;
-		if (p[strlen(p)] != '\\') strcat(p, "\\"); // Добавляем "\" если не указан в пути
-		path.push_back(p);
-		start = end + 1;
-	} while (end != p_strFolderPath + strlen(p_strFolderPath));
+	size_t i = 0;
+	std::vector<std::string> path;
+	size_t first = 0;
+	size_t last = 0;
+		
+	do{
+		last = str.find("+", first);
+		if (last == -1) last = str.length();
+		std::string str2(str.substr(first, last - first));
+		if (str2.rfind("\\") < str2.length() - 1) str2 = str2 + "\\";
+		path.push_back(str2);
+		first = last + 1;
+	} while (last != str.length());
 	
-
-	for (unsigned int iter = 0; iter < path.size(); iter++)
+	for (size_t iter = 0; iter < path.size(); iter++)
 	{
-
-		char *str = (char*)calloc(MAX_PATH, 1);
-		if (str == NULL)
-		{
-			SetConsoleTextAttribute(hConsole, 12);
-			printf_s("Memory allocation error");
-			SetConsoleTextAttribute(hConsole, 7);
-			exit(2);
-		}
-		strcpy(str, path.at(iter));
-		strcat(str, "*");
-		hFile = FindFirstFileA(LPCSTR(str), &FindFileData);
+		hFile = FindFirstFileA(LPCSTR((path.at(iter)+"*").c_str()), &FindFileData);
 		if (INVALID_HANDLE_VALUE != hFile)
 		{
 			do
@@ -620,10 +611,11 @@ unsigned GetFiles(char* p_strFolderPath, t_files p_files[])
 				char *test = (char*)calloc(MAX_PATH, 1);
 				if (test == NULL)
 				{
+					cls();
 					SetConsoleTextAttribute(hConsole, 12);
-					printf_s("Memory allocation error");
+					printf_s("\nError allocating memory\n");
 					SetConsoleTextAttribute(hConsole, 7);
-					exit(2);
+					exit(-1);
 				}
 				strcpy(test, FindFileData.cFileName);
 				char* ekey = strstr(test, "_");
@@ -632,28 +624,16 @@ unsigned GetFiles(char* p_strFolderPath, t_files p_files[])
 					if (estart != NULL){
 						char* enonces = strstr(estart + 1, "_");
 						if (enonces != NULL){
-							char* skey = test;
-							char* sstart = ekey + 1;
-							char* snonces = estart + 1;
-							char* sstagger = enonces + 1;
-							memset(ekey, 0, 1);
-							memset(estart, 0, 1);
-							memset(enonces, 0, 1);
-							//printf_s("\n%s-%s-%s-%s", skey, sstart, snonces ,sstagger);
-							p_files[i].Name = (char*)calloc(strlen(FindFileData.cFileName)+1, 1);
-							p_files[i].Path = (char*)calloc(strlen(path.at(iter))+1, 1);
-							if ((p_files[i].Name == NULL) || (p_files[i].Path == NULL))
-							{
-								SetConsoleTextAttribute(hConsole, 12);
-								printf_s("Memory allocation error");
-								SetConsoleTextAttribute(hConsole, 7);
-								exit(2);
-							}
-							p_files[i].Size = (((static_cast<ULONGLONG>(FindFileData.nFileSizeHigh) << sizeof(FindFileData.nFileSizeLow) * 8) | FindFileData.nFileSizeLow));
-
-							strcpy(p_files[i].Name, FindFileData.cFileName);
-							strcpy(p_files[i].Path, path.at(iter));
-							p_files[i].State = 0;
+							p_files->emplace_back(
+								path.at(iter),
+								FindFileData.cFileName,
+								(((static_cast<ULONGLONG>(FindFileData.nFileSizeHigh) << sizeof(FindFileData.nFileSizeLow) * 8) | FindFileData.nFileSizeLow)),
+								0);
+							//p_files->push_back(t_files()); 
+							//p_files->at(i).Size = (((static_cast<ULONGLONG>(FindFileData.nFileSizeHigh) << sizeof(FindFileData.nFileSizeLow) * 8) | FindFileData.nFileSizeLow));
+							//p_files->at(i).Name = FindFileData.cFileName;
+							//p_files->at(i).Path = path.at(iter);
+							//p_files->at(i).State = 0;
 							i++;
 						}
 					}
@@ -662,30 +642,31 @@ unsigned GetFiles(char* p_strFolderPath, t_files p_files[])
 			} while (FindNextFileA(hFile, &FindFileData));
 			FindClose(hFile);
 		}
-		free(str);
 	}
 	path.clear();
 	return i;
 }
 
-int Get_index_acc(unsigned long long key)
+size_t Get_index_acc(unsigned long long key)
 {
-			int acc_index = -1;
-			unsigned acc_count = 0;
-			pthread_mutex_lock(&byteLock);
-			for(unsigned a=0; a < MaxAccounts; a++)
-			{
-				if(bests[a].account_id != 0) acc_count++;
-				if(bests[a].account_id == key) acc_index = a;
-			}
-			if(acc_index < 0)
-			{
-				acc_index = acc_count;
-				bests[acc_index].account_id = key;
-			}
-			pthread_mutex_unlock(&byteLock);
-			return acc_index;
+	pthread_mutex_lock(&bestsLock);
+	size_t cnt = bests.size();
+	for (size_t a = 0; a < cnt; a++)
+	{
+		if (bests[a].account_id == key)
+		{
+			pthread_mutex_unlock(&bestsLock);
+			//Log("\nbests[a].targetDeadline = "); Log_llu(bests[a].targetDeadline);
+			return a;
+		}
+	}
+	bests.emplace_back(key, 0, 0, 0, targetDeadlineInfo);
+	size_t acc_index = bests.size() - 1;
+	pthread_mutex_unlock(&bestsLock);
+	return acc_index;
 }
+
+
 
 /*
 void gen_nonce(unsigned long long addr, unsigned long long n, unsigned long long size) {
@@ -834,7 +815,7 @@ void *proxy_i(void *x_void_ptr)
 	hints.ai_flags = AI_PASSIVE;
 
 	char pport[6];
-	_itoa(proxyport, pport, 10);
+	_itoa((int)proxyport, pport, 10);
 	iResult = getaddrinfo(NULL, pport, &hints, &result);
 	if (iResult != 0) {
 		cls();
@@ -872,12 +853,11 @@ void *proxy_i(void *x_void_ptr)
 	Log("\nProxy thread started");
 
 	do{
-		
 		if (can_connect == 1 )
 		{
-			pthread_mutex_lock(&byteLock);
+			pthread_mutex_lock(&connectLock);
 			can_connect = 0;
-			pthread_mutex_unlock(&byteLock);
+			pthread_mutex_unlock(&connectLock);
 
 			struct sockaddr_in client_socket_address;
 			int iAddrSize = sizeof(client_socket_address);
@@ -935,40 +915,34 @@ void *proxy_i(void *x_void_ptr)
 								endnonce[0] = 0;
 								enddl[0] = 0;
 
-								get_accountId = strtoull(startaccountId, 0, 10);
-								get_nonce = strtoull(startnonce, 0, 10);
-								get_deadline = strtoull(startdl, 0, 10);
+								get_accountId = _strtoui64(startaccountId, 0, 10);
+								get_nonce = _strtoui64(startnonce, 0, 10);
+								get_deadline = _strtoui64(startdl, 0, 10);
 
 								if (starttotalsize != NULL)
 								{
 									starttotalsize = strpbrk(starttotalsize, "0123456789");
 									char *endtotalsize = strpbrk(starttotalsize, "& }\"");
 									endtotalsize[0] = 0;
-									get_totalsize = strtoull(starttotalsize, 0, 10);
+									get_totalsize = _strtoui64(starttotalsize, 0, 10);
 									satellite_size.insert(std::pair <char*, unsigned long long>(inet_ntoa(client_socket_address.sin_addr), get_totalsize));
 								}
-
-								pthread_mutex_lock(&byteLock);
-								shares[num_shares].best = get_deadline;
-								shares[num_shares].nonce = get_nonce;
-								shares[num_shares].to_send = 1;
-								shares[num_shares].account_id = get_accountId;
-								shares[num_shares].file_name = inet_ntoa(client_socket_address.sin_addr);
+																
+								shares.emplace_back(inet_ntoa(client_socket_address.sin_addr), get_accountId, get_deadline, get_nonce);
+								
 								{
 									cls();
 									SetConsoleTextAttribute(hConsole, 2);
 									_strtime(tbuffer);
-									printf_s("\r%s [%20llu]\treceived DL: %11llu {%s}\n", tbuffer, get_accountId, shares[num_shares].best / baseTarget, inet_ntoa(client_socket_address.sin_addr));
+									printf_s("\r%s [%20llu]\treceived DL: %11llu {%s}\n", tbuffer, get_accountId, get_deadline / baseTarget, inet_ntoa(client_socket_address.sin_addr));
 									SetConsoleTextAttribute(hConsole, 7);
 
 								}
-								num_shares++;
-								pthread_mutex_unlock(&byteLock);
 								Log("Proxy: received DL "); Log_llu(get_deadline); Log(" from "); Log(inet_ntoa(client_socket_address.sin_addr));
 
 								//Подтверждаем
 								memset(buffer, 0, 1000);
-								int acc = Get_index_acc(get_accountId);
+								size_t acc = Get_index_acc(get_accountId);
 								int bytes = sprintf_s(buffer, "HTTP/1.0 200 OK\r\nConnection: close\r\n\r\n{\"result\": \"proxy\",\"accountId\": %llu,\"deadline\": %llu,\"targetDeadline\": %llu}", get_accountId, get_deadline / baseTarget, bests[acc].targetDeadline);
 								iResult = send(ClientSocket, buffer, bytes, 0);
 								if (iResult == SOCKET_ERROR)
@@ -1023,8 +997,8 @@ void *proxy_i(void *x_void_ptr)
 							}
 							else
 							{
-								SetConsoleTextAttribute(hConsole, 15);
 								find[0] = 0;
+								SetConsoleTextAttribute(hConsole, 15);
 								printf_s("\rProxy: %s\n", buffer);
 								SetConsoleTextAttribute(hConsole, 7);
 							}
@@ -1033,82 +1007,96 @@ void *proxy_i(void *x_void_ptr)
 				}
 				iResult = closesocket(ClientSocket);
 			}
-			pthread_mutex_lock(&byteLock);
+			pthread_mutex_lock(&connectLock);
 			can_connect = 1;
-			pthread_mutex_unlock(&byteLock);
+			pthread_mutex_unlock(&connectLock);
 		}
 		Sleep(200);
 	}while (true);
 
 }
 
-void *send_i(void *x_void_ptr) 
+void *send_i(void *x_void_ptr)
 {
 	SOCKET ConnectSocket;
-	
-	int iResult;
-	char buffer[1000];
-	char tmp_buffer[1000];
-	
+
+	int iResult = 0;
+	unsigned buffer_size = 1000;
+	char* buffer = (char*)calloc(buffer_size, 1);
+	if (buffer == NULL) {
+		cls();
+		SetConsoleTextAttribute(hConsole, 12);
+		printf_s("\nError allocating memory\n");
+		SetConsoleTextAttribute(hConsole, 7);
+		exit(-1);
+	}
+	char* tmp_buffer = (char*)calloc(buffer_size, 1);
+	if (tmp_buffer == NULL) {
+		cls();
+		SetConsoleTextAttribute(hConsole, 12);
+		printf_s("\nError allocating memory\n");
+		SetConsoleTextAttribute(hConsole, 7);
+		exit(-1);
+	}
 	char tbuffer[9];
 
 	struct addrinfo *result = NULL;
-
 	struct addrinfo hints;
-	for (unsigned long long i = 0;; i++)
+	size_t iter;
+	size_t acc;
+	for (;;)
 	{
-		if (i > num_shares) i = 0;
-		while ((num_shares == sent_num_shares) && sessions.empty()) // || (working_threads > 0))
-		{
-			Sleep(10);
-		}
+		while (shares.empty() && sessions.empty())	{Sleep(10);} //поуза при бездействии
 
-				unsigned long long part = num_shares;
-				if((part - i > 1) && (sent_num_shares != part))
-				{
-					if (use_sorting) qsort(&shares[0], part, sizeof(t_shares), comp_min);
-					else  qsort(&shares[0], part, sizeof(t_shares), comp_max);
-					for(unsigned long long j=0; j < part; j++) 
-						if(shares[j].to_send == 1) 
-						{
-							i=j;
-							break;
-						}
-				}
-			if (send_best_only)
+		//unsigned long long part = num_shares;
+		//if ((part - i > 1) && (sent_num_shares != part))
+		//{
+		//	if (use_sorting) qsort(&shares[0], part, sizeof(t_shares), comp_min);
+		//	else  qsort(&shares[0], part, sizeof(t_shares), comp_max);
+		//	for (unsigned long long j = 0; j < part; j++)
+		//	if (shares[j].to_send == 1)
+		//	{
+		//		i = j;
+		//		break;
+		//	}
+		//}
+		if (send_best_only) //Гасим все шары, которые больше текущего targetDeadline
+		{
+			for (iter = 0; iter < shares.size(); iter++)
 			{
-				int acc = Get_index_acc(shares[i].account_id);
-				if((bests[acc].targetDeadline > 0) && ((shares[i].best / baseTarget) > bests[acc].targetDeadline) && (shares[i].to_send == 1))
+				acc = Get_index_acc(shares[iter].account_id);
+				//printf("\r\nshares id: %llu\n", shares[iter].account_id);
+				if ((shares[iter].best / baseTarget) > bests[acc].targetDeadline)
 				{
-					pthread_mutex_lock(&byteLock);
-					shares[i].to_send = 0;
-					sent_num_shares++;
-					pthread_mutex_unlock(&byteLock);
-					if(use_debug)
+					if (use_debug)
 					{
 						cls();
 						SetConsoleTextAttribute(hConsole, 4);
 						_strtime(tbuffer);
-						printf_s("\r%s [%llu]\t%llu > %llu  discarded\n", tbuffer, shares[i].account_id, shares[i].best / baseTarget, bests[acc].targetDeadline);
-						SetConsoleTextAttribute(hConsole, 7);						
+						printf_s("\r%s [%llu]\t%llu > %llu  discarded\n", tbuffer, shares[iter].account_id, shares[iter].best / baseTarget, bests[acc].targetDeadline);
+						SetConsoleTextAttribute(hConsole, 7);
 					}
+					shares.erase(shares.begin() + iter);
+					iter--;
 				}
 			}
-			
+		}
 
-			if( (can_connect == 1) && (shares[i].to_send == 1))   
+		for (size_t iter = 0; iter < shares.size(); iter++)
+		{
+			if (can_connect == 1)
 			{
-				pthread_mutex_lock(&byteLock);
+				pthread_mutex_lock(&connectLock);
 				can_connect = 0;
-				pthread_mutex_unlock(&byteLock);
-				
+				pthread_mutex_unlock(&connectLock);
+
 				ZeroMemory(&hints, sizeof(hints));
 				hints.ai_family = AF_INET; //AF_UNSPEC;  // использовать IPv4 или IPv6, нам неважно
 				hints.ai_socktype = SOCK_STREAM;
 				hints.ai_protocol = IPPROTO_TCP;
 				hints.ai_flags = AI_PASSIVE;
 				char nport[6];
-				_itoa(nodeport, nport, 10);
+				_itoa((int)nodeport, nport, 10);
 				iResult = getaddrinfo(nodeaddr, nport, &hints, &result);
 				if (iResult != 0) {
 					cls();
@@ -1119,9 +1107,9 @@ void *send_i(void *x_void_ptr)
 					printf("\rsocket failed with error: %ld\n", WSAGetLastError());
 					freeaddrinfo(result);
 				}
-												
+
 				iResult = connect(ConnectSocket, result->ai_addr, (int)result->ai_addrlen);
-				if (iResult == SOCKET_ERROR) 
+				if (iResult == SOCKET_ERROR)
 				{
 					Log("\nSender:! Error Sender's connect: "); Log(DisplayErrorText(WSAGetLastError()));
 					cls();
@@ -1134,37 +1122,38 @@ void *send_i(void *x_void_ptr)
 					freeaddrinfo(result);
 
 					int bytes = 0;
-					memset(buffer, 0, 1000);
+					memset(buffer, 0, buffer_size);
 					if (miner_mode == 0)
 					{
-						//bytes = sprintf_s(buffer, "POST /burst?requestType=submitNonce&secretPhrase=%s&nonce=%llu HTTP/1.0\r\nConnection: close\r\n\r\n", pass, shares[i].nonce);
-						bytes = sprintf_s(buffer, "POST /burst?requestType=submitNonce&secretPhrase=");
-						strcat(buffer,pass);
-						bytes = bytes + (int)strlen(pass);
-						char tmp[100];
-						bytes += sprintf_s(tmp, "&nonce=%llu HTTP/1.0\r\nConnection: close\r\n\r\n", shares[i].nonce);
-						strcat(buffer, tmp);
-						//printf("\n%s\n",pass);
+						bytes = sprintf_s(buffer, _msize(buffer), "POST /burst?requestType=submitNonce&secretPhrase=%s&nonce=%llu HTTP/1.0\r\nConnection: close\r\n\r\n", pass, shares[iter].nonce);
 					}
 					if (miner_mode == 1)
 					{
-						
 						unsigned long long total = total_size / 1024 / 1024 / 1024;
-						for (std::map <char*, unsigned long long>::iterator Iter = satellite_size.begin(); Iter != satellite_size.end(); Iter++) total = total + Iter->second;
-						bytes = sprintf_s(buffer, "POST /burst?requestType=submitNonce&accountId=%llu&nonce=%llu&deadline=%llu HTTP/1.0\r\nminer: Blago %s\r\nTotalSize: %llu\r\nConnection: close\r\n\r\n", shares[i].account_id, shares[i].nonce, (shares[i].best), version, total);
+						for (std::map <char*, unsigned long long>::iterator It = satellite_size.begin(); It != satellite_size.end(); It) total = total + It->second;
+						bytes = sprintf_s(buffer, _msize(buffer), "POST /burst?requestType=submitNonce&accountId=%llu&nonce=%llu&deadline=%llu HTTP/1.0\r\nX-Miner: Blago %s\r\nX-Capacity: %llu\r\nConnection: close\r\n\r\n", shares[iter].account_id, shares[iter].nonce, shares[iter].best, version, total);
 					}
-					if(miner_mode == 2)
+					if (miner_mode == 2)
 					{
-						char *f1 = (char*) calloc(MAX_PATH, 1);
+						char *f1 = (char*)calloc(MAX_PATH, 1);
 						char *str_len = (char*)calloc(MAX_PATH, 1);
-						int len = sprintf(f1, "%llu:%llu:%llu\n", shares[i].account_id, shares[i].nonce, height);
+						if ((f1 == NULL) || (str_len == NULL))
+						{
+							cls();
+							SetConsoleTextAttribute(hConsole, 12);
+							printf_s("\nError allocating memory\n");
+							SetConsoleTextAttribute(hConsole, 7);
+							exit(-1);
+						}
+
+						int len = sprintf(f1, "%llu:%llu:%llu\n", shares[iter].account_id, shares[iter].nonce, height);
 						_itoa_s(len, str_len, 10, 10);
-			
-						bytes = sprintf_s(buffer, "POST /pool/submitWork HTTP/1.0\r\nHost: %s:%i\r\nContent-Type: text/plain;charset=UTF-8\r\nContent-Length: %i\r\n\r\n%s", nodeaddr, nodeport, len, f1);
+
+						bytes = sprintf_s(buffer, _msize(buffer), "POST /pool/submitWork HTTP/1.0\r\nHost: %s:%llu\r\nContent-Type: text/plain;charset=UTF-8\r\nContent-Length: %i\r\n\r\n%s", nodeaddr, nodeport, len, f1);
 						free(f1);
 						free(str_len);
-					}   
-					
+					}
+
 					// Sending to server
 					all_send_dl++;
 					iResult = send(ConnectSocket, buffer, bytes, 0);
@@ -1181,180 +1170,187 @@ void *send_i(void *x_void_ptr)
 					{
 						cls();
 						SetConsoleTextAttribute(hConsole, 9);
-						unsigned long long dl = shares[i].best / baseTarget;
+						unsigned long long dl = shares[iter].best / baseTarget;
 						_strtime(tbuffer);
-						printf_s("\r%s [%20llu] sent DL: %15llu %5llud %02llu:%02llu:%02llu\n", tbuffer, shares[i].account_id, dl, (dl) / (24 * 60 * 60), (dl % (24 * 60 * 60)) / (60 * 60), (dl % (60 * 60)) / 60, dl % 60);
+						printf_s("\r%s [%20llu] sent DL: %15llu %5llud %02llu:%02llu:%02llu\n", tbuffer, shares[iter].account_id, dl, (dl) / (24 * 60 * 60), (dl % (24 * 60 * 60)) / (60 * 60), (dl % (60 * 60)) / 60, dl % 60);
 						SetConsoleTextAttribute(hConsole, 7);
 
 						if (show_msg) printf_s("\nsend: %s\n", buffer); // показываем послание
 						Log("\nSender:   Sent to server: "); Log_server(buffer);
-						
-						t_session *to = (t_session*) calloc(1, sizeof(t_session));
+
+						t_session *to = (t_session*)calloc(1, sizeof(t_session));
+						if (to == NULL) {
+							cls();
+							SetConsoleTextAttribute(hConsole, 12);
+							printf_s("\nError allocating memory\n");
+							SetConsoleTextAttribute(hConsole, 7);
+							exit(-1);
+						}
 						to->Socket = ConnectSocket;
-						to->ID = shares[i].account_id;
+						to->ID = shares[iter].account_id;
 						to->deadline = dl;
 						sessions.push_back(*to);
 						free(to);
-						shares[i].to_send = 0;
-						sent_num_shares++;
-						if (send_best_only) bests[Get_index_acc(shares[i].account_id)].targetDeadline = dl;
+						if (send_best_only) bests[Get_index_acc(shares[iter].account_id)].targetDeadline = dl;
+						shares.erase(shares.begin() + iter);
+						iter--;
 					}
 				}
-				pthread_mutex_lock(&byteLock);
+				pthread_mutex_lock(&connectLock);
 				can_connect = 1;
-				pthread_mutex_unlock(&byteLock);
+				pthread_mutex_unlock(&connectLock);
 			}
+		}
+
+		if ((can_connect == 1) && !sessions.empty())
+		{
+			pthread_mutex_lock(&connectLock);
+			can_connect = 0;
+			pthread_mutex_unlock(&connectLock);
 
 
-			if ((can_connect == 1) && !sessions.empty())
+			for (size_t iter = 0; iter < sessions.size(); iter++)
 			{
-				pthread_mutex_lock(&byteLock);
-				can_connect = 0;
-				pthread_mutex_unlock(&byteLock);
-				
-				
-				for (unsigned int iter = 0; iter < sessions.size(); iter++)
+				ConnectSocket = sessions.at(iter).Socket;
+
+				BOOL l = TRUE;
+				iResult = ioctlsocket(ConnectSocket, FIONBIO, (unsigned long*)&l);
+				if (iResult == SOCKET_ERROR)
 				{
-					ConnectSocket = sessions.at(iter).Socket;
-					
-					BOOL l = TRUE;
-					iResult = ioctlsocket(ConnectSocket, FIONBIO, (unsigned long*)&l);
-					if (iResult == SOCKET_ERROR)
+					Log("\nSender: ! Error ioctlsocket's: "); Log(DisplayErrorText(WSAGetLastError()));
+					cls();
+					SetConsoleTextAttribute(hConsole, 12);
+					printf_s("\rioctlsocket failed: %ld\n", WSAGetLastError());
+					SetConsoleTextAttribute(hConsole, 7);
+				}
+
+				memset(buffer, 0, buffer_size);
+				size_t resp = 0;
+				do{
+					memset(tmp_buffer, 0, buffer_size);
+					iResult = recv(ConnectSocket, tmp_buffer, buffer_size - 1, 0);
+					strcat(buffer, tmp_buffer);
+					resp++;
+				} while ((iResult > 0) && !use_fast_rcv);
+
+				if (iResult == SOCKET_ERROR)
+				{
+					if (WSAGetLastError() != WSAEWOULDBLOCK)
 					{
-						Log("\nSender: ! Error ioctlsocket's: "); Log(DisplayErrorText(WSAGetLastError()));
+						err_rcv_dl++;
+						Log("\nSender: ! Error getting deadline's confirmation: "); Log(DisplayErrorText(WSAGetLastError()));
 						cls();
 						SetConsoleTextAttribute(hConsole, 12);
-						printf_s("\rioctlsocket failed: %ld\n", WSAGetLastError());
+						printf_s("\rreceiving confirmation failed: %ld\n", WSAGetLastError());
 						SetConsoleTextAttribute(hConsole, 7);
 					}
+				}
+				else
+				{
+					if (show_msg) printf_s("\nReceived: %s\n", buffer);
+					Log("\nSender:   Received from server: "); Log_server(buffer); Log("\nCount responses: "); Log_u(resp);
 
-					memset(buffer, 0, 1000);
-					unsigned resp = 0;
-					do{
-						memset(tmp_buffer, 0, 1000);
-						iResult = recv(ConnectSocket, tmp_buffer, 999, 0);
-						strcat(buffer, tmp_buffer);
-						resp++;
-					} while ((iResult > 0) && !use_fast_rcv);
-
-					if (iResult == SOCKET_ERROR)
+					char *find = strstr(buffer, "\r\n\r\n");
+					if (find != NULL)
 					{
-						if (WSAGetLastError() != WSAEWOULDBLOCK)
+						char *rdeadline = strstr(find + 4, "\"deadline\"");
+						if (rdeadline != NULL)
 						{
-							err_rcv_dl++;
-							Log("\nSender: ! Error getting deadline's confirmation: "); Log(DisplayErrorText(WSAGetLastError()));
+							rdeadline = strpbrk(rdeadline, "0123456789");
+							char *enddeadline = strpbrk(rdeadline, ",}\"");
+
+							char* rtargetDeadline = strstr(buffer, "\"targetDeadline\":");
+							char* raccountId = strstr(buffer, "\"accountId\":");
+							if (enddeadline != NULL)
+							{
+								enddeadline[0] = 0;
+								unsigned long long ndeadline = _strtoui64(rdeadline, 0, 10);
+								unsigned long long naccountId = 0;
+								unsigned long long ntargetDeadline = 0;
+								if ((rtargetDeadline != NULL) && (raccountId != NULL))
+								{
+									rtargetDeadline = strpbrk(rtargetDeadline, "0123456789");
+									char* endBaseTarget = strpbrk(rtargetDeadline, ",}\"");
+									endBaseTarget[0] = 0;
+
+									raccountId = strpbrk(raccountId, "0123456789");
+									char* endaccountId = strpbrk(raccountId, ",}\"");
+									endaccountId[0] = 0;
+									naccountId = _strtoui64(raccountId, 0, 10);
+									size_t acc = Get_index_acc(naccountId);
+									ntargetDeadline = _strtoui64(rtargetDeadline, 0, 10);
+									bests[acc].targetDeadline = ntargetDeadline;
+								}
+								all_rcv_dl++;
+								Log("\nSender: confirmed deadline: "); Log_llu(ndeadline);
+								cls();
+								//unsigned long long years = (ndeadline % (24*60*60))/(60*60)
+								//unsigned month = (ndeadline % (365*24*60*60))/(24*60*60);
+								unsigned long long days = (ndeadline) / (24 * 60 * 60);
+								unsigned hours = (ndeadline % (24 * 60 * 60)) / (60 * 60);
+								unsigned min = (ndeadline % (60 * 60)) / 60;
+								unsigned sec = ndeadline % 60;
+								cls();
+								_strtime(tbuffer);
+								SetConsoleTextAttribute(hConsole, 10);
+								if ((naccountId != 0) && (ntargetDeadline != 0))
+								{
+									printf_s("\r%s [%llu] confirmed DL: %9llu\t%llud %2u:%2u:%2u\n", tbuffer, naccountId, ndeadline, days, hours, min, sec);
+									if (use_debug) printf_s("\r%s [%llu] Set targetDL\t%llu\n", tbuffer, naccountId, ntargetDeadline);
+								}
+								else printf_s("\r%s [%20llu] confirmed DL: %10llu %5llud %02u:%02u:%02u\n", tbuffer, sessions.at(iter).ID, ndeadline, days, hours, min, sec);
+								SetConsoleTextAttribute(hConsole, 7);
+								if (ndeadline < deadline || deadline == 0)  deadline = ndeadline;
+
+								if (ndeadline != sessions.at(iter).deadline)
+								{
+									SetConsoleTextAttribute(hConsole, 6);
+									printf_s("----Fast block or corrupted file?----\nSent deadline:\t%llu\nServer's deadline:\t%llu \n---- file: %s\n", sessions.at(iter).deadline, ndeadline, " "); //shares[i].file_name.c_str());
+									SetConsoleTextAttribute(hConsole, 7);
+								}
+							}
+						}
+						else
+						if (strstr(find + 4, "Received share") != NULL)
+						{
 							cls();
-							SetConsoleTextAttribute(hConsole, 12);
-							printf_s("\rreceiving confirmation failed: %ld\n", WSAGetLastError());
-							SetConsoleTextAttribute(hConsole, 7);							
+							_strtime(tbuffer);
+							SetConsoleTextAttribute(hConsole, 10);
+							deadline = bests[Get_index_acc(sessions.at(iter).ID)].DL;
+							all_rcv_dl++;
+							printf_s("\r%s [%20llu] confirmed DL\n", tbuffer, sessions.at(iter).ID);
+							SetConsoleTextAttribute(hConsole, 7);
 						}
-					}
-					else
-					{
-						if (show_msg) printf_s("\nReceived: %s\n", buffer);
-						Log("\nSender:   Received from server: "); Log_server(buffer); Log("\nCount responses: "); Log_u(resp);
-
-						// locate HTTP header
-						char *find = strstr(buffer, "\r\n\r\n");
-						if (find != NULL)
+						else
 						{
-							char *rdeadline = strstr(find + 4, "\"deadline\"");
-							if (rdeadline != NULL)
-							{
-								rdeadline = strpbrk(rdeadline, "0123456789");
-								char *enddeadline = strpbrk(rdeadline, ",}\"");
-								
-								char* rtargetDeadline = strstr(buffer, "\"targetDeadline\":");
-								char* raccountId = strstr(buffer, "\"accountId\":");
-								if (enddeadline != NULL)
-								{
-									// Parse and check if we have a better deadline
-									enddeadline[0] = 0;
-									unsigned long long ndeadline = strtoull(rdeadline, 0, 10);
-									unsigned long long naccountId = 0;
-									unsigned long long ntargetDeadline = 0;
-									if ((rtargetDeadline != NULL) && (raccountId != NULL))
-									{
-										rtargetDeadline = strpbrk(rtargetDeadline, "0123456789");
-										char* endBaseTarget = strpbrk(rtargetDeadline, ",}\"");
-										endBaseTarget[0] = 0;
-										
-										raccountId = strpbrk(raccountId, "0123456789");
-										char* endaccountId = strpbrk(raccountId, ",}\"");
-										endaccountId[0] = 0;
-										naccountId = strtoull(raccountId, 0, 10);
-										int acc = Get_index_acc(naccountId);
-										ntargetDeadline = strtoull(rtargetDeadline, 0, 10);
-										bests[acc].targetDeadline = ntargetDeadline;
-									}
-									all_rcv_dl++;
-									Log("\nSender: confirmed deadline: "); Log_llu(ndeadline);
-									cls();
-									//unsigned long long years = (ndeadline % (24*60*60))/(60*60)
-									//unsigned month = (ndeadline % (365*24*60*60))/(24*60*60);
-									unsigned long long days = (ndeadline) / (24 * 60 * 60);
-									unsigned hours = (ndeadline % (24 * 60 * 60)) / (60 * 60);
-									unsigned min = (ndeadline % (60 * 60)) / 60;
-									unsigned sec = ndeadline % 60;
-									cls();
-									_strtime(tbuffer);
-									SetConsoleTextAttribute(hConsole, 10);
-									if ((naccountId != 0) && (ntargetDeadline != 0))
-									{
-										printf_s("\r%s [%llu] confirmed DL: %9llu\t%llud %2u:%2u:%2u\n", tbuffer, naccountId, ndeadline, days, hours, min, sec);
-										if (use_debug) printf_s("\r%s [%llu] Set targetDL\t%llu\n", tbuffer, naccountId, ntargetDeadline);
-									}
-									else printf_s("\r%s [%20llu] confirmed DL: %10llu %5llud %02u:%02u:%02u\n", tbuffer, sessions.at(iter).ID , ndeadline, days, hours, min, sec);
-									SetConsoleTextAttribute(hConsole, 7);
-									if (ndeadline < deadline || deadline == 0)  deadline = ndeadline;
-									
-									if (ndeadline != sessions.at(iter).deadline)
-									{
-										SetConsoleTextAttribute(hConsole, 6);
-										printf_s("----Fast block or corrupted file?----\nSent deadline:\t%llu\nServer's deadline:\t%llu \n----------------------- file: %s\n", sessions.at(iter).deadline, ndeadline, shares[i].file_name);
-										SetConsoleTextAttribute(hConsole, 7);
-									}
-								}
-							}
-							else
-								if (strstr(find + 4, "Received share") != NULL)
-								{
-									cls();
-									_strtime(tbuffer);
-									SetConsoleTextAttribute(hConsole, 10);
-									deadline = bests[Get_index_acc(sessions.at(iter).ID)].DL;
-									all_rcv_dl++;
-									printf_s("\r%s [%20llu] confirmed DL\n", tbuffer, sessions.at(iter).ID);
-									SetConsoleTextAttribute(hConsole, 7);
-								}
-								else
-								{
-									SetConsoleTextAttribute(hConsole, 15);
-									printf_s("\r%s\n", find + 4);
-									SetConsoleTextAttribute(hConsole, 7);
-								}
-							iResult = closesocket(ConnectSocket);
-							Log("\nSender:Close socket. Code = "); Log_u(WSAGetLastError());
-							if (sessions.size() >= iter)
-							{
-								sessions.erase(sessions.begin() + iter);
-								iter--;
-							}
+							SetConsoleTextAttribute(hConsole, 15);
+							printf_s("\r%s\n", find + 4);
+							SetConsoleTextAttribute(hConsole, 7);
 						}
+						iResult = closesocket(ConnectSocket);
+						Log("\nSender:Close socket. Code = "); Log_u(WSAGetLastError());
+						//if (sessions.size() >= iter)
+						//{
+							sessions.erase(sessions.begin() + iter);
+							iter--;
+						//}
 					}
 				}
-				pthread_mutex_lock(&byteLock);
-				can_connect = 1;
-				pthread_mutex_unlock(&byteLock);
 			}
+			pthread_mutex_lock(&connectLock);
+			can_connect = 1;
+			pthread_mutex_unlock(&connectLock);
+		}
 
-			Sleep(send_interval);
+		Sleep((DWORD)send_interval);
 	}
+	free(buffer);
+	free(tmp_buffer);
 	return 0;
 }
 
-
-unsigned long long procscoop4(unsigned long long nonce, unsigned long long n, char *data, int acc, char * file_name) {
+/*
+unsigned long long procscoop4(unsigned long long nonce, unsigned long long n, char *data, int acc, const std::string &file_name) {
         char *cache;
         char sig0[32 + 64];
 		char sig1[32 + 64];
@@ -1417,9 +1413,10 @@ unsigned long long procscoop4(unsigned long long nonce, unsigned long long n, ch
 							pthread_mutex_lock(&byteLock);
 								shares[num_shares].best = bests[acc].best;
 								shares[num_shares].nonce = bests[acc].nonce;
-								shares[num_shares].to_send = 1;
+								//shares[num_shares].to_send = 1;
 								shares[num_shares].account_id = bests[acc].account_id;
 								shares[num_shares].file_name = file_name;
+								
 								if(use_debug)
 								{
 									cls();
@@ -1440,7 +1437,7 @@ unsigned long long procscoop4(unsigned long long nonce, unsigned long long n, ch
 
 
 
-unsigned long long procscoop8(unsigned long long nonce, unsigned long long n, char *data, int acc, char * file_name) {
+unsigned long long procscoop8(unsigned long long nonce, unsigned long long n, char *data, int acc, const std::string &file_name) {
 	char *cache;
 	char sig0[32 + 64];
 	char sig1[32 + 64];
@@ -1545,9 +1542,10 @@ unsigned long long procscoop8(unsigned long long nonce, unsigned long long n, ch
 				pthread_mutex_lock(&byteLock);
 				shares[num_shares].best = bests[acc].best;
 				shares[num_shares].nonce = bests[acc].nonce;
-				shares[num_shares].to_send = 1;
+				//shares[num_shares].to_send = 1;
 				shares[num_shares].account_id = bests[acc].account_id;
 				shares[num_shares].file_name = file_name;
+				
 				if (use_debug)
 				{
 					cls();
@@ -1567,191 +1565,210 @@ unsigned long long procscoop8(unsigned long long nonce, unsigned long long n, ch
 	return v;
 }
 
+*/
 
+void procscoop(unsigned long long nonce, unsigned long long n, char *data, size_t acc, std::string file_name) {
+	char *cache;
+	char sig[32 + 64];
+	cache = data;
+	unsigned long long v;
+	char tbuffer[9];
+	memmove(sig, signature, 32);
 
-unsigned long long procscoop(unsigned long long nonce, unsigned long long n, char *data, int acc, char * file_name) {
-        char *cache;
-        char sig[32 + 64];
-        cache = data;
-        unsigned long long v;
-		char tbuffer[9];
-        memmove(sig, signature, 32);
- 
-        for( v=0; v<n; v++) {
-                memmove(&sig[32], cache, 64);
-                char res[32];
-				
-                sph_shabal_context x;
-				sph_shabal256_init(&x);
-				sph_shabal256(&x, (const unsigned char*)sig, 64 + 32);
-				sph_shabal256_close(&x, res);
-				
+	for (v = 0; v < n; v++)
+	{
+		memmove(&sig[32], cache, 64);
+		char res[32];
 
-				
-                unsigned long long *wertung = (unsigned long long*)res;
- 
-				if ((*wertung / baseTarget) <= bests[acc].targetDeadline)
-				{
-					
-					if (send_best_only)
-					{
-						if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
-						{
-							Log("\nfound deadline=");	Log_llu(*wertung / baseTarget); Log(" nonce=");	Log_llu(nonce + v); Log(" for account: "); Log_llu(bests[acc].account_id); Log(" file: "); Log(file_name);
-							pthread_mutex_lock(&byteLock);
-							bests[acc].best = *wertung;
-							bests[acc].nonce = nonce + v;
-							bests[acc].DL = *wertung / baseTarget;
-							shares[num_shares].best = bests[acc].best;
-							shares[num_shares].nonce = bests[acc].nonce;
-							shares[num_shares].to_send = 1;
-							shares[num_shares].account_id = bests[acc].account_id;
-							shares[num_shares].file_name = file_name;
-							if (use_debug)
-							{
-								cls();
-								_strtime(tbuffer);
-								SetConsoleTextAttribute(hConsole, 2);
-								printf_s("\r%s [%llu] found DL:      %9llu\n", tbuffer, bests[acc].account_id, shares[num_shares].best / baseTarget);
-								SetConsoleTextAttribute(hConsole, 7);
-							}
-							num_shares++;
-							pthread_mutex_unlock(&byteLock);
-						}
-					}
-					else
-					{
-						pthread_mutex_lock(&byteLock);
-						if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
-						{
-							bests[acc].best = *wertung;
-							bests[acc].nonce = nonce + v;
-							bests[acc].DL = *wertung / baseTarget;
-						}
-						shares[num_shares].best = *wertung;
-						shares[num_shares].nonce = nonce + v;
-						shares[num_shares].to_send = 1;
-						shares[num_shares].account_id = bests[acc].account_id;
-						shares[num_shares].file_name = file_name;
-						if (use_debug)
-						{
-							cls();
-							_strtime(tbuffer);
-							SetConsoleTextAttribute(hConsole, 2);
-							printf_s("\r%s [%llu] found DL:      %9llu\n", tbuffer, bests[acc].account_id, shares[num_shares].best / baseTarget);
-							SetConsoleTextAttribute(hConsole, 7);
-						}
-						num_shares++;
-						pthread_mutex_unlock(&byteLock);
-					}
-				}
-                //nonce++;
-                cache += 64;
-        }
-		
-		return v;
-}
+		sph_shabal_context x;
+		sph_shabal256_init(&x);
+		sph_shabal256(&x, (const unsigned char*)sig, 64 + 32);
+		sph_shabal256_close(&x, res);
 
+		unsigned long long *wertung = (unsigned long long*)res;
 
-void *work_i(void *ii) {  
-	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-	
-		unsigned local_num = *(unsigned *)ii;
-		Log("\nStart thread #");	Log_u(local_num); Log(" with parameter: ");	Log(paths_dir[local_num]);
-		clock_t start_work_time, end_work_time;
-		start_work_time = clock();
-		FILE * pFile;
-		char *x_ptr = (char*)calloc(MAX_PATH, 1);
-		strcpy(x_ptr, paths_dir[local_num]);
-		char *cache = (char*) calloc(cache_size * 64, 1);
-		clock_t start_time, end_time;			// Текущее время
-		unsigned long long files_size_per_thread = 0;
-		if(cache == NULL) {
-			cls();
-			SetConsoleTextAttribute(hConsole, 12);
-            printf_s("\nError allocating memory\n");
-			SetConsoleTextAttribute(hConsole, 7);
-            exit(-1);
-        }
-		
-		t_files* files = (t_files*)calloc(MAX_FILES, sizeof(t_files));
-		
-		unsigned f_count = GetFiles(x_ptr, files);
-		//printf("\n   %i\n   %i  %s\n   %i  %s\n   %i  %s\n ",f_count, strlen(files[0]),files[0], strlen(files[1]), files[1], strlen(files[2]), files[2]);
-		unsigned files_count = 0;
-        for(; files_count < f_count; files_count++)
+		if ((*wertung / baseTarget) <= bests[acc].targetDeadline)
 		{
-			unsigned long long key, nonce, nonces, stagger, n;
-						
-			char fullname[MAX_PATH];
-			strcpy(fullname, files[files_count].Path);
-			strcat(fullname, files[files_count].Name);
-			sscanf_s(files[files_count].Name, "%llu_%llu_%llu_%llu", &key , &nonce, &nonces, &stagger);
-						
-			if (nonces != (files[files_count].Size)/(4096*64))
+			if (send_best_only)
 			{
-				if (skip_bad_plots)
+				if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
 				{
-					SetConsoleTextAttribute(hConsole, 12);
-					cls();
-					printf_s("\rFile \"%s\" file name/size mismatch, skipped\n", files[files_count].Name);
-					SetConsoleTextAttribute(hConsole, 7);
-					continue;   // если размер файла не соответствует нонсам в имени файла - пропускаем
+					Log("\nfound deadline=");	Log_llu(*wertung / baseTarget); Log(" nonce=");	Log_llu(nonce + v); Log(" for account: "); Log_llu(bests[acc].account_id); Log(" file: "); Log((char*)file_name.c_str());
+					pthread_mutex_lock(&bestsLock);
+					bests[acc].best = *wertung;
+					bests[acc].nonce = nonce + v;
+					bests[acc].DL = *wertung / baseTarget;
+					pthread_mutex_unlock(&bestsLock);
+					shares.emplace_back(file_name, bests[acc].account_id, bests[acc].best, bests[acc].nonce);
+					if (use_debug)
+					{
+						cls();
+						_strtime(tbuffer);
+						SetConsoleTextAttribute(hConsole, 2);
+						printf_s("\r%s [%llu] found DL:      %9llu\n", tbuffer, bests[acc].account_id, bests[acc].DL);
+						SetConsoleTextAttribute(hConsole, 7);
+					}
 				}
-				else
+			}
+			else
+			{
+				pthread_mutex_lock(&bestsLock);
+				if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
 				{
-					SetConsoleTextAttribute(hConsole, 12);
+					bests[acc].best = *wertung;
+					bests[acc].nonce = nonce + v;
+					bests[acc].DL = *wertung / baseTarget;
+				}
+				pthread_mutex_unlock(&bestsLock);
+				shares.emplace_back(file_name, bests[acc].account_id, *wertung, nonce + v);
+				if (use_debug)
+				{
 					cls();
-					printf_s("\rFile \"%s\" file name/size mismatch\n", files[files_count].Name);
+					_strtime(tbuffer);
+					SetConsoleTextAttribute(hConsole, 2);
+					printf_s("\r%s [%llu] found DL:      %9llu\n", tbuffer, bests[acc].account_id, *wertung / baseTarget);
 					SetConsoleTextAttribute(hConsole, 7);
 				}
 			}
-			Log("\nRead file: ");	Log(files[files_count].Name);
-			start_time = clock();
+		}
+		cache += 64;
+	}
+}
+
+void stick_thread_to_core(size_t core_id)
+{
+	//DWORD_PTR processAffinityMask;
+	//processAffinityMask = 1 << 15;//(2*i);
+	//SetProcessAffinityMask(GetCurrentProcess(), processAffinityMask);
+	
+	//DWORD_PTR threadAffinityMask = 1 << core_id;// 1 << (2 * (int)core_id);
+	//return SetThreadAffinityMask(GetCurrentThread(), threadAffinityMask);
+
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+	SetThreadIdealProcessor(GetCurrentThread(),(DWORD)core_id);
+}
+
+
+void *work_i(void* path_str) {
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+	working_threads++;
+	//pthread_self();
+	if (use_boost) stick_thread_to_core(working_threads - 1);
+	
+	std::string path_loc_str((char*)path_str);
+	
+	unsigned long long files_size_per_thread = 0;
+	size_t cache_size_lacal;
+	clock_t start_work_time, end_work_time;
+	clock_t start_time_read, end_time_read;			// Текущее время
+	start_work_time = clock();
+	Log("\nStart thread: ");	Log((char*)path_loc_str.c_str()); //Log(paths_dir[local_num]);
+
+		double avg_time_proc = 0;
+		clock_t start_time_proc;			
+
+		FILE * pFile;
+		std::vector<t_files> files;
+		size_t f_count = GetFiles(path_loc_str, &files);
+		size_t files_count = 0;
+		size_t acc_index;
+		unsigned long long  bytes_per_read;
+	
+		for(; files_count < f_count; files_count++)
+		{
+			unsigned long long key, nonce, nonces, stagger;
+			start_time_read = clock();
+			sscanf_s(files[files_count].Name.c_str(), "%llu_%llu_%llu_%llu", &key , &nonce, &nonces, &stagger);
+			if ((float)(nonces % stagger) != 0)
+			{
+				cls();
+				SetConsoleTextAttribute(hConsole, 12);
+				printf("\rFile %s wrong stagger?\n", files[files_count].Name.c_str());
+				SetConsoleTextAttribute(hConsole, 7);
+			}
 			
+			if (nonces != stagger)
+			{
+
+				cache_size_lacal = stagger;
+				bytes_per_read = 64 * stagger;
+			}
+			else
+			{
+				cache_size_lacal = cache_size;
+				bytes_per_read = 64;
+			}
+			char *cache = (char*)calloc(cache_size_lacal * 64, 1);
+			if (cache == NULL) {
+				cls();
+				SetConsoleTextAttribute(hConsole, 12);
+				printf_s("\nError allocating memory\n");
+				SetConsoleTextAttribute(hConsole, 7);
+				exit(-1);
+			}
+						
+			if (nonces != (files[files_count].Size) / (4096 * 64)) // Проверка на повреждения плота
+			{
+				SetConsoleTextAttribute(hConsole, 12);
+				cls();
+				printf_s("\rfile \"%s\" name/size mismatch\n", files[files_count].Name.c_str());
+				SetConsoleTextAttribute(hConsole, 7);
+				if (nonces != stagger)
+					nonces = (((files[files_count].Size) / (4096 * 64)) / stagger) * stagger; //обрезаем плот по размеру и стаггеру
+				else
+				if (scoop > (files[files_count].Size) / (stagger * 64)) //если номер скупа попадает в поврежденный смерженный плот, то все нормально
+				{
+					SetConsoleTextAttribute(hConsole, 12);
+					cls();
+					printf_s("\rskipped\n");
+					SetConsoleTextAttribute(hConsole, 7);
+					continue;
+				}
+			}
+			
+			Log("\nRead file : ");	Log((char*)files[files_count].Name.c_str());
+						
 			_set_fmode(_O_BINARY);
-			fopen_s(&pFile, fullname, "rb");
+			fopen_s(&pFile, (files[files_count].Path + files[files_count].Name).c_str(), "rb");
 			if (pFile==NULL)
 			{
 				SetConsoleTextAttribute(hConsole, 12);
 				cls();
-				printf_s("\rfile \"%s\" error opening\n", files[files_count].Name);
+				printf_s("\rfile \"%s\" error opening\n", files[files_count].Name.c_str());
 				SetConsoleTextAttribute(hConsole, 7);
 				continue;
 			}
 			files_size_per_thread += files[files_count].Size;
-			unsigned acc_index = Get_index_acc(key);
-
-			//printf("\r%i\n", acc_index);
-			unsigned long long size = stagger * 64;
-												
-			for(n=0; n<nonces; n+=stagger) 
+			acc_index = Get_index_acc(key);
+//			Log("\nGet_index_acc = "); Log_u(acc_index);
+			unsigned long long start, noffset, i, readsize, bytes;
+			
+			for (unsigned long long n = 0; n<nonces; n += stagger)
 			{
-				// Read one Scoop out of this block:
-                // start to start+size in steps of CACHESIZE * 64
-				unsigned long long start = n * 4096 * 64 + scoop * size;
-				unsigned long long i;
-				unsigned long long noffset = 0;
-                                        
-				for(i = start; i < start + size; i += cache_size * 64) 
+				start = n * 4096 * 64 + scoop * stagger*64;
+				noffset = 0;
+                                
+				for (i = start; i < start + stagger * 64; i += cache_size_lacal * 64)
 				{
 					
-					unsigned long long readsize = cache_size * 64;
-					if(readsize > start + size - i)	readsize = (unsigned int)(start + size - i);
-					unsigned long long bytes = 0, b;
+					readsize = cache_size_lacal * 64;
+					if (readsize > start + stagger*64 - i)	readsize = start + stagger*64 - i;
+					bytes = 0;
 
-					rewind (pFile);
-					_fseeki64(pFile , i , SEEK_SET);
+					_fseeki64_nolock(pFile , i , SEEK_SET);
+
 					do {
-						//b = fread (&cache[bytes],sizeof(char),readsize - bytes,pFile);
-						b = _fread_nolock_s(&cache[bytes], cache_size * 64, sizeof(char), readsize - bytes, pFile);
-						bytes += b;
-					} while(bytes < readsize && b > 0);     // Read until cache is filled (or file ended)
-					//printf_s("\rstart: %llu end:%llu step:%llu  readsize:%llu bytes:%llu\n",i/64 ,(start + size)/64, cache_size, readsize, bytes);
-					if(b > 0)
+						//b = _fread_nolock_s(&cache[bytes], cache_size * 64, sizeof(char), readsize - bytes, pFile);
+						bytes += bytes_per_read * _fread_nolock_s(&cache[bytes], cache_size_lacal * 64, bytes_per_read, readsize / bytes_per_read, pFile);
+					} while ((bytes < readsize) && !feof(pFile));
+					
+					if (bytes == readsize)
 					{
 						//procscoop4(n + nonce + noffset, readsize / 64, cache, acc_index, files[files_count].Name);// Process block
+						start_time_proc = clock();
 						procscoop(n + nonce + noffset, readsize / 64, cache, acc_index, files[files_count].Name);// Process block
+						avg_time_proc += (double)(clock() - start_time_proc);
+						
 						pthread_mutex_lock(&byteLock);
 						bytesRead += readsize;
 						pthread_mutex_unlock(&byteLock);
@@ -1759,51 +1776,221 @@ void *work_i(void *ii) {
 					else 
 					{
 						SetConsoleTextAttribute(hConsole, 12);
-						printf("\rFile %s locked?\n", files[files_count].Name);
+						printf("\nUnexpected end of file %s\n", files[files_count].Name.c_str());
 						SetConsoleTextAttribute(hConsole, 7);
 					}
-					noffset += cache_size;
+					noffset += cache_size_lacal;
 
 					if (stopThreads) // New block while processing: Stop.
 					{
+						working_threads--;
+						Log("\nReading file: ");	Log((char*)files[files_count].Name.c_str()); Log(" interrupted");
 						fclose(pFile);
-						//free(files_size);
-						//for (files_count = 0; files_count < f_count; files_count++) 	
-						//	free(*files);
-						free(files);
-						free(x_ptr);
+						files.clear();
 						free(cache);
+						if (use_boost) SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL);
+						Sleep(0);
 						return 0;
 					}
 				}
 			}
-			end_time = clock();
-			Log("\nClose file: ");	Log(files[files_count].Name); Log(" [@ "); Log_llu((end_time-start_time)*1000/CLOCKS_PER_SEC); Log(" ms]");
-			fclose(pFile);			
+			end_time_read = clock();
+			Log("\nClose file: ");	Log((char*)files[files_count].Name.c_str()); Log(" [@ "); Log_llu(end_time_read-start_time_read); Log(" ms]");
+			fclose(pFile);		
+			free(cache);
 		}
+		end_work_time = clock();
+
+		if (use_boost) SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL);
+
+		double thread_time = (double)(end_work_time - start_work_time) / CLOCKS_PER_SEC;
 		if (use_debug)
 		{
-			end_work_time = clock();
 			cls();
 			char tbuffer[9];
 			_strtime(tbuffer);
 			SetConsoleTextAttribute(hConsole, 7);
-			double thread_time = (double)(end_work_time - start_work_time) / CLOCKS_PER_SEC;
-			if (thread_time > 0)	printf_s("\r%s Thread \"%s\" done in %.1f sec (%.1f MB/s)\n", tbuffer, x_ptr, thread_time, (double)(files_size_per_thread) / thread_time / 1024 / 1024 / 4096);
-			else printf_s("\r%s Thread \"%s\" done in %.1f sec\n", tbuffer, x_ptr, thread_time);
+			printf_s("\r%s Thread \"%s\" in %.1f sec (%.1f MB/s) CPU %.2f%%\n", tbuffer, path_loc_str.c_str(), thread_time, (double)(files_size_per_thread) / thread_time / 1024 / 1024 / 4096, avg_time_proc * 100 / CLOCKS_PER_SEC / thread_time);
 		}
 		working_threads--;
-		//free(files_size);
-		//for (files_count = 0; files_count < f_count; files_count++) 		free(*files[i]);
-		free(files);
-		free(x_ptr);
-        free(cache);
+		thread_times.push_back(thread_time);
+		files.clear();
+		Sleep(0);
 }
 
+
+/*
+void *work_i(void* path_str) {
+pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+//pthread_self();
+DWORD_PTR ret = stick_thread_to_core(working_threads);
+std::string path_loc_str((char*)path_str);
+
+unsigned long long files_size_per_thread = 0;
+size_t cache_size_lacal;
+clock_t start_work_time, end_work_time;
+clock_t start_time_read, end_time_read;			// Текущее время
+start_work_time = clock();
+Log("\nStart thread: ");	Log((char*)path_loc_str.c_str()); //Log(paths_dir[local_num]);
+
+double avg_time_proc = 0;
+clock_t start_time_proc;
+
+FILE * pFile;
+std::vector<t_files> files;
+size_t f_count = GetFiles(path_loc_str, &files);
+size_t files_count = 0;
+size_t acc_index;
+unsigned long long  bytes_per_read;
+for(; files_count < f_count; files_count++)
+{
+unsigned long long key, nonce, nonces, stagger;
+start_time_read = clock();
+sscanf_s(files[files_count].Name.c_str(), "%llu_%llu_%llu_%llu", &key , &nonce, &nonces, &stagger);
+if ((float)(nonces % stagger) != 0)
+{
+cls();
+SetConsoleTextAttribute(hConsole, 12);
+printf("\rFile %s wrong stagger?\n", files[files_count].Name.c_str());
+SetConsoleTextAttribute(hConsole, 7);
+}
+
+if (nonces != stagger)
+{
+cache_size_lacal = stagger;
+bytes_per_read = 64 * stagger;
+}
+else
+{
+cache_size_lacal = cache_size;
+bytes_per_read = 64;
+}
+char *cache = (char*)calloc(cache_size_lacal * 64, 1);
+if (cache == NULL) {
+cls();
+SetConsoleTextAttribute(hConsole, 12);
+printf_s("\nError allocating memory\n");
+SetConsoleTextAttribute(hConsole, 7);
+exit(-1);
+}
+
+if (nonces != (files[files_count].Size) / (4096 * 64)) // Проверка на повреждения плота
+{
+SetConsoleTextAttribute(hConsole, 12);
+cls();
+printf_s("\rfile \"%s\" name/size mismatch\n", files[files_count].Name.c_str());
+SetConsoleTextAttribute(hConsole, 7);
+if (nonces != stagger)
+nonces = (((files[files_count].Size) / (4096 * 64)) / stagger) * stagger; //обрезаем плот по размеру и стаггеру
+else
+if (scoop > (files[files_count].Size) / (stagger * 64)) //если номер скупа попадает в поврежденный смерженный плот, то все нормально
+{
+SetConsoleTextAttribute(hConsole, 12);
+cls();
+printf_s("\rskipped\n");
+SetConsoleTextAttribute(hConsole, 7);
+continue;
+}
+}
+
+Log("\nRead file: ");	Log((char*)files[files_count].Name.c_str());
+
+_set_fmode(_O_BINARY);
+fopen_s(&pFile, (files[files_count].Path + files[files_count].Name).c_str(), "rb");
+if (pFile==NULL)
+{
+SetConsoleTextAttribute(hConsole, 12);
+cls();
+printf_s("\rfile \"%s\" error opening\n", files[files_count].Name.c_str());
+SetConsoleTextAttribute(hConsole, 7);
+continue;
+}
+files_size_per_thread += files[files_count].Size;
+acc_index = Get_index_acc(key);
+//			Log("\nGet_index_acc = "); Log_u(acc_index);
+unsigned long long start, noffset, i, readsize, bytes;
+
+for (unsigned long long n = 0; n<nonces; n += stagger)
+{
+start = n * 4096 * 64 + scoop * stagger*64;
+noffset = 0;
+
+for (i = start; i < start + stagger * 64; i += cache_size_lacal * 64)
+{
+
+readsize = cache_size_lacal * 64;
+if (readsize > start + stagger*64 - i)	readsize = start + stagger*64 - i;
+bytes = 0;
+
+_fseeki64_nolock(pFile , i , SEEK_SET);
+
+do {
+//b = _fread_nolock_s(&cache[bytes], cache_size * 64, sizeof(char), readsize - bytes, pFile);
+bytes += bytes_per_read * _fread_nolock_s(&cache[bytes], cache_size_lacal * 64, bytes_per_read, readsize / bytes_per_read, pFile);
+} while ((bytes < readsize) && !feof(pFile));
+
+if (bytes == readsize)
+{
+//procscoop4(n + nonce + noffset, readsize / 64, cache, acc_index, files[files_count].Name);// Process block
+start_time_proc = clock();
+procscoop(n + nonce + noffset, readsize / 64, cache, acc_index, files[files_count].Name);// Process block
+avg_time_proc += (double)(clock() - start_time_proc);
+
+pthread_mutex_lock(&byteLock);
+bytesRead += readsize;
+pthread_mutex_unlock(&byteLock);
+}
+else
+{
+SetConsoleTextAttribute(hConsole, 12);
+printf("\nUnexpected end of file %s\n", files[files_count].Name.c_str());
+SetConsoleTextAttribute(hConsole, 7);
+}
+noffset += cache_size_lacal;
+
+if (stopThreads) // New block while processing: Stop.
+{
+working_threads--;
+Log("\nReading file: ");	Log((char*)files[files_count].Name.c_str()); Log(" interrupted");
+fclose(pFile);
+files.clear();
+free(cache);
+return 0;
+}
+}
+}
+end_time_read = clock();
+Log("\nClose file: ");	Log((char*)files[files_count].Name.c_str()); Log(" [@ "); Log_llu(end_time_read-start_time_read); Log(" ms]");
+fclose(pFile);
+free(cache);
+}
+end_work_time = clock();
+double thread_time = (double)(end_work_time - start_work_time) / CLOCKS_PER_SEC;
+if (use_debug)
+{
+cls();
+char tbuffer[9];
+_strtime(tbuffer);
+SetConsoleTextAttribute(hConsole, 7);
+printf_s("\r%s Thread \"%s\" in %.1f sec (%.1f MB/s) CPU %.2f%%  %llu\n", tbuffer, path_loc_str.c_str(), thread_time, (double)(files_size_per_thread) / thread_time / 1024 / 1024 / 4096, avg_time_proc * 100 / CLOCKS_PER_SEC / thread_time, ret);
+}
+working_threads--;
+thread_times.push_back(thread_time);
+files.clear();
+}
+
+*/
 
 void GetJSON(char* req) {
 	unsigned BUF_SIZE = 1024;
 	char *buffer = (char*)calloc(BUF_SIZE, 1);
+	if (buffer == NULL) {
+		cls();
+		SetConsoleTextAttribute(hConsole, 12);
+		printf_s("\nError allocating memory\n");
+		SetConsoleTextAttribute(hConsole, 7);
+		exit(-1);
+	}
 	
 	char *find = NULL;
 	unsigned long long msg_len = 0;
@@ -1811,9 +1998,6 @@ void GetJSON(char* req) {
 	struct addrinfo *result = NULL;
 	struct addrinfo hints;
 	SOCKET WalletSocket = INVALID_SOCKET;
-	pthread_mutex_lock(&byteLock);
-	can_connect = 0;
-	pthread_mutex_unlock(&byteLock);
 
 	json = NULL;
 
@@ -1823,7 +2007,7 @@ void GetJSON(char* req) {
 	hints.ai_protocol = IPPROTO_TCP;
 	hints.ai_flags = AI_PASSIVE;
 	char iport[6];
-	_itoa(infoport, iport, 10);
+	_itoa((int)infoport, iport, 10);
 	iResult = getaddrinfo(infoaddr, iport, &hints, &result);
 	if (iResult != 0) {
 		cls();
@@ -1870,53 +2054,80 @@ void GetJSON(char* req) {
 				else
 				{
 					char *tmp_buffer = (char*)calloc(BUF_SIZE, 1);
-					do{
-						memset(tmp_buffer, 0, BUF_SIZE);
-						iResult = recv(WalletSocket, tmp_buffer, BUF_SIZE-1, 0);
-						if (iResult > 0)
-						{
-							msg_len = msg_len + iResult;
-							if (msg_len >= BUF_SIZE - 1)
-							{
-								Log("\nrealloc: ");
-								if ((buffer = (char*)realloc(buffer, msg_len)) == NULL)  Log(" false");
-								buffer[msg_len - iResult] = 0;
-								Log_llu(msg_len);
-							}
-							strcat(buffer, tmp_buffer);
-						}
-					} while (iResult > 0);
-					free(tmp_buffer);
-					if (iResult == SOCKET_ERROR)
-					{
+					if (tmp_buffer == NULL) {
 						cls();
 						SetConsoleTextAttribute(hConsole, 12);
-						printf_s("\rWinner. Get info failed: %ld\n", WSAGetLastError());
+						printf_s("\nError allocating memory\n");
 						SetConsoleTextAttribute(hConsole, 7);
-						Log("\nWinner: Error response: "); Log(DisplayErrorText(WSAGetLastError()));
+						exit(-1);
 					}
-					else 
-					{
-						find = strstr(buffer, "\r\n\r\n");
-						if (find != NULL)
+					
+						do{
+							memset(tmp_buffer, 0, BUF_SIZE);
+							iResult = recv(WalletSocket, tmp_buffer, BUF_SIZE - 1, 0);
+							if (iResult > 0)
+							{
+								msg_len = msg_len + iResult;
+								if (msg_len >= BUF_SIZE - 1)
+								{
+									Log("\nrealloc: ");
+									char* tmp_buffer = buffer;
+									if ((buffer = (char*)realloc(buffer, msg_len)) == NULL)
+									{
+										Log(" ERROR!");
+										buffer = tmp_buffer;
+										break;
+									}
+									else
+									{
+										buffer[msg_len - iResult] = 0;
+										Log_llu(msg_len);
+									}
+								}
+								strcat(buffer, tmp_buffer);
+							}
+						} while (iResult > 0);
+						free(tmp_buffer);
+
+						if (iResult == SOCKET_ERROR)
 						{
-							json = (char*)calloc((msg_len), sizeof(char));
-							sprintf(json, find + 4);
+							cls();
+							SetConsoleTextAttribute(hConsole, 12);
+							printf_s("\rWinner. Get info failed: %ld\n", WSAGetLastError());
+							SetConsoleTextAttribute(hConsole, 7);
+							Log("\nWinner: Error response: "); Log(DisplayErrorText(WSAGetLastError()));
 						}
-						
-					} // recv() != SOCKET_ERROR
+						else
+						{
+							find = strstr(buffer, "\r\n\r\n");
+							if (find != NULL)
+							{
+								json = (char*)calloc((msg_len), sizeof(char));
+								if (json == NULL) {
+									cls();
+									SetConsoleTextAttribute(hConsole, 12);
+									printf_s("\nError allocating memory\n");
+									SetConsoleTextAttribute(hConsole, 7);
+									exit(-1);
+								}
+								sprintf(json, "%s", find + 4);
+							}
+
+						} // recv() != SOCKET_ERROR
+					
 				} //send() != SOCKET_ERROR
 			} // Connect() != SOCKET_ERROR
 		} // socket() != INVALID_SOCKET
 		iResult = closesocket(WalletSocket);
 	} // getaddrinfo() == 0
 	freeaddrinfo(result);
-	pthread_mutex_lock(&byteLock);
-	can_connect = 1;
-	pthread_mutex_unlock(&byteLock);
 }
 
 void GetBlockInfo(unsigned num_block) {
+	pthread_mutex_lock(&connectLock);
+	can_connect = 0;
+	pthread_mutex_unlock(&connectLock);
+
 	char* str_req = NULL;
 	char* generator = NULL;
 	char* generatorRS = NULL;
@@ -1931,6 +2142,13 @@ void GetBlockInfo(unsigned num_block) {
 	// Запрос двух последних блоков из блокчейна
 
 	str_req = (char*)calloc(req_size, 1);
+	if (str_req == NULL) {
+		cls();
+		SetConsoleTextAttribute(hConsole, 12);
+		printf_s("\nError allocating memory\n");
+		SetConsoleTextAttribute(hConsole, 7);
+		exit(-1);
+	}
 	sprintf(str_req, "POST /burst?requestType=getBlocks&firstIndex=%u&lastIndex=%u HTTP/1.0\r\nConnection: close\r\n\r\n", num_block, num_block + 1);
 	GetJSON(str_req);
 	Log("\n getBlocks: ");
@@ -1950,8 +2168,22 @@ void GetBlockInfo(unsigned num_block) {
 				const Value& bl_0 = blocks[SizeType(0)];
 				const Value& bl_1 = blocks[SizeType(1)];
 				generatorRS = (char*)calloc(strlen(bl_0["generatorRS"].GetString()) + 1, 1);
+				if (generatorRS == NULL) {
+					cls();
+					SetConsoleTextAttribute(hConsole, 12);
+					printf_s("\nError allocating memory\n");
+					SetConsoleTextAttribute(hConsole, 7);
+					exit(-1);
+				}
 				strcpy(generatorRS, bl_0["generatorRS"].GetString());
 				generator = (char*)calloc(strlen(bl_0["generator"].GetString()) + 1, 1);
+				if (generator == NULL) {
+					cls();
+					SetConsoleTextAttribute(hConsole, 12);
+					printf_s("\nError allocating memory\n");
+					SetConsoleTextAttribute(hConsole, 7);
+					exit(-1);
+				}
 				strcpy(generator, bl_0["generator"].GetString());
 				last_block_height = bl_0["height"].GetUint();
 				timestamp0 = bl_0["timestamp"].GetUint64();
@@ -1959,121 +2191,172 @@ void GetBlockInfo(unsigned num_block) {
 			}
 		}
 		else Log("\n- error parsing JSON getBlocks");
-	} 
+	}
 	free(str_req);
-	free(json);
+	if (json != NULL) free(json);
 	if ((generator != NULL) && (generatorRS != NULL) && (timestamp0 != 0) && (timestamp1 != 0))
-		if (last_block_height == height - 1)
+	if (last_block_height == height - 1)
+	{
+		// Запрос данных аккаунта
+
+		str_req = (char*)calloc(req_size, 1);
+		if (str_req == NULL) {
+			cls();
+			SetConsoleTextAttribute(hConsole, 12);
+			printf_s("\nError allocating memory\n");
+			SetConsoleTextAttribute(hConsole, 7);
+			exit(-1);
+		}
+		sprintf(str_req, "POST /burst?requestType=getAccount&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", generator);
+		GetJSON(str_req);
+		Log("\n getAccount: ");
+		//Log(json);
+		if (json == NULL)
 		{
-				// Запрос данных аккаунта
-			
-			str_req = (char*)calloc(req_size, 1);
-				sprintf(str_req, "POST /burst?requestType=getAccount&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", generator);
+			Log("\n- error in message from pool (getAccount)\n");
+		}
+		else
+		{
+			rapidjson::Document doc_acc;
+			if (doc_acc.Parse<0>(json).HasParseError() == false)
+			{
+				if (doc_acc.HasMember("name"))
+				{
+					name = (char*)calloc(strlen(doc_acc["name"].GetString()) + 1, 1);
+					if (name == NULL) {
+						cls();
+						SetConsoleTextAttribute(hConsole, 12);
+						printf_s("\nError allocating memory\n");
+						SetConsoleTextAttribute(hConsole, 7);
+						exit(-1);
+					}
+					strcpy(name, doc_acc["name"].GetString());
+				}
+			}
+			else Log("\n- error parsing JSON getAccount");
+		}
+		free(str_req);
+		if (json != NULL) free(json);
+
+		// Запрос RewardAssighnment по данному аккаунту
+
+		str_req = (char*)calloc(req_size, 1);
+		if (str_req == NULL) {
+			cls();
+			SetConsoleTextAttribute(hConsole, 12);
+			printf_s("\nError allocating memory\n");
+			SetConsoleTextAttribute(hConsole, 7);
+			exit(-1);
+		}
+		sprintf(str_req, "POST /burst?requestType=getRewardRecipient&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", generator);
+		GetJSON(str_req);
+
+		Log("\n getRewardRecipient: ");
+		//Log(json);
+		if (json == NULL)
+		{
+			Log("\n- error in message from pool (getRewardRecipient)\n");
+		}
+		else
+		{
+			rapidjson::Document doc_reward;
+			if (doc_reward.Parse<0>(json).HasParseError() == false)
+			{
+				if (doc_reward.HasMember("rewardRecipient"))
+				{
+					rewardRecipient = (char*)calloc(strlen(doc_reward["rewardRecipient"].GetString()) + 1, 1);
+					if (rewardRecipient == NULL) {
+						cls();
+						SetConsoleTextAttribute(hConsole, 12);
+						printf_s("\nError allocating memory\n");
+						SetConsoleTextAttribute(hConsole, 7);
+						exit(-1);
+					}
+					strcpy(rewardRecipient, doc_reward["rewardRecipient"].GetString());
+				}
+			}
+			else Log("\n-! error parsing JSON getRewardRecipient");
+		}
+		free(str_req);
+		if (json != NULL) free(json);
+		//Log(rewardRecipient);
+
+		if (rewardRecipient != NULL)
+		{
+			// Если rewardRecipient != generator, то майнит на пул, узнаём имя пула...
+			if (strcmp(generator, rewardRecipient) != 0)
+			{
+				// Запрос данных аккаунта пула
+				str_req = (char*)calloc(req_size, 1);
+				if (str_req == NULL) {
+					cls();
+					SetConsoleTextAttribute(hConsole, 12);
+					printf_s("\nError allocating memory\n");
+					SetConsoleTextAttribute(hConsole, 7);
+					exit(-1);
+				}
+				sprintf(str_req, "POST /burst?requestType=getAccount&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", rewardRecipient);
 				GetJSON(str_req);
 				Log("\n getAccount: ");
 				//Log(json);
 				if (json == NULL)
 				{
-					Log("\n- error in message from pool (getAccount)\n");
+					Log("\n- error in message from pool (pool getAccount)\n");
 				}
 				else
 				{
-					rapidjson::Document doc_acc;
-					if (doc_acc.Parse<0>(json).HasParseError() == false)
+					rapidjson::Document doc_pool;
+					if (doc_pool.Parse<0>(json).HasParseError() == false)
 					{
-						if (doc_acc.HasMember("name"))
-						{
-							name = (char*)calloc(strlen(doc_acc["name"].GetString()) + 1, 1);
-							strcpy(name, doc_acc["name"].GetString());
+						pool_accountRS = (char*)calloc(strlen(doc_pool["accountRS"].GetString()) + 1, 1);
+						if (pool_accountRS == NULL) {
+							cls();
+							SetConsoleTextAttribute(hConsole, 12);
+							printf_s("\nError allocating memory\n");
+							SetConsoleTextAttribute(hConsole, 7);
+							exit(-1);
 						}
-					}
-					else Log("\n- error parsing JSON getAccount");
-				}
-				free(str_req);
-				free(json);
-
-				// Запрос RewardAssighnment по данному аккаунту
-				
-				str_req = (char*)calloc(req_size, 1);
-				sprintf(str_req, "POST /burst?requestType=getRewardRecipient&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", generator);
-				GetJSON(str_req);
-				
-				Log("\n getRewardRecipient: ");
-				//Log(json);
-				if (json == NULL)
-				{
-					Log("\n- error in message from pool (getRewardRecipient)\n");
-				}
-				else
-				{
-					rapidjson::Document doc_reward;
-					if (doc_reward.Parse<0>(json).HasParseError() == false)
-					{
-						if (doc_reward.HasMember("rewardRecipient"))
+						strcpy(pool_accountRS, doc_pool["accountRS"].GetString());
+						if (doc_pool.HasMember("name"))
 						{
-							rewardRecipient = (char*)calloc(strlen(doc_reward["rewardRecipient"].GetString()) + 1, 1);
-							strcpy(rewardRecipient, doc_reward["rewardRecipient"].GetString());
-						}
-					}
-					else Log("\n-! error parsing JSON getRewardRecipient");
-				}
-				free(str_req);
-				free(json);
-				//Log(rewardRecipient);
-
-				if (rewardRecipient != NULL)
-				{
-					// Если rewardRecipient != generator, то майнит на пул, узнаём имя пула...
-					if (strcmp(generator, rewardRecipient) != 0)
-					{
-						// Запрос данных аккаунта пула
-						
-						str_req = (char*)calloc(req_size, 1);
-						sprintf(str_req, "POST /burst?requestType=getAccount&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", rewardRecipient);
-						GetJSON(str_req);
-						Log("\n getAccount: ");
-						//Log(json);
-						if (json == NULL)
-						{
-							Log("\n- error in message from pool (pool getAccount)\n");
-						}
-						else
-						{
-							rapidjson::Document doc_pool;
-							if (doc_pool.Parse<0>(json).HasParseError() == false)
-							{
-								pool_accountRS = (char*)calloc(strlen(doc_pool["accountRS"].GetString()) + 1, 1);
-								strcpy(pool_accountRS, doc_pool["accountRS"].GetString());
-								if (doc_pool.HasMember("name"))
-								{
-									pool_name = (char*)calloc(strlen(doc_pool["name"].GetString()) + 1, 1);
-									strcpy(pool_name, doc_pool["name"].GetString());
-								}
+							pool_name = (char*)calloc(strlen(doc_pool["name"].GetString()) + 1, 1);
+							if (pool_name == NULL) {
+								cls();
+								SetConsoleTextAttribute(hConsole, 12);
+								printf_s("\nError allocating memory\n");
+								SetConsoleTextAttribute(hConsole, 7);
+								exit(-1);
 							}
-							else Log("\n- error parsing JSON pool getAccount");
+							strcpy(pool_name, doc_pool["name"].GetString());
 						}
-						free(str_req);
-						free(json);
 					}
+					else Log("\n- error parsing JSON pool getAccount");
 				}
-
-
-				SetConsoleTextAttribute(hConsole, 11);
-				if (name != NULL) printf_s("\r\nWinner: %llus by %s (%s)", timestamp0 - timestamp1, generatorRS + 6, name);
-				else printf_s("\r\nWinner: %llus by %s", timestamp0 - timestamp1, generatorRS + 6);
-				if (pool_accountRS != NULL)
-				{
-					if (pool_name != NULL) printf_s("\r\nWinner's pool: %s (%s)", pool_accountRS + 6, pool_name);
-					else printf_s("\r\nWinner's pool: %s", pool_accountRS + 6);
-				}
-				SetConsoleTextAttribute(hConsole, 7);
+				free(str_req);
+				if (json != NULL) free(json);
+			}
 		}
-		else
+
+
+		SetConsoleTextAttribute(hConsole, 11);
+		if (name != NULL) printf_s("\r\nWinner: %llus by %s (%s)", timestamp0 - timestamp1, generatorRS + 6, name);
+		else printf_s("\r\nWinner: %llus by %s", timestamp0 - timestamp1, generatorRS + 6);
+		if (pool_accountRS != NULL)
 		{
-			SetConsoleTextAttribute(hConsole, 11);
-			printf_s("\r\nWinner: no info yet");
-			SetConsoleTextAttribute(hConsole, 7);
+			if (pool_name != NULL) printf_s("\r\nWinner's pool: %s (%s)", pool_accountRS + 6, pool_name);
+			else printf_s("\r\nWinner's pool: %s", pool_accountRS + 6);
 		}
+		SetConsoleTextAttribute(hConsole, 7);
+	}
+	else
+	{
+		SetConsoleTextAttribute(hConsole, 11);
+		printf_s("\r\nWinner: no info yet");
+		SetConsoleTextAttribute(hConsole, 7);
+	}
+	pthread_mutex_lock(&connectLock);
+	can_connect = 1;
+	pthread_mutex_unlock(&connectLock);
 	free(generatorRS);
 	free(generator);
 	free(name);
@@ -2085,14 +2368,29 @@ void GetBlockInfo(unsigned num_block) {
 
 void pollLocal(void) {
 	char *buffer = (char*)calloc(1000, 1);
+	if (buffer == NULL) {
+		cls();
+		SetConsoleTextAttribute(hConsole, 12);
+		printf_s("\nError allocating memory\n");
+		SetConsoleTextAttribute(hConsole, 7);
+		exit(-1);
+	}
 	char *tmp_buffer = (char*)calloc(1000, 1);
+	if (tmp_buffer == NULL) {
+		cls();
+		SetConsoleTextAttribute(hConsole, 12);
+		printf_s("\nError allocating memory\n");
+		SetConsoleTextAttribute(hConsole, 7);
+		exit(-1);
+	}
 	int iResult;
 	struct addrinfo *result = NULL;
 	struct addrinfo hints;
 	SOCKET UpdaterSocket = INVALID_SOCKET;
-	pthread_mutex_lock(&byteLock);
+
+	pthread_mutex_lock(&connectLock);
 	can_connect = 0;
-	pthread_mutex_unlock(&byteLock);
+	pthread_mutex_unlock(&connectLock);
 
 	ZeroMemory(&hints, sizeof(hints));
 	hints.ai_family = AF_INET; //AF_UNSPEC;  // использовать IPv4 или IPv6, нам неважно
@@ -2100,7 +2398,7 @@ void pollLocal(void) {
 	hints.ai_protocol = IPPROTO_TCP;
 	hints.ai_flags = AI_PASSIVE;
 	char uport[6];
-	_itoa(updaterport, uport, 10);
+	_itoa((int)updaterport, uport, 10);
 	iResult = getaddrinfo(updateraddr, uport, &hints, &result);
 	if (iResult != 0) {
 		cls();
@@ -2130,8 +2428,8 @@ void pollLocal(void) {
 				all_send_msg++;
 				if (all_send_msg >= 1000) all_send_msg = 0;
 				int bytes;
-				if (miner_mode == 2) bytes = sprintf(buffer, "GET /pool/getMiningInfo HTTP/1.0\r\nHost: %s:%i\r\nContent-Type: text/plain;charset=UTF-8\r\n\r\n", nodeaddr, nodeport);
-				else bytes = sprintf(buffer, "POST /burst?requestType=getMiningInfo HTTP/1.0\r\nConnection: close\r\n\r\n");
+				if (miner_mode == 2) bytes = sprintf_s(buffer, _msize(buffer), "GET /pool/getMiningInfo HTTP/1.0\r\nHost: %s:%llu\r\nContent-Type: text/plain;charset=UTF-8\r\n\r\n", nodeaddr, nodeport);
+				else bytes = sprintf_s(buffer, _msize(buffer), "POST /burst?requestType=getMiningInfo HTTP/1.0\r\nConnection: close\r\n\r\n");
 
 				iResult = send(UpdaterSocket, buffer, bytes, 0);
 				if (iResult == SOCKET_ERROR)
@@ -2150,7 +2448,7 @@ void pollLocal(void) {
 					if (all_rcv_msg >= 1000) all_rcv_msg = 0;
 
 					memset(buffer, 0, 1000);
-					unsigned resp = 0;
+					size_t resp = 0;
 					do{
 						memset(tmp_buffer, 0, 1000);
 						iResult = recv(UpdaterSocket, tmp_buffer, 999, 0);
@@ -2209,19 +2507,19 @@ void pollLocal(void) {
 										if (endBaseTarget == NULL) endBaseTarget = strpbrk(rtargetDeadline, "}");
 										endBaseTarget[0] = 0;
 
-										targetDeadlineInfo = strtoull(rtargetDeadline, 0, 10);
+										targetDeadlineInfo = _strtoui64(rtargetDeadline, 0, 10);
 										Log("\ntargetDeadlineInfo: "), Log_llu(targetDeadlineInfo);
 									}
 
-									unsigned long long  heightInfo = strtoull(rheight, 0, 10);
+									unsigned long long  heightInfo = _strtoui64(rheight, 0, 10);
 									//if (heightInfo > height)
 									{
 										height = heightInfo;
-										baseTarget = strtoull(rbaseTarget, 0, 10);
+										baseTarget = _strtoui64(rbaseTarget, 0, 10);
 										// Parse
 										strcpy(str_signature, generationSignature);
 										//str_signature[65] = 0;
-										if (xstr2strr(signature, 33, generationSignature) < 0) 
+										if (xstr2strr(signature, 33, generationSignature) == 0) 
 											Log("\n*! Node response: Error decoding generationsignature\n");
 									}
 								}
@@ -2235,9 +2533,9 @@ void pollLocal(void) {
 		}
 		freeaddrinfo(result);
 	}
-	pthread_mutex_lock(&byteLock);
+	pthread_mutex_lock(&connectLock);
 	can_connect = 1;
-	pthread_mutex_unlock(&byteLock);
+	pthread_mutex_unlock(&connectLock);
 	
 	free(buffer);
 	free(tmp_buffer);
@@ -2245,12 +2543,15 @@ void pollLocal(void) {
 
 
 void *updater_i(void * path) {
-	do{
-		if ((can_connect == 1) && (strlen(updateraddr) > 3) && (updaterport > 0)) pollLocal();
-		Sleep(update_interval);
-	} while (true);
-	Log("\nС хуя ли?");
-	return path;
+	if ((updaterport > 0) && (strlen(updateraddr) > 3))
+	{
+		do{
+			if (can_connect == 1) pollLocal();
+			Sleep((DWORD)update_interval);
+		} while (true);
+	}
+	Log("\nERROR in UpdaterAddr or UpdaterPort");
+	exit(2);
 }
  
 
@@ -2258,8 +2559,8 @@ void hostname_to_ip(char * in, char* out)
 {
     struct hostent *remoteHost = NULL;
     struct in_addr addr;
-    int i = 0;
-	DWORD dwError;
+    size_t i = 0;
+	
 
 	if ((remoteHost = gethostbyname(in)) != NULL)
 	{
@@ -2312,7 +2613,7 @@ void GetCPUInfo(void)
 }
 
 
-int ClearMem(void)
+NTSTATUS ClearMem(void)
 {
 	
 		HANDLE hProcess = GetCurrentProcess();
@@ -2343,7 +2644,7 @@ int ClearMem(void)
 		NTSTATUS(WINAPI *NtQuerySystemInformation)(INT, PVOID, ULONG, PULONG) = (NTSTATUS(WINAPI *)(INT, PVOID, ULONG, PULONG))GetProcAddress(ntdll, "NtQuerySystemInformation");
 		if (!NtSetSystemInformation || !NtQuerySystemInformation)
 		{
-			fprintf(stderr, "\nCan't get function addresses, wrong Windows version?\n");
+			printf_s("\nCan't get function addresses, wrong Windows version?\n");
 			return 0;
 		}
 
@@ -2355,13 +2656,13 @@ int ClearMem(void)
 			);
 		if (status == STATUS_PRIVILEGE_NOT_HELD)
 		{
-			fprintf(stderr, "\nInsufficient privileges to execute the memory list command\n");
+			printf_s("\nInsufficient privileges to execute the memory list command\n");
 		}
-		else if (!NT_SUCCESS(status))
+		else if (status > 0)
 		{
-			fprintf(stderr, "\nUnable to execute the memory list command %p\n", status);
+			printf_s("\nUnable to execute the memory list command %x\n", status);
 		}
-		return NT_SUCCESS(status);
+		return status;
 	
 }
 
@@ -2598,248 +2899,307 @@ int GPU(void)
 #endif
 int main(int argc, char **argv) {
 
-		pthread_t worker[MaxTreads];
-		pthread_t sender;
-		pthread_t proxy;
-		pthread_t updater;
-		unsigned i = 0;
-		char tbuffer[9];
-		bool cleared = false;
+	std::vector<pthread_t> worker;
+	pthread_t sender;
+	pthread_t proxy;
+	pthread_t updater;
+	size_t i = 0;
+	char tbuffer[9];
+	bool cleared = false;
 
-		hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-		
+	hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	//SetProcessAffinityMask(GetCurrentProcess(), 1);
+	shares.reserve(20);
+	bests.reserve(2);
 
+	SetConsoleTextAttribute(hConsole, 12);
+	printf_s("\nBURST miner, %s", version);
+	SetConsoleTextAttribute(hConsole, 4);
+	printf_s("\nProgramming: dcct (Linux) & Blago (Windows)\n");
+	SetConsoleTextAttribute(hConsole, 7);
+
+	//		GPU();
+
+
+	size_t cwdsz = GetCurrentDirectoryA(0, 0);
+	p_minerPath = (char*)calloc(cwdsz + 2, 1);
+	if (p_minerPath == NULL) {
+		cls();
 		SetConsoleTextAttribute(hConsole, 12);
-		printf_s("\nBURST miner, %s", version);
-		SetConsoleTextAttribute(hConsole, 4); 
-		printf_s("\nProgramming: dcct (Linux) & Blago (Windows)\n");
+		printf_s("\nError allocating memory\n");
 		SetConsoleTextAttribute(hConsole, 7);
+		exit(-1);
+	}
+	GetCurrentDirectoryA(DWORD(cwdsz), LPSTR(p_minerPath));
+	strcat(p_minerPath, "\\");
 
-//		GPU();
-				
-		DWORD cwdsz = GetCurrentDirectoryA(0, 0);
-		p_minerPath = (char*)calloc(cwdsz+2, 1);
-		GetCurrentDirectoryA(cwdsz, LPSTR(p_minerPath));
-		strcat(p_minerPath, "\\");
-		
-		char* conf_filename = (char*)calloc(MAX_PATH, 1);
-		if((argc >= 2) && (strcmp(argv[1], "-config")==0)){
-			if(strstr(argv[2], ":\\")) sprintf(conf_filename,"%s", argv[2]);
-			else sprintf(conf_filename,"%s%s", p_minerPath, argv[2]);
-		}
-		else sprintf(conf_filename,"%s%s", p_minerPath, "miner.conf");
+	char* conf_filename = (char*)calloc(MAX_PATH, 1);
+	if (conf_filename == NULL) {
+		cls();
+		SetConsoleTextAttribute(hConsole, 12);
+		printf_s("\nError allocating memory\n");
+		SetConsoleTextAttribute(hConsole, 7);
+		exit(-1);
+	}
+	if ((argc >= 2) && (strcmp(argv[1], "-config") == 0)){
+		if (strstr(argv[2], ":\\")) sprintf(conf_filename, "%s", argv[2]);
+		else sprintf(conf_filename, "%s%s", p_minerPath, argv[2]);
+	}
+	else sprintf(conf_filename, "%s%s", p_minerPath, "miner.conf");
 
-		load_config(conf_filename);
-		free(conf_filename);
-		Log("\nMiner path: "); Log(p_minerPath);
+	load_config(conf_filename);
+	free(conf_filename);
+	Log("\nMiner path: "); Log(p_minerPath);
 
-		GetCPUInfo();
+	GetCPUInfo();
 
-		if(miner_mode == 0) pass = GetPass(p_minerPath);
+	if (miner_mode == 0) GetPass(p_minerPath);
 
-		// адрес и порт сервера
-		Log("\nSearching servers...");
-		WSADATA wsaData;
-		
-		if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-			printf_s("WSAStartup failed\n");
+	// адрес и порт сервера
+	Log("\nSearching servers...");
+	WSADATA wsaData;
+
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+		printf_s("WSAStartup failed\n");
+		exit(-1);
+	}
+
+	char* updaterip = (char*)calloc(50, 1);
+	if (updaterip == NULL) {
+		cls();
+		SetConsoleTextAttribute(hConsole, 12);
+		printf_s("\nError allocating memory\n");
+		SetConsoleTextAttribute(hConsole, 7);
+		exit(-1);
+	}
+	char* nodeip = (char*)calloc(50, 1);
+	if (nodeip == NULL) {
+		cls();
+		SetConsoleTextAttribute(hConsole, 12);
+		printf_s("\nError allocating memory\n");
+		SetConsoleTextAttribute(hConsole, 7);
+		exit(-1);
+	}
+	SetConsoleTextAttribute(hConsole, 11);
+	hostname_to_ip(nodeaddr, nodeip);
+	printf_s("Pool address    %s (ip %s:%Iu)\n", nodeaddr, nodeip, nodeport);
+
+	if (strlen(updateraddr) > 3) hostname_to_ip(updateraddr, updaterip);
+	printf_s("Updater address %s (ip %s:%Iu)\n", updateraddr, updaterip, updaterport);
+
+	SetConsoleTextAttribute(hConsole, 7);
+	free(updaterip);
+	free(nodeip);
+
+
+	// обнуляем сигнатуру
+	memset(oldSignature, 0, 33);
+	memset(signature, 0, 33);
+
+	// Инфа по файлам
+	SetConsoleTextAttribute(hConsole, 15);
+	printf_s("Using plots:\n");
+	SetConsoleTextAttribute(hConsole, 7);
+	total_size = 0;
+	for (i = 0; i < paths_num; i++)
+	{
+		std::vector<t_files> files;
+		size_t count = GetFiles(paths_dir[i], &files);
+		unsigned long long tot_size = 0;
+		for (size_t j = 0; j < count; j++) 	tot_size += files[j].Size;
+		SetConsoleTextAttribute(hConsole, 7);
+		printf_s("%s\tfiles: %u\t size: %llu Gb\n", (char*)paths_dir[i].c_str(), count, tot_size / 1024 / 1024 / 1024);
+		total_size += tot_size;
+		files.clear();
+	}
+	
+	
+
+	SetConsoleTextAttribute(hConsole, 15);
+	printf_s("TOTAL: %llu Gb", total_size / 1024 / 1024 / 1024);
+	SetConsoleTextAttribute(hConsole, 7);
+
+	// Run Proxy
+	if (enable_proxy)
+	{
+		if (pthread_create(&proxy, NULL, proxy_i, p_minerPath))
+		{
+			SetConsoleTextAttribute(hConsole, 12);
+			printf_s("\nError creating thread. Out of memory?\n");
+			SetConsoleTextAttribute(hConsole, 7);
 			exit(-1);
 		}
-		
-		char* updaterip = (char*)calloc(50, 1);
-		char* nodeip = (char*)calloc(50, 1);
-		SetConsoleTextAttribute(hConsole, 11);
-		hostname_to_ip(nodeaddr, nodeip);
-		printf_s("Pool address    %s (ip %s:%u)\n", nodeaddr, nodeip, nodeport);
-
-		if (strlen(updateraddr) > 3) hostname_to_ip(updateraddr, updaterip); 
-		printf_s("Updater address %s (ip %s:%u)\n", updateraddr, updaterip, updaterport);
-
+		SetConsoleTextAttribute(hConsole, 0x9F);
+		printf_s("\nProxy thread started\n");
 		SetConsoleTextAttribute(hConsole, 7);
-		free(updaterip);
-		free(nodeip);
+	}
 
-		
-        // обнуляем сигнатуру
-		memset(oldSignature, 0, 33);
-		memset(signature, 0, 33);
- 
- 		// Инфа по файлам
-		SetConsoleTextAttribute(hConsole, 15);
-		printf_s("Using plots:\n");
+	Log("\nUpdate mining info");
+
+	// Run updater;
+	if (pthread_create(&updater, NULL, updater_i, p_minerPath))
+	{
+		SetConsoleTextAttribute(hConsole, 12);
+		printf_s("\nError creating thread. Out of memory?\n");
 		SetConsoleTextAttribute(hConsole, 7);
-		total_size = 0;
+		exit(-1);
+	}
+	Log("\nUpdater thread started");
+
+	do{ ; } while (height == 0);
+
+	// Run Sender
+	if (pthread_create(&sender, NULL, send_i, p_minerPath))
+	{
+		SetConsoleTextAttribute(hConsole, 12);
+		printf_s("\nError creating thread. Out of memory?\n");
+		SetConsoleTextAttribute(hConsole, 7);
+		exit(-1);
+	}
+
+	// Main loop
+	for (;;) {
+
+		working_threads = 0;
+
+		char scoopgen[40];
+		memmove(scoopgen, signature, 32);
+
+		char *mov = (char*)&height;
+
+		scoopgen[32] = mov[7]; scoopgen[33] = mov[6]; scoopgen[34] = mov[5]; scoopgen[35] = mov[4]; scoopgen[36] = mov[3]; scoopgen[37] = mov[2]; scoopgen[38] = mov[1]; scoopgen[39] = mov[0];
+
+		sph_shabal_context x;
+		sph_shabal256_init(&x);
+		sph_shabal256(&x, (const unsigned char*)(const unsigned char*)scoopgen, 40);
+		char xcache[32];
+		sph_shabal256_close(&x, xcache);
+
+		scoop = (((unsigned char)xcache[31]) + 256 * (unsigned char)xcache[30]) % 4096;
+
+		deadline = 0;
+		bytesRead = 0;
+
+		Log("\n------------------------    New block: "); Log_llu(height);
+
+		_strtime(tbuffer);
+		printf_s("\n");
+		SetConsoleTextAttribute(hConsole, 31);
+		printf_s("\r\n%s New block %llu, baseTarget %llu, netDiff %llu Tb          \r\n", tbuffer, height, baseTarget, 4398046511104 / 240 / baseTarget);
+		SetConsoleTextAttribute(hConsole, 7);
+		if (miner_mode == 0) printf_s("*** Chance to find a block: %.5f%%\n", ((double)(total_size / 1024 / 1024 * 100 * 60)*(double)baseTarget) / 1152921504606846976);
+
+		for (i = 0; i < sessions.size(); i++) closesocket(sessions.at(i).Socket);
+		sessions.clear();
+
+		shares.clear();
+		bests.clear();
+		
+		if ((targetDeadlineInfo > 0) && (targetDeadlineInfo < my_target_deadline)){
+			Log("\nUpdate targetDeadline: "); Log_llu(targetDeadlineInfo);
+		}
+		else {
+			targetDeadlineInfo = my_target_deadline;
+			//Log("\ntargetDeadline not found, targetDeadline: "); Log_llu(targetDeadlineInfo);
+		}
+
 		for (i = 0; i < paths_num; i++)
 		{
-			t_files *files = (t_files*)calloc(MAX_FILES, sizeof(t_files));
-			int count = GetFiles(paths_dir[i], files);
-			unsigned long long tot_size = 0;
-			for (int j = 0; j < count; j++) 	tot_size += files[j].Size;
-			SetConsoleTextAttribute(hConsole, 7);
-			printf_s("%s\tfiles: %u\t size: %llu Gb\n", paths_dir[i], count, tot_size / 1024 / 1024 / 1024);
-			total_size += tot_size;
-			free(files);
-		}
-		SetConsoleTextAttribute(hConsole, 15);
-		printf_s("TOTAL: %llu Gb", total_size/1024/1024/1024);
-		SetConsoleTextAttribute(hConsole, 7);
-
-		// Run Proxy
-		if (enable_proxy)
-		{
-			if (pthread_create(&proxy, NULL, proxy_i, p_minerPath))
+			worker.push_back(pthread_t());
+			if (pthread_create(&worker[i], NULL, work_i, (char*)paths_dir[i].c_str()))
 			{
-				SetConsoleTextAttribute(hConsole, 12);
-				printf_s("\nError creating thread. Out of memory?\n");
-				SetConsoleTextAttribute(hConsole, 7);
+				printf_s("\nError creating thread. Out of memory? Try lower stagger size\n");
+				Log("\n! Error thread starting: ");	Log_u(i);
 				exit(-1);
 			}
-			SetConsoleTextAttribute(hConsole, 0x9F);
-			printf_s("\nProxy thread started\n");
-			SetConsoleTextAttribute(hConsole, 7);
 		}
 
-		Log("\nUpdate mining info");
-		
-        // Run updater;
-		if (pthread_create(&updater, NULL, updater_i, p_minerPath))
+
+		memmove(oldSignature, signature, 32);
+		unsigned long long old_baseTarget = baseTarget;
+		unsigned long long old_height = height;
+
+		// Wait until signature changed
+		while (memcmp(signature, oldSignature, 32) == 0)
 		{
-			SetConsoleTextAttribute(hConsole, 12);
-			printf_s("\nError creating thread. Out of memory?\n");
+			cls();
+			SetConsoleTextAttribute(hConsole, 14);
+			if (deadline == 0) printf_s("\r%llu%% %llu GB. no deadline\tsdl:%llu(%llu) cdl:%llu(%llu) ss:%llu(%llu) rs:%llu(%llu)", (bytesRead * 4096 * 100 / total_size), (bytesRead / (256 * 1024)), all_send_dl, err_send_dl, all_rcv_dl, err_rcv_dl, all_send_msg, err_send_msg, all_rcv_msg, err_rcv_msg);
+			else              printf_s("\r%llu%% %llu GB. DL=%llu\tsdl:%llu(%llu) cdl:%llu(%llu) ss:%llu(%llu) rs:%llu(%llu)", (bytesRead * 4096 * 100 / total_size), (bytesRead / (256 * 1024)), deadline, all_send_dl, err_send_dl, all_rcv_dl, err_rcv_dl, all_send_msg, err_send_msg, all_rcv_msg, err_rcv_msg);
 			SetConsoleTextAttribute(hConsole, 7);
-			exit(-1);
+			Sleep(18);
+			if ((working_threads == 0) && (cleared == false) && (use_clean_mem == true))
+			{
+				//Sleep(100);
+				ClearMem();
+				cleared = true;
+				Log("\nCleanup memory ");
+			}
 		}
-		Log("\nUpdater thread started");
-		
-		do{ ; } while (height == 0);
-		
-		// Run Sender
-		if(pthread_create(&sender, NULL, send_i, p_minerPath)) 
+
+		// Tell all threads to stop:
+		stopThreads = 1;
+
+		if (show_winner)
 		{
-			SetConsoleTextAttribute(hConsole, 12);
-			printf_s("\nError creating thread. Out of memory?\n");
-			SetConsoleTextAttribute(hConsole, 7);
-            exit(-1);
-        }
-		
-		// Main loop
-		for(;;) {
-	
-				working_threads = 0;
+			size_t counter = 0;
+			while ((can_connect == 0) && (counter < 100))
+			{
+				Sleep(10);
+				counter++;
+			}
+			if (counter < 100) GetBlockInfo(0);
+		}
 
-                // Get scoop:
-			    //Log("\nCalculate scoop (Shabal) for \"New block\"");
-                char scoopgen[40];
-                memmove(scoopgen, signature, 32);
- 
-                char *mov = (char*)&height;
- 
-                scoopgen[32] = mov[7]; scoopgen[33] = mov[6]; scoopgen[34] = mov[5]; scoopgen[35] = mov[4]; scoopgen[36] = mov[3]; scoopgen[37] = mov[2]; scoopgen[38] = mov[1]; scoopgen[39] = mov[0];
-
-				sph_shabal_context x;
-				sph_shabal256_init(&x);
-				sph_shabal256(&x, (const unsigned char*)(const unsigned char*)scoopgen, 40);
-				char xcache[32];
-				sph_shabal256_close(&x, xcache);
-
-				scoop = (((unsigned char)xcache[31]) + 256 * (unsigned char)xcache[30]) % 4096;
- 
- 				deadline = 0;
-				bytesRead = 0;
- 
-				Log("\n------------------------    New block: "); Log_llu(height);
-
-				_strtime(tbuffer);
-				printf_s("\n");
-				SetConsoleTextAttribute(hConsole, 31);
-				printf_s("\r\n%s New block %llu, baseTarget %llu, netDiff %llu Tb          \r\n", tbuffer, height, baseTarget, 4398046511104 / 240 / baseTarget);
+		for (i = 0; i < paths_num; i++)
+		{
+			Log("\nInterrupt thread: ");	Log_u(i);
+			if (pthread_join(worker[i], NULL) > 0)
+			{
+				cls();
+				SetConsoleTextAttribute(hConsole, 12);
+				printf_s("\r Error stoping thread #%Iu of %Iu", i, paths_num);
 				SetConsoleTextAttribute(hConsole, 7);
-				if (miner_mode == 0) printf_s("*** Chance to find a block: %.5f%%\n", ((double)(total_size / 1024 / 1024 * 100 * 60)*(double)baseTarget) / 1152921504606846976);
-				if (num_shares > sent_num_shares) printf_s("\rshares lost due to new block\n");
-				for (i = 0; i < sessions.size(); i++) closesocket(sessions.at(i).Socket);
-				sessions.clear();
-				num_shares = 0;  // все шары, которые неуспели отправить сгорают
-				sent_num_shares = 0;
-				memset(&shares[0], 0, sizeof(t_shares)* 100000 * MaxTreads); // Обнуляем буфер шар
-				memset(&bests[0], 0, sizeof(t_best)*MaxAccounts); // Обнуляем буфер шар
+				Log("\n! Error thread stoping: ");	Log_u(i);
+			}
+		}
+		stopThreads = 0;
+		// clearmem for fast blocks
+		if ((cleared == false) && (use_clean_mem == true))
+		{
+			ClearMem();
+			Log("\nCleanup memory after fast block");
+		}
+		cleared = false;
 
+		Log("\nWriting info to stat-log.csv ");
+		fopen_s(&fp_Stat, "stat-log.csv", "at+");
+		if (fp_Stat != NULL)
+		{
+			for (size_t a = 0; a < bests.size(); a++) if ((bests[a].account_id != 0) && (bests[a].DL != 0)) fprintf_s(fp_Stat, "%llu,%llu,%llu,%llu\n", bests[a].account_id, old_height, old_baseTarget, bests[a].DL);
+			fclose(fp_Stat);
+		}
+		
+//		fopen_s(&fp_Time, "debug-log.csv", "at+");
+//		if (fp_Time != NULL)
+//		{
+//			for (size_t a = 0; a < thread_times.size(); a++)  fprintf_s(fp_Time, "%.2f;", thread_times[a]);
+//			fprintf_s(fp_Time, "\n");
+//			thread_times.clear();
+//			fclose(fp_Time);
+//		}
+	}
+	//pthread_join(sender, NULL); Добавить в сендер условие прекращения работы
+	worker.clear();
+	worker.~vector();
+	paths_dir.clear();
+	paths_dir.~vector();
+	bests.clear();
+	bests.~vector();
+	shares.clear();
+	shares.~vector();
+	free(p_minerPath);
 
-				//unsigned long long targetDeadline;
-				if ((targetDeadlineInfo > 0) && (targetDeadlineInfo < my_target_deadline)){
-					Log("\nUpdate targetDeadline: "); Log_llu(targetDeadlineInfo);
-				}
-				else {
-					targetDeadlineInfo = my_target_deadline;
-					//Log("\ntargetDeadline not found, targetDeadline: "); Log_llu(targetDeadlineInfo);
-				}
-				for(unsigned a=0; a < MaxAccounts; a++)
-					bests[a].targetDeadline = targetDeadlineInfo;
-				
-
-				for(i = 0; i < paths_num; i++) 
-				{
-					if(pthread_create(&worker[i], NULL, work_i, &threads[i])) 
-					{
-						printf_s("\nError creating thread. Out of memory? Try lower stagger size\n");
-						Log("\n! Error thread starting: ");	Log_u(i);
-                        exit(-1);
-                    }
-					working_threads++;
-				}
-
-
-                memmove(oldSignature, signature, 32);
-				unsigned long long old_baseTarget = baseTarget;
-				unsigned long long old_height = height;
- 
-                // Wait until block changes:
-                do {
-                        cls();
-                        SetConsoleTextAttribute(hConsole, 14);
-						if(deadline == 0) printf_s("\r%llu%% %llu GB. no deadline\tsdl:%llu(%llu) cdl:%llu(%llu) ss:%llu(%llu) rs:%llu(%llu)", (bytesRead*4096*100 / total_size), (bytesRead / (256 * 1024)), all_send_dl, err_send_dl, all_rcv_dl, err_rcv_dl, all_send_msg, err_send_msg, all_rcv_msg, err_rcv_msg);
-                        else              printf_s("\r%llu%% %llu GB. DL=%llu\tsdl:%llu(%llu) cdl:%llu(%llu) ss:%llu(%llu) rs:%llu(%llu)", (bytesRead*4096*100 / total_size), (bytesRead / (256 * 1024)), deadline, all_send_dl, err_send_dl, all_rcv_dl, err_rcv_dl, all_send_msg, err_send_msg, all_rcv_msg, err_rcv_msg);
-						
-						Sleep(18);
-						if ((working_threads == 0) && (cleared == false) && (use_clean_mem == true))
-						{
-							ClearMem();
-							cleared = true;
-						}
-                } while(memcmp(signature, oldSignature, 32) == 0);      // Wait until signature changed
-				cleared = false;
-
-				if (show_winner)
-				{
-					do{ Sleep(10); } while (can_connect == 0);
-					GetBlockInfo(0);
-				}
-	
-                // Tell all threads to stop:
-                stopThreads = 1;
-				for(i = 0; i < paths_num; i++)
-				{
-					//Log("\nПрерываем поток: ");	Log_u(i);
-					if( pthread_join(worker[i], NULL) > 0 )
-					{
-						cls();
-						SetConsoleTextAttribute(hConsole, 12);
-						printf_s("\r Error stoping thread #%u of %u", i, paths_num);
-						SetConsoleTextAttribute(hConsole, 7);
-						Log("\n! Error thread stoping: ");	Log_u(i);
-					}
-				}
-				//Log("\nWriting to stat-log.csv ");
-				fopen_s(&fp_Stat, "stat-log.csv", "at+");
-				if (fp_Stat != NULL)
-				{
-					for (int a = 0; a < MaxAccounts; a++) if (bests[a].account_id != 0) fprintf_s(fp_Stat, "%llu,%llu,%llu,%llu\n", bests[a].account_id, old_height, old_baseTarget, bests[a].DL);
-					fclose(fp_Stat);
-					//Log("\nWrote stat-log.csv ");
-				}
-			
-				stopThreads = 0;
-        }
-		pthread_join(sender, NULL);
-		free(p_minerPath);
-		WSACleanup();
+	WSACleanup();
 }
+

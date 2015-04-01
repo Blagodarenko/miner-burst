@@ -18,15 +18,6 @@
     <ClCompile Include="miner.cpp">
       <Filter>Файлы исходного кода</Filter>
     </ClCompile>
-    <ClCompile Include="OpenCL_Error.cpp">
-      <Filter>Файлы исходного кода</Filter>
-    </ClCompile>
-    <ClCompile Include="OpenCL_Platform.cpp">
-      <Filter>Файлы исходного кода</Filter>
-    </ClCompile>
-    <ClCompile Include="OpenCL_Device.cpp">
-      <Filter>Файлы исходного кода</Filter>
-    </ClCompile>
     <ClCompile Include="mshabal_avx1.c">
       <Filter>Файлы исходного кода</Filter>
     </ClCompile>
@@ -54,15 +45,6 @@
       <Filter>Заголовочные файлы</Filter>
     </ClInclude>
     <ClInclude Include="resource.h">
-      <Filter>Заголовочные файлы</Filter>
-    </ClInclude>
-    <ClInclude Include="OpenCL_Error.h">
-      <Filter>Заголовочные файлы</Filter>
-    </ClInclude>
-    <ClInclude Include="OpenCL_Platform.h">
-      <Filter>Заголовочные файлы</Filter>
-    </ClInclude>
-    <ClInclude Include="OpenCL_Device.h">
       <Filter>Заголовочные файлы</Filter>
     </ClInclude>
     <ClInclude Include="mshabal.h">

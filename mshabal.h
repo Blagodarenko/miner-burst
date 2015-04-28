@@ -106,6 +106,7 @@ extern "C" {
   void avx1_mshabal_init(mshabal_context *sc, unsigned out_size);
   void avx2_mshabal_init(mshabal_context *sc, unsigned out_size);
 
+  void avx1_mshabal_init2(mshabal_context *sc, unsigned out_size);
   /*
    * Process some more data bytes; four chunks of data, pointed to by
    * data0, data1, data2 and data3, are processed. The four chunks have

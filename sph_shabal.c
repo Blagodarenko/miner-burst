@@ -49,9 +49,9 @@
 //#define C32   SPH_C32
 //#define T32   SPH_T32
 
-#define O1   13
-#define O2    9
-#define O3    6
+//#define O1   13
+//#define O2    9
+//#define O3    6
 
 /*
  * We copy the state into local variables, so that the compiler knows
@@ -384,45 +384,6 @@
 			Whigh = SPH_T32(Whigh + 1); \
 	} while (0)
 
-static const sph_u32 A_init_192[] = {
-	SPH_C32(0xFD749ED4), SPH_C32(0xB798E530), SPH_C32(0x33904B6F), SPH_C32(0x46BDA85E),
-	SPH_C32(0x076934B4), SPH_C32(0x454B4058), SPH_C32(0x77F74527), SPH_C32(0xFB4CF465),
-	SPH_C32(0x62931DA9), SPH_C32(0xE778C8DB), SPH_C32(0x22B3998E), SPH_C32(0xAC15CFB9)
-};
-
-static const sph_u32 B_init_192[] = {
-	SPH_C32(0x58BCBAC4), SPH_C32(0xEC47A08E), SPH_C32(0xAEE933B2), SPH_C32(0xDFCBC824),
-	SPH_C32(0xA7944804), SPH_C32(0xBF65BDB0), SPH_C32(0x5A9D4502), SPH_C32(0x59979AF7),
-	SPH_C32(0xC5CEA54E), SPH_C32(0x4B6B8150), SPH_C32(0x16E71909), SPH_C32(0x7D632319),
-	SPH_C32(0x930573A0), SPH_C32(0xF34C63D1), SPH_C32(0xCAF914B4), SPH_C32(0xFDD6612C)
-};
-
-static const sph_u32 C_init_192[] = {
-	SPH_C32(0x61550878), SPH_C32(0x89EF2B75), SPH_C32(0xA1660C46), SPH_C32(0x7EF3855B),
-	SPH_C32(0x7297B58C), SPH_C32(0x1BC67793), SPH_C32(0x7FB1C723), SPH_C32(0xB66FC640),
-	SPH_C32(0x1A48B71C), SPH_C32(0xF0976D17), SPH_C32(0x088CE80A), SPH_C32(0xA454EDF3),
-	SPH_C32(0x1C096BF4), SPH_C32(0xAC76224B), SPH_C32(0x5215781C), SPH_C32(0xCD5D2669)
-};
-
-static const sph_u32 A_init_224[] = {
-	SPH_C32(0xA5201467), SPH_C32(0xA9B8D94A), SPH_C32(0xD4CED997), SPH_C32(0x68379D7B),
-	SPH_C32(0xA7FC73BA), SPH_C32(0xF1A2546B), SPH_C32(0x606782BF), SPH_C32(0xE0BCFD0F),
-	SPH_C32(0x2F25374E), SPH_C32(0x069A149F), SPH_C32(0x5E2DFF25), SPH_C32(0xFAECF061)
-};
-
-static const sph_u32 B_init_224[] = {
-	SPH_C32(0xEC9905D8), SPH_C32(0xF21850CF), SPH_C32(0xC0A746C8), SPH_C32(0x21DAD498),
-	SPH_C32(0x35156EEB), SPH_C32(0x088C97F2), SPH_C32(0x26303E40), SPH_C32(0x8A2D4FB5),
-	SPH_C32(0xFEEE44B6), SPH_C32(0x8A1E9573), SPH_C32(0x7B81111A), SPH_C32(0xCBC139F0),
-	SPH_C32(0xA3513861), SPH_C32(0x1D2C362E), SPH_C32(0x918C580E), SPH_C32(0xB58E1B9C)
-};
-
-static const sph_u32 C_init_224[] = {
-	SPH_C32(0xE4B573A1), SPH_C32(0x4C1A0880), SPH_C32(0x1E907C51), SPH_C32(0x04807EFD),
-	SPH_C32(0x3AD8CDE5), SPH_C32(0x16B21302), SPH_C32(0x02512C53), SPH_C32(0x2204CB18),
-	SPH_C32(0x99405F2D), SPH_C32(0xE5B648A1), SPH_C32(0x70AB1D43), SPH_C32(0xA10C25C2),
-	SPH_C32(0x16F1AC05), SPH_C32(0x38BBEB56), SPH_C32(0x9B01DC60), SPH_C32(0xB1096D83)
-};
 
 static const sph_u32 A_init_256[] = {
 	SPH_C32(0x52F84552), SPH_C32(0xE54B7999), SPH_C32(0x2D8EE3EC), SPH_C32(0xB9645191),
@@ -444,98 +405,32 @@ static const sph_u32 C_init_256[] = {
 	SPH_C32(0xBC968828), SPH_C32(0xE6E00BF7), SPH_C32(0xBA839E55), SPH_C32(0x9B491C60)
 };
 
-static const sph_u32 A_init_384[] = {
-	SPH_C32(0xC8FCA331), SPH_C32(0xE55C504E), SPH_C32(0x003EBF26), SPH_C32(0xBB6B8D83),
-	SPH_C32(0x7B0448C1), SPH_C32(0x41B82789), SPH_C32(0x0A7C9601), SPH_C32(0x8D659CFF),
-	SPH_C32(0xB6E2673E), SPH_C32(0xCA54C77B), SPH_C32(0x1460FD7E), SPH_C32(0x3FCB8F2D)
-};
-
-static const sph_u32 B_init_384[] = {
-	SPH_C32(0x527291FC), SPH_C32(0x2A16455F), SPH_C32(0x78E627E5), SPH_C32(0x944F169F),
-	SPH_C32(0x1CA6F016), SPH_C32(0xA854EA25), SPH_C32(0x8DB98ABE), SPH_C32(0xF2C62641),
-	SPH_C32(0x30117DCB), SPH_C32(0xCF5C4309), SPH_C32(0x93711A25), SPH_C32(0xF9F671B8),
-	SPH_C32(0xB01D2116), SPH_C32(0x333F4B89), SPH_C32(0xB285D165), SPH_C32(0x86829B36)
-};
-
-static const sph_u32 C_init_384[] = {
-	SPH_C32(0xF764B11A), SPH_C32(0x76172146), SPH_C32(0xCEF6934D), SPH_C32(0xC6D28399),
-	SPH_C32(0xFE095F61), SPH_C32(0x5E6018B4), SPH_C32(0x5048ECF5), SPH_C32(0x51353261),
-	SPH_C32(0x6E6E36DC), SPH_C32(0x63130DAD), SPH_C32(0xA9C69BD6), SPH_C32(0x1E90EA0C),
-	SPH_C32(0x7C35073B), SPH_C32(0x28D95E6D), SPH_C32(0xAA340E0D), SPH_C32(0xCB3DEE70)
-};
-
-static const sph_u32 A_init_512[] = {
-	SPH_C32(0x20728DFD), SPH_C32(0x46C0BD53), SPH_C32(0xE782B699), SPH_C32(0x55304632),
-	SPH_C32(0x71B4EF90), SPH_C32(0x0EA9E82C), SPH_C32(0xDBB930F1), SPH_C32(0xFAD06B8B),
-	SPH_C32(0xBE0CAE40), SPH_C32(0x8BD14410), SPH_C32(0x76D2ADAC), SPH_C32(0x28ACAB7F)
-};
-
-static const sph_u32 B_init_512[] = {
-	SPH_C32(0xC1099CB7), SPH_C32(0x07B385F3), SPH_C32(0xE7442C26), SPH_C32(0xCC8AD640),
-	SPH_C32(0xEB6F56C7), SPH_C32(0x1EA81AA9), SPH_C32(0x73B9D314), SPH_C32(0x1DE85D08),
-	SPH_C32(0x48910A5A), SPH_C32(0x893B22DB), SPH_C32(0xC5A0DF44), SPH_C32(0xBBC4324E),
-	SPH_C32(0x72D2F240), SPH_C32(0x75941D99), SPH_C32(0x6D8BDE82), SPH_C32(0xA1A7502B)
-};
-
-static const sph_u32 C_init_512[] = {
-	SPH_C32(0xD9BF68D1), SPH_C32(0x58BAD750), SPH_C32(0x56028CB2), SPH_C32(0x8134F359),
-	SPH_C32(0xB5D469D8), SPH_C32(0x941A8CC2), SPH_C32(0x418B2A6E), SPH_C32(0x04052780),
-	SPH_C32(0x7F07D787), SPH_C32(0x5194358F), SPH_C32(0x3C60D665), SPH_C32(0xBE97D79A),
-	SPH_C32(0x950C3434), SPH_C32(0xAED9A06D), SPH_C32(0x2537DC8D), SPH_C32(0x7CDB5969)
-};
 
 /* END -- automatically generated code. */
 
-static void
-shabal_init(void *cc, unsigned size)
+void sph_shabal256_init(sph_shabal_context *cc)
 {
 	/*
 	 * We have precomputed initial states for all the supported
 	 * output bit lengths.
 	 */
-	const sph_u32 *A_init, *B_init, *C_init;
-	sph_shabal_context *sc;
+	//const sph_u32 *A_init, *B_init, *C_init;
+	//sph_shabal_context *sc;
 
-	switch (size) {
-	case 192:
-		A_init = A_init_192;
-		B_init = B_init_192;
-		C_init = C_init_192;
-		break;
-	case 224:
-		A_init = A_init_224;
-		B_init = B_init_224;
-		C_init = C_init_224;
-		break;
-	case 256:
-		A_init = A_init_256;
-		B_init = B_init_256;
-		C_init = C_init_256;
-		break;
-	case 384:
-		A_init = A_init_384;
-		B_init = B_init_384;
-		C_init = C_init_384;
-		break;
-	case 512:
-		A_init = A_init_512;
-		B_init = B_init_512;
-		C_init = C_init_512;
-		break;
-	default:
-		return;
-	}
-	sc = (sph_shabal_context *) cc;
-	memcpy(sc->A, A_init, sizeof sc->A);
-	memcpy(sc->B, B_init, sizeof sc->B);
-	memcpy(sc->C, C_init, sizeof sc->C);
-	sc->Wlow = 1;
-	sc->Whigh = 0;
-	sc->ptr = 0;
+		//A_init = A_init_256;
+		//B_init = B_init_256;
+		//C_init = C_init_256;
+
+	//sc = (sph_shabal_context *) cc;
+	memcpy(cc->A, A_init_256, sizeof cc->A);
+	memcpy(cc->B, B_init_256, sizeof cc->B);
+	memcpy(cc->C, C_init_256, sizeof cc->C);
+	cc->Wlow = 1;
+	cc->Whigh = 0;
+	cc->ptr = 0;
 }
 
-static void
-shabal_core(void *cc, const unsigned char *data, size_t len)
+void sph_shabal256(void *cc, const unsigned char *data, size_t len)
 {
 	sph_shabal_context *sc;
 	unsigned char *buf;
@@ -552,7 +447,8 @@ shabal_core(void *cc, const unsigned char *data, size_t len)
 	 * current block. Note that it is anyway suboptimal to call
 	 * this method many times for small chunks of data.
 	 */
-	if (len < (sizeof sc->buf) - ptr) {
+	if (len < (sizeof sc->buf) - ptr) 
+	{
 		memcpy(buf + ptr, data, len);
 		ptr += len;
 		sc->ptr = ptr;
@@ -564,8 +460,7 @@ shabal_core(void *cc, const unsigned char *data, size_t len)
 		size_t clen;
 
 		clen = (sizeof sc->buf) - ptr;
-		if (clen > len)
-			clen = len;
+		if (clen > len)	clen = len;
 		memcpy(buf + ptr, data, clen);
 		ptr += clen;
 		data += clen;
@@ -585,8 +480,7 @@ shabal_core(void *cc, const unsigned char *data, size_t len)
 	sc->ptr = ptr;
 }
 
-static void
-shabal_close(void *cc, unsigned ub, unsigned n, void *dst, unsigned size_words)
+static void shabal_close(void *cc, unsigned ub, unsigned n, void *dst, unsigned size_words)
 {
 	sph_shabal_context *sc;
 	unsigned char *buf;
@@ -611,6 +505,7 @@ shabal_close(void *cc, unsigned ub, unsigned n, void *dst, unsigned size_words)
 	INPUT_BLOCK_ADD;
 	XOR_W;
 	APPLY_P;
+#pragma loop(hint_parallel(3))
 	for (i = 0; i < 3; i ++) {
 		SWAP_BC;
 		XOR_W;
@@ -623,183 +518,33 @@ shabal_close(void *cc, unsigned ub, unsigned n, void *dst, unsigned size_words)
 	 * emit the relevant words into a temporary buffer, which
 	 * we finally copy into the destination array.
 	 */
-	switch (size_words) {
-	case 16:
-		sph_enc32le_aligned(u.tmp_out +  0, B0);
-		sph_enc32le_aligned(u.tmp_out +  4, B1);
-		sph_enc32le_aligned(u.tmp_out +  8, B2);
-		sph_enc32le_aligned(u.tmp_out + 12, B3);
-		/* fall through */
-	case 12:
-		sph_enc32le_aligned(u.tmp_out + 16, B4);
-		sph_enc32le_aligned(u.tmp_out + 20, B5);
-		sph_enc32le_aligned(u.tmp_out + 24, B6);
-		sph_enc32le_aligned(u.tmp_out + 28, B7);
-		/* fall through */
-	case 8:
+
 		sph_enc32le_aligned(u.tmp_out + 32, B8);
-		/* fall through */
-	case 7:
+
 		sph_enc32le_aligned(u.tmp_out + 36, B9);
-		/* fall through */
-	case 6:
+
 		sph_enc32le_aligned(u.tmp_out + 40, BA);
 		sph_enc32le_aligned(u.tmp_out + 44, BB);
 		sph_enc32le_aligned(u.tmp_out + 48, BC);
 		sph_enc32le_aligned(u.tmp_out + 52, BD);
 		sph_enc32le_aligned(u.tmp_out + 56, BE);
 		sph_enc32le_aligned(u.tmp_out + 60, BF);
-		break;
-	default:
-		return;
-	}
+
 	out_len = size_words << 2;
 	memcpy(dst, u.tmp_out + (sizeof u.tmp_out) - out_len, out_len);
-	shabal_init(sc, size_words << 5);
+	//sph_shabal256_init(sc, size_words << 5);
 }
 
-/* see sph_shabal.h */
-void
-sph_shabal192_init(void *cc)
-{
-	shabal_init(cc, 192);
-}
 
 /* see sph_shabal.h */
-void
-sph_shabal192(void *cc, const unsigned char *data, size_t len)
-{
-	shabal_core(cc, data, len);
-}
-
-/* see sph_shabal.h */
-void
-sph_shabal192_close(void *cc, const unsigned char *dst)
-{
-	shabal_close(cc, 0, 0, (void*) dst, 6);
-}
-
-/* see sph_shabal.h */
-void
-sph_shabal192_addbits_and_close(void *cc, unsigned ub, unsigned n, void *dst)
-{
-	shabal_close(cc, ub, n, dst, 6);
-}
-
-/* see sph_shabal.h */
-void
-sph_shabal224_init(void *cc)
-{
-	shabal_init(cc, 224);
-}
-
-/* see sph_shabal.h */
-void
-sph_shabal224(void *cc, const unsigned char *data, size_t len)
-{
-	shabal_core(cc, data, len);
-}
-
-/* see sph_shabal.h */
-void
-sph_shabal224_close(void *cc, void *dst)
-{
-	shabal_close(cc, 0, 0, dst, 7);
-}
-
-/* see sph_shabal.h */
-void
-sph_shabal224_addbits_and_close(void *cc, unsigned ub, unsigned n, void *dst)
-{
-	shabal_close(cc, ub, n, dst, 7);
-}
-
-/* see sph_shabal.h */
-void
-sph_shabal256_init(void *cc)
-{
-	shabal_init(cc, 256);
-}
-
-/* see sph_shabal.h */
-void
-sph_shabal256(void *cc, void *data, size_t len)
-{
-	shabal_core(cc, (const unsigned char*) data, len);
-}
-
-/* see sph_shabal.h */
-void
-sph_shabal256_close(void *cc, void *dst)
+void sph_shabal256_close(void *cc, void *dst)
 {
 	shabal_close(cc, 0, 0, dst, 8);
 }
 
 /* see sph_shabal.h */
-void
-sph_shabal256_addbits_and_close(void *cc, unsigned ub, unsigned n, void *dst)
+void sph_shabal256_addbits_and_close(void *cc, unsigned ub, unsigned n, void *dst)
 {
 	shabal_close(cc, ub, n, dst, 8);
 }
 
-/* see sph_shabal.h */
-void
-sph_shabal384_init(void *cc)
-{
-	shabal_init(cc, 384);
-}
-
-/* see sph_shabal.h */
-void
-sph_shabal384(void *cc, const unsigned char *data, size_t len)
-{
-	shabal_core(cc, data, len);
-}
-
-/* see sph_shabal.h */
-void
-sph_shabal384_close(void *cc, void *dst)
-{
-	shabal_close(cc, 0, 0, dst, 12);
-}
-
-/* see sph_shabal.h */
-void
-sph_shabal384_addbits_and_close(void *cc, unsigned ub, unsigned n, void *dst)
-{
-	shabal_close(cc, ub, n, dst, 12);
-}
-
-/* see sph_shabal.h */
-void
-sph_shabal512_init(void *cc)
-{
-	shabal_init(cc, 512);
-}
-
-/* see sph_shabal.h */
-void
-sph_shabal512(void *cc, void *data, size_t len)
-{
-	shabal_core(cc, (const unsigned char*)data, len);
-}
-
-/* see sph_shabal.h */
-void
-sph_shabal512_close(void *cc, void *dst)
-{
-	shabal_close(cc, 0, 0, dst, 16);
-}
-
-/* see sph_shabal.h */
-void
-sph_shabal512_addbits_and_close(void *cc, unsigned ub, unsigned n, void *dst)
-{
-	shabal_close(cc, ub, n, dst, 16);
-}
-
-void
-sph_shabal(void *cc, const unsigned char *data, size_t len)
-{
-	shabal_core(cc, data, len);
-}

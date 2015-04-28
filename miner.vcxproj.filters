@@ -56,9 +56,21 @@
     <ClInclude Include="mshabal256.h">
       <Filter>Заголовочные файлы</Filter>
     </ClInclude>
+    <ClInclude Include="sph_types.h">
+      <Filter>Заголовочные файлы</Filter>
+    </ClInclude>
+    <ClInclude Include="curses.h">
+      <Filter>Заголовочные файлы</Filter>
+    </ClInclude>
+    <ClInclude Include="panel.h">
+      <Filter>Заголовочные файлы</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="pthreadVC2.dll">
+      <Filter>Файлы ресурсов</Filter>
+    </None>
+    <None Include="pdcurses.dll">
       <Filter>Файлы ресурсов</Filter>
     </None>
   </ItemGroup>

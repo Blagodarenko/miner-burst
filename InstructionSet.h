@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vector>
+
 #include <bitset>
 #include <array>
 #include <string>

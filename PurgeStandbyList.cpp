@@ -1,3 +1,6 @@
+// Очистка памяти от пребуферизованной части прочитанных файлов
+//При компиляции надо в свойствах линковщика добавить /MANIFESTUAC:NO  /level = "highestAvailable"
+
 #include <windows.h>
 #include <stdio.h>
 #include <tchar.h>
@@ -36,7 +39,9 @@ BOOL GetPrivilege(HANDLE TokenHandle, LPCSTR lpName, int flags)
 		tpNewState.PrivilegeCount = 1;
 		tpNewState.Privileges[0].Luid = luid;
 		tpNewState.Privileges[0].Attributes = 0;
-		bResult = AdjustTokenPrivileges(TokenHandle, 0, &tpNewState, (LPBYTE)&(tpNewState.Privileges[1]) - (LPBYTE)&tpNewState, &tpPreviousState, &dwBufferLength);
+		//bResult = AdjustTokenPrivileges(TokenHandle, 0, &tpNewState, (LPBYTE)&(tpNewState.Privileges[1]) - (LPBYTE)&tpNewState, &tpPreviousState, &dwBufferLength);
+		bResult = AdjustTokenPrivileges(TokenHandle, 0, &tpNewState, sizeof(TOKEN_PRIVILEGES), &tpPreviousState, &dwBufferLength);
+		
 		if (bResult)
 		{
 			tpPreviousState.PrivilegeCount = 1;
@@ -47,6 +52,61 @@ BOOL GetPrivilege(HANDLE TokenHandle, LPCSTR lpName, int flags)
 	}
 	return bResult;
 }
+
+NTSTATUS ClearMem(void)
+{
+
+	HANDLE hProcess = GetCurrentProcess();
+	HANDLE hToken;
+	if (!OpenProcessToken(hProcess, TOKEN_QUERY | TOKEN_ADJUST_PRIVILEGES, &hToken))
+	{
+		fprintf(stderr, "\nCan't open current process token\n");
+		return 0;
+	}
+
+	if (!GetPrivilege(hToken, "SeProfileSingleProcessPrivilege", 1))
+	{
+		fprintf(stderr, "\nCan't get SeProfileSingleProcessPrivilege\n");
+		return 0;
+	}
+
+	CloseHandle(hToken);
+
+	HMODULE ntdll = LoadLibrary(L"ntdll.dll");
+	if (!ntdll)
+	{
+		fprintf(stderr, "\nCan't load ntdll.dll, wrong Windows version?\n");
+		return 0;
+	}
+
+	typedef DWORD NTSTATUS; // ?
+	NTSTATUS(WINAPI *NtSetSystemInformation)(INT, PVOID, ULONG) = (NTSTATUS(WINAPI *)(INT, PVOID, ULONG))GetProcAddress(ntdll, "NtSetSystemInformation");
+	NTSTATUS(WINAPI *NtQuerySystemInformation)(INT, PVOID, ULONG, PULONG) = (NTSTATUS(WINAPI *)(INT, PVOID, ULONG, PULONG))GetProcAddress(ntdll, "NtQuerySystemInformation");
+	if (!NtSetSystemInformation || !NtQuerySystemInformation)
+	{
+		printf_s("\nCan't get function addresses, wrong Windows version?\n");
+		return 0;
+	}
+
+	SYSTEM_MEMORY_LIST_COMMAND command = MemoryPurgeStandbyList;
+	NTSTATUS status = NtSetSystemInformation(
+		SystemMemoryListInformation,
+		&command,
+		sizeof(SYSTEM_MEMORY_LIST_COMMAND)
+		);
+	if (status == STATUS_PRIVILEGE_NOT_HELD)
+	{
+		printf_s("\nInsufficient privileges to execute the memory list command\n");
+	}
+	else if (status > 0)
+	{
+		printf_s("\nUnable to execute the memory list command %x\n", status);
+	}
+	return status;
+
+}
+
+
 /*
 int _tmain(int argc, _TCHAR* argv[])
 {

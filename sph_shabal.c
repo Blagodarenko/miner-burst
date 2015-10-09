@@ -485,7 +485,6 @@ static void shabal_close(void *cc, unsigned ub, unsigned n, void *dst, unsigned 
 	sph_shabal_context *sc;
 	unsigned char *buf;
 	size_t ptr;
-	int i;
 	unsigned z;
 	union {
 		unsigned char tmp_out[64];
@@ -505,8 +504,8 @@ static void shabal_close(void *cc, unsigned ub, unsigned n, void *dst, unsigned 
 	INPUT_BLOCK_ADD;
 	XOR_W;
 	APPLY_P;
-#pragma loop(hint_parallel(3))
-	for (i = 0; i < 3; i ++) {
+//#pragma loop(hint_parallel(3))
+	for (int i = 0; i < 3; i ++) {
 		SWAP_BC;
 		XOR_W;
 		APPLY_P;

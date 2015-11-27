@@ -117,7 +117,7 @@ bool show_updates = false;			// Показать общение с сервер�
 FILE * fp_Log;						// указатель на лог-файл
 FILE * fp_Stat;						// указатель на стат-файл
 FILE * fp_Time;						// указатель на стат-файл
-size_t send_interval = 300;			// время ожидания между отправками
+size_t send_interval = 100;			// время ожидания между отправками
 size_t update_interval = 1000;		// время ожидания между апдейтами
 bool use_fast_rcv = false;
 bool use_debug = false;
@@ -130,7 +130,7 @@ bool show_winner = true;			// показывать победителя
 
 
 
-unsigned long long my_target_deadline = MAXDWORD64;// 4294967295;
+unsigned long long my_target_deadline = MAXDWORD;// 4294967295;
 SYSTEMTIME cur_time;				// Текущее время
 unsigned long long total_size = 0;	// Общий объем плотов
 
@@ -1075,13 +1075,13 @@ void send_i(void)
 		wattroff(win_main, COLOR_PAIR(12));
 		exit(-1);
 	}
-	char* tmp_buffer = (char*)calloc(buffer_size, sizeof(char));
-	if (tmp_buffer == nullptr) {
-		wattron(win_main, COLOR_PAIR(12));
-		wprintw(win_main, "Error allocating memory\n", 0);
-		wattroff(win_main, COLOR_PAIR(12));
-		exit(-1);
-	}
+	//char* tmp_buffer = (char*)calloc(buffer_size, sizeof(char));
+	//if (tmp_buffer == nullptr) {
+	//	wattron(win_main, COLOR_PAIR(12));
+	//	wprintw(win_main, "Error allocating memory\n", 0);
+	//	wattroff(win_main, COLOR_PAIR(12));
+	//	exit(-1);
+	//}
 	char tbuffer[9];
 
 	struct addrinfo *result = nullptr;
@@ -1132,6 +1132,7 @@ void send_i(void)
 
 		for (auto iter = shares.begin(); iter != shares.end();)
 		{
+			Log("\n*** Шар на отправку: "); Log_u(shares.size());
 			ZeroMemory(&hints, sizeof(hints));
 			hints.ai_family = AF_INET; //AF_UNSPEC;  // использовать IPv4 или IPv6, нам неважно
 			hints.ai_socktype = SOCK_STREAM;
@@ -1239,7 +1240,7 @@ void send_i(void)
 		if (!sessions.empty())
 		{
 			EnterCriticalSection(&sessionsLock);
-			for (auto iter = sessions.begin(); iter != sessions.end();)
+			for (auto iter = sessions.begin(); iter != sessions.end() && !stopThreads;)
 			{
 				ConnectSocket = iter->Socket;
 
@@ -1253,14 +1254,24 @@ void send_i(void)
 					wattroff(win_main, COLOR_PAIR(12));
 				}
 
-				memset(buffer, 0, buffer_size);
-				size_t resp = 0;
+				memset(buffer, 0, _msize(buffer));
+				int  pos = 0;
+				iResult = 0;
 				do{
-					memset(tmp_buffer, 0, buffer_size);
-					iResult = recv(ConnectSocket, tmp_buffer, buffer_size - 1, 0);
-					strcat(buffer, tmp_buffer);
-					resp++;
+					iResult = recv(ConnectSocket, &buffer[pos], 1000 - pos - 1, 0);
+					if (iResult > 0) pos += iResult;
 				} while ((iResult > 0) && !use_fast_rcv);
+
+
+
+				//memset(buffer, 0, buffer_size);
+				//size_t resp = 0;
+				//do{
+					//memset(tmp_buffer, 0, buffer_size);
+					//iResult = recv(ConnectSocket, tmp_buffer, buffer_size - 1, 0);
+					//strcat(buffer, tmp_buffer);
+					//resp++;
+				//} while ((iResult > 0) && !use_fast_rcv);
 
 				if (iResult == SOCKET_ERROR)
 				{
@@ -1276,12 +1287,12 @@ void send_i(void)
 				else
 				{
 					if (show_msg) wprintw(win_main, "\nReceived: %s\n", buffer, 0);
-					Log("\nSender:   Received from server: "); Log_server(buffer); Log("\nCount responses: "); Log_u(resp);
+					Log("\nSender:   Received from server: "); Log_server(buffer);// Log("\nCount responses: "); Log_u(resp);
 
 					char *find = strstr(buffer, "\r\n\r\n");
 					if (find != nullptr)
 					{
-						char *rdeadline = strstr(find + 4 * sizeof(find), "\"deadline\"");
+						char *rdeadline = strstr(find + 4, "\"deadline\"");
 						if (rdeadline != nullptr)
 						{
 							rdeadline = strpbrk(rdeadline, "0123456789");
@@ -1337,7 +1348,7 @@ void send_i(void)
 							}
 						}
 						else
-						if (strstr(find + 4 * sizeof(find), "Received share") != nullptr)
+						if (strstr(find + 4, "Received share") != nullptr)
 						{
 							_strtime(tbuffer);
 							//deadline = bests[Get_index_acc(sessions.at(iter).ID)].DL;
@@ -1349,11 +1360,21 @@ void send_i(void)
 						else
 						{
 							wattron(win_main, COLOR_PAIR(15));
-							wprintw(win_main, "%s\n", find + 4 * sizeof(find), 0);
+							wprintw(win_main, "%s\n", find + 4, 0);
 							wattroff(win_main, COLOR_PAIR(15));
 						}
 						iResult = closesocket(ConnectSocket);
-						Log("\nSender:Close socket. Code = "); Log_u(WSAGetLastError());
+						Log("\nSender: Close socket. Code = "); Log_u(WSAGetLastError());
+						iter = sessions.erase(iter);
+					}
+					else
+					{
+						wattron(win_main, COLOR_PAIR(6));
+						wprintw(win_main, "%s [%20llu] NOT confirmed DL\n", tbuffer, iter->ID, 0);
+						wattroff(win_main, COLOR_PAIR(6));
+						Log("\nSender: wrong message");
+						iResult = closesocket(ConnectSocket);
+						Log("\nSender: Close socket. Code = "); Log_u(WSAGetLastError());
 						iter = sessions.erase(iter);
 					}
 				}
@@ -1365,7 +1386,7 @@ void send_i(void)
 		std::this_thread::sleep_for(std::chrono::milliseconds(send_interval));
 	}
 	free(buffer);
-	free(tmp_buffer);
+	//free(tmp_buffer);
 	return;
 }
 
@@ -2240,7 +2261,7 @@ void pollLocal(void) {
 		exit(-1);
 	}
 
-	size_t iResult;
+	int iResult;
 	struct addrinfo *result = nullptr;
 	struct addrinfo hints;
 	SOCKET UpdaterSocket = INVALID_SOCKET;
@@ -2306,10 +2327,10 @@ void pollLocal(void) {
 					if (++all_rcv_msg >= 1000) all_rcv_msg = 0;
 
 					memset(buffer, 0, _msize(buffer));
-					size_t pos = 0;
+					int  pos = 0;
 					iResult = 0;
 					do{
-						iResult = recv(UpdaterSocket, &buffer[pos], 1000 - (int)pos - 1, 0);
+						iResult = recv(UpdaterSocket, &buffer[pos], 1000 - pos - 1, 0);
 						if (iResult > 0) pos += iResult;
 					} while ((iResult > 0) && !use_fast_rcv);
 

@@ -74,7 +74,7 @@ const InstructionSet::InstructionSet_Internal InstructionSet::CPU_Rep;
 
 HANDLE hConsole;
 bool exit_flag = false;
-char *version = "v1.151009";
+char *version = "v1.160322";
 
 unsigned long long startnonce = 0;
 unsigned long nonces = 0;
@@ -928,9 +928,9 @@ void proxy_i(void)
 		else
 		{
 			Log("\nProxy 3");
-			memset(buffer, 0, buffer_size);
+			memset(buffer, 0, _msize(buffer));
 			do{
-				memset(tmp_buffer, 0, buffer_size);
+				memset(tmp_buffer, 0, _msize(buffer));
 				iResult = recv(ClientSocket, tmp_buffer, buffer_size - 1, 0);
 				strcat(buffer, tmp_buffer);
 			} while ((iResult > 0) && !use_fast_rcv);
@@ -992,13 +992,13 @@ void proxy_i(void)
 							Log("Proxy: received DL "); Log_llu(get_deadline); Log(" from "); Log(inet_ntoa(client_socket_address.sin_addr));
 
 							//Подтверждаем
-							memset(buffer, 0, 1000);
+							memset(buffer, 0, _msize(buffer));
 							size_t acc = Get_index_acc(get_accountId);
 							int bytes = sprintf_s(buffer, _msize(buffer), "HTTP/1.0 200 OK\r\nConnection: close\r\n\r\n{\"result\": \"proxy\",\"accountId\": %llu,\"deadline\": %llu,\"targetDeadline\": %llu}", get_accountId, get_deadline / baseTarget, bests[acc].targetDeadline);
 							iResult = send(ClientSocket, buffer, bytes, 0);
 							if (iResult == SOCKET_ERROR)
 							{
-								err_send_dl++;
+								if (++err_send_dl >= 1000) err_send_dl = 0;
 								Log("\nProxy: ! Error sending to client: "); Log_u(WSAGetLastError());
 								wattron(win_main, COLOR_PAIR(12));
 								wprintw(win_main, "PROXY: failed sending to client: %ld\n", WSAGetLastError(), 0);
@@ -1022,7 +1022,7 @@ void proxy_i(void)
 				{
 					if (strstr(buffer, "getMiningInfo") != nullptr)
 					{
-						memset(buffer, 0, 1000);
+						memset(buffer, 0, _msize(buffer));
 						int bytes = sprintf_s(buffer, _msize(buffer), "HTTP/1.0 200 OK\r\nConnection: close\r\n\r\n{\"baseTarget\":\"%llu\",\"height\":\"%llu\",\"generationSignature\":\"%s\",\"targetDeadline\":%llu}", baseTarget, height, str_signature, targetDeadlineInfo);
 						iResult = send(ClientSocket, buffer, bytes, 0);
 						if (iResult == SOCKET_ERROR)
@@ -1064,11 +1064,11 @@ void proxy_i(void)
 
 void send_i(void)
 {
+	Log("\nSender: started thread");
 	SOCKET ConnectSocket;
 
 	int iResult = 0;
-	unsigned buffer_size = 1000;
-	char* buffer = (char*)calloc(buffer_size, sizeof(char));
+	char* buffer = (char*)calloc(1000, sizeof(char));
 	if (buffer == nullptr) {
 		wattron(win_main, COLOR_PAIR(12));
 		wprintw(win_main, "Error allocating memory\n", 0);
@@ -1086,7 +1086,7 @@ void send_i(void)
 
 	struct addrinfo *result = nullptr;
 	struct addrinfo hints;
-	//size_t acc;
+	
 	for (;!exit_flag;)
 	{
 		//while (shares.empty() && sessions.empty() && !exit_flag)	 //пауза при бездействии   
@@ -1107,6 +1107,13 @@ void send_i(void)
 		//		break;
 		//	}
 		//}
+
+		if (stopThreads == 1)
+		{
+			free(buffer);
+			return;
+		}
+
 		if (send_best_only) //Гасим все шары, которые больше текущего targetDeadline
 		{
 			for (auto iter = shares.begin(); iter != shares.end(); ++iter)
@@ -1132,7 +1139,7 @@ void send_i(void)
 
 		for (auto iter = shares.begin(); iter != shares.end();)
 		{
-			Log("\n*** Шар на отправку: "); Log_u(shares.size());
+			//Log("\n*** Шар на отправку: "); Log_u(shares.size());
 			ZeroMemory(&hints, sizeof(hints));
 			hints.ai_family = AF_INET; //AF_UNSPEC;  // использовать IPv4 или IPv6, нам неважно
 			hints.ai_socktype = SOCK_STREAM;
@@ -1171,7 +1178,7 @@ void send_i(void)
 				freeaddrinfo(result);
 
 				int bytes = 0;
-				memset(buffer, 0, buffer_size);
+				memset(buffer, 0, _msize(buffer));
 				if (miner_mode == 0)
 				{
 					bytes = sprintf_s(buffer, _msize(buffer), "POST /burst?requestType=submitNonce&secretPhrase=%s&nonce=%llu HTTP/1.0\r\nConnection: close\r\n\r\n", pass, iter->nonce);
@@ -1203,11 +1210,11 @@ void send_i(void)
 				}
 
 				// Sending to server
-				all_send_dl++;
+				if (++all_send_dl >= 1000) all_send_dl = 0;
 				iResult = send(ConnectSocket, buffer, bytes, 0);
 				if (iResult == SOCKET_ERROR)
 				{
-					err_send_dl++;
+					if (++err_send_dl >= 1000) err_send_dl = 0;
 					Log("\nSender: ! Error deadline's sending: "); Log_u(WSAGetLastError());
 					wattron(win_main, COLOR_PAIR(12));
 					wprintw(win_main, "SENDER: send failed: %ld\n", WSAGetLastError(), 0);
@@ -1277,7 +1284,7 @@ void send_i(void)
 				{
 					if (WSAGetLastError() != WSAEWOULDBLOCK)
 					{
-						err_rcv_dl++;
+						if (++err_rcv_dl >= 1000) err_rcv_dl = 0;
 						Log("\nSender: ! Error getting deadline's confirmation: "); Log_u(WSAGetLastError());
 						wattron(win_main, COLOR_PAIR(12));
 						wprintw(win_main, "SENDER: receiving confirmation failed: %ld\n", WSAGetLastError(), 0);
@@ -1320,7 +1327,7 @@ void send_i(void)
 									ntargetDeadline = _strtoui64(rtargetDeadline, 0, 10);
 									bests[Get_index_acc(naccountId)].targetDeadline = ntargetDeadline;
 								}
-								all_rcv_dl++;
+								if (++all_rcv_dl >= 1000) all_rcv_dl = 0;
 								Log("\nSender: confirmed deadline: "); Log_llu(ndeadline);
 								//unsigned long long years = (ndeadline % (24*60*60))/(60*60)
 								//unsigned month = (ndeadline % (365*24*60*60))/(24*60*60);
@@ -1352,7 +1359,7 @@ void send_i(void)
 						{
 							_strtime(tbuffer);
 							//deadline = bests[Get_index_acc(sessions.at(iter).ID)].DL;
-							all_rcv_dl++;
+							if (++all_rcv_dl >= 1000) all_rcv_dl = 0;
 							wattron(win_main, COLOR_PAIR(10));
 							wprintw(win_main, "%s [%20llu] confirmed DL\n", tbuffer, iter->ID, 0);
 							wattroff(win_main, COLOR_PAIR(10));
@@ -2278,7 +2285,7 @@ void pollLocal(void) {
 		wattron(win_main, COLOR_PAIR(12));
 		wprintw(win_main, "GMI: getaddrinfo failed with error: %d\n", iResult, 0);
 		wattroff(win_main, COLOR_PAIR(12));
-		err_send_msg++;
+		if (++err_send_msg >= 1000) err_send_msg = 0;
 	}
 	else {
 		// Get Mininginfo from node:
@@ -2289,7 +2296,7 @@ void pollLocal(void) {
 			wprintw(win_main, "GMI: socket function failed with error: %ld\n", WSAGetLastError(), 0);
 			wattroff(win_main, COLOR_PAIR(12));
 			Log("\n*! Socket error: "); Log_u(WSAGetLastError());
-			err_send_msg++;
+			if (++err_send_msg >= 1000) err_send_msg = 0;
 		}
 		else {
 				const unsigned t =10000;
@@ -2301,7 +2308,7 @@ void pollLocal(void) {
 					wprintw(win_main, "GMI: connect function failed with error: %ld\n", WSAGetLastError(), 0);
 					wattroff(win_main, COLOR_PAIR(12));
 					Log("\n*! Connect server error "); Log_u(WSAGetLastError());
-					err_send_msg++;
+					if (++err_send_msg >= 1000) err_send_msg = 0;
 				}
 			else {
 				// wrire some bytes
@@ -2313,7 +2320,7 @@ void pollLocal(void) {
 				iResult = send(UpdaterSocket, buffer, bytes, 0);
 				if (iResult == SOCKET_ERROR)
 				{
-					err_send_msg++;
+					if (++err_send_msg >= 1000) err_send_msg = 0;
 					Log("\n*! Error sending request: "); Log_u(WSAGetLastError()); Log("Errors: "); Log_llu(err_send_msg);
 					wattron(win_main, COLOR_PAIR(12));
 					wprintw(win_main, "GMI: send request failed: %ld\n", WSAGetLastError());
@@ -2336,7 +2343,7 @@ void pollLocal(void) {
 
 					if (iResult == SOCKET_ERROR)
 					{
-						err_rcv_msg++;
+						if (++err_rcv_msg >= 1000) err_rcv_msg = 0;
 						Log("\n*! Error response: "); Log_u(WSAGetLastError()); Log("Errors: "); Log_llu(err_rcv_msg);
 						wattron(win_main, COLOR_PAIR(12));
 						wprintw(win_main, "GMI: get mining info failed: %ld\n", WSAGetLastError(), 0);
@@ -2977,7 +2984,6 @@ int main(int argc, char **argv) {
 	init_pair(15, 15, COLOR_BLACK);
 
 	init_pair(25, 15, COLOR_BLUE);
-	//init_pair(31, 15, COLOR_BLUE);
 
 	win_main = newwin(LINES-2, COLS, 0, 0);
 
@@ -3120,18 +3126,22 @@ int main(int argc, char **argv) {
 	Log("\nUpdater thread started");
 
 	Log("\nUpdate mining info");
-	do{ ; } while (height == 0);
+	while (height == 0) 
+	{
+		std::this_thread::yield();
+		std::this_thread::sleep_for(std::chrono::milliseconds(2));
+	};
 
-	// Run Sender
-	std::thread sender(send_i);
-	Log("\nSender thread started");
-
+	
 	// Main loop
 	for (; !exit_flag;) 
 	{
 		worker.clear();
 		worker_progress.clear();
 		stopThreads = 0;
+		
+		// Run Sender
+		std::thread sender(send_i);
 
 		char scoopgen[40];
 		memmove(scoopgen, signature, 32);
@@ -3239,6 +3249,9 @@ int main(int argc, char **argv) {
 			if (it->joinable()) it->join();
 		}
 
+		Log("\nInterrupt Sender. ");
+		if (sender.joinable()) sender.join();
+
 		//Log("\nWriting info to stat-log.csv ");
 		//fopen_s(&fp_Stat, "stat-log.csv", "at+");
 		//if (fp_Stat != nullptr)
@@ -3251,8 +3264,8 @@ int main(int argc, char **argv) {
 	
 	if (updater.joinable()) updater.join();
 	Log("\nUpdater stopped");
-	if (sender.joinable()) sender.join();
-	Log("\nSender stopped");
+	//if (sender.joinable()) sender.join();
+	//Log("\nSender stopped");
 	if (enable_proxy) proxy.join();
 	worker.~vector();
 	worker_progress.~vector();

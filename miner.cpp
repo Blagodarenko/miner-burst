@@ -74,7 +74,7 @@ const InstructionSet::InstructionSet_Internal InstructionSet::CPU_Rep;
 
 HANDLE hConsole;
 bool exit_flag = false;
-char *version = "v1.160322";
+char *version = "v1.160407";
 
 unsigned long long startnonce = 0;
 unsigned long nonces = 0;
@@ -111,7 +111,7 @@ char *p_minerPath;					// путь к папке майнера
 size_t miner_mode = 0;				// режим майнера. 0=соло, 1=пул
 size_t cache_size = 100000;			// размер кэша чтения плотов
 std::vector<std::string> paths_dir; // пути
-bool use_sorting = false;			// Использовать сортировку в отправщике
+//bool use_sorting = false;			// Использовать сортировку в отправщике
 bool show_msg = false;				// Показать общение с сервером в отправщике
 bool show_updates = false;			// Показать общение с сервером в апдейтере
 FILE * fp_Log;						// указатель на лог-файл
@@ -119,6 +119,8 @@ FILE * fp_Stat;						// указатель на стат-файл
 FILE * fp_Time;						// указатель на стат-файл
 size_t send_interval = 100;			// время ожидания между отправками
 size_t update_interval = 1000;		// время ожидания между апдейтами
+short win_size_x = 80;
+short win_size_y = 60;
 bool use_fast_rcv = false;
 bool use_debug = false;
 bool enable_proxy = false;
@@ -403,9 +405,9 @@ int load_config(char *filename)
 
 		Log("\nCacheSize: "); Log_u(cache_size);
 		
-		if(document.HasMember("UseSorting") && (document["UseSorting"].IsBool()))		
-			use_sorting = document["UseSorting"].GetBool();
-		Log("\nUseSorting: "); Log_u(use_sorting);
+		//if(document.HasMember("UseSorting") && (document["UseSorting"].IsBool()))		
+		//	use_sorting = document["UseSorting"].GetBool();
+		//Log("\nUseSorting: "); Log_u(use_sorting);
 
 		if(document.HasMember("ShowMsg") && (document["ShowMsg"].IsBool()))		
 			show_msg = document["ShowMsg"].GetBool();
@@ -477,6 +479,15 @@ int load_config(char *filename)
 			use_boost = document["UseBoost"].GetBool();
 		Log("\nUseBoost: "); Log_u(use_boost);
 
+		
+		if(document.HasMember("WinSizeX") && (document["WinSizeX"].IsUint()))		
+			win_size_x = (short)document["WinSizeX"].GetUint();
+		Log("\nWinSizeX: ");  Log_u(win_size_x);
+
+		if(document.HasMember("WinSizeY") && (document["WinSizeY"].IsUint()))		
+			win_size_y = (short)document["WinSizeY"].GetUint();
+		Log("\nWinSizeY: ");  Log_u(win_size_y);
+
 #ifdef GPU_ON_C
 		if (document.HasMember("GPU_Platform") && (document["GPU_Platform"].IsInt()))
 			gpu_devices.use_gpu_platform = (size_t)document["GPU_Platform"].GetUint();
@@ -489,7 +500,7 @@ int load_config(char *filename)
 
 	}
 	 
-	Log("\nConfig loaded");
+	Log("\n=== Config loaded ===");
 	free(json);
 	return 1;
 }
@@ -1114,7 +1125,7 @@ void send_i(void)
 			return;
 		}
 
-		if (send_best_only) //Гасим все шары, которые больше текущего targetDeadline
+		if (send_best_only) //Гасим все шары, которые больше текущего targetDeadline, актуально для режима Proxy
 		{
 			for (auto iter = shares.begin(); iter != shares.end(); ++iter)
 			{
@@ -1162,13 +1173,15 @@ void send_i(void)
 				freeaddrinfo(result);
 				continue;
 			}
-
+			const unsigned t = 1000;
+			setsockopt(ConnectSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&t, sizeof(unsigned));
 			iResult = connect(ConnectSocket, result->ai_addr, (int)result->ai_addrlen);
 			if (iResult == SOCKET_ERROR)
 			{
 				Log("\nSender:! Error Sender's connect: "); Log_u(WSAGetLastError());
 				wattron(win_main, COLOR_PAIR(12));
-				wprintw(win_main, "SENDER: can't connect. Error: %ld\n", WSAGetLastError(), 0);
+				_strtime(tbuffer);
+				wprintw(win_main, "%s SENDER: can't connect. Error: %ld\n", tbuffer, WSAGetLastError(), 0);
 				wattroff(win_main, COLOR_PAIR(12));
 				freeaddrinfo(result);
 				continue;
@@ -1323,7 +1336,6 @@ void send_i(void)
 									char* endaccountId = strpbrk(raccountId, ",}\"");
 									endaccountId[0] = 0;
 									naccountId = _strtoui64(raccountId, 0, 10);
-									//size_t acc = Get_index_acc(naccountId);
 									ntargetDeadline = _strtoui64(rtargetDeadline, 0, 10);
 									bests[Get_index_acc(naccountId)].targetDeadline = ntargetDeadline;
 								}
@@ -1358,10 +1370,10 @@ void send_i(void)
 						if (strstr(find + 4, "Received share") != nullptr)
 						{
 							_strtime(tbuffer);
-							//deadline = bests[Get_index_acc(sessions.at(iter).ID)].DL;
+							deadline = bests[Get_index_acc(iter->ID)].DL;
 							if (++all_rcv_dl >= 1000) all_rcv_dl = 0;
 							wattron(win_main, COLOR_PAIR(10));
-							wprintw(win_main, "%s [%20llu] confirmed DL\n", tbuffer, iter->ID, 0);
+							wprintw(win_main, "%s [%20llu] confirmed DL   %9llu\n", tbuffer, iter->ID, iter->deadline, 0);
 							wattroff(win_main, COLOR_PAIR(10));
 						}
 						else
@@ -1397,7 +1409,7 @@ void send_i(void)
 	return;
 }
 
-/*
+
 void procscoop4(unsigned long long nonce, unsigned long long n, char *data, size_t acc, const std::string &file_name) {
 	char *cache;
 	char sig0[32 + 64];
@@ -1405,7 +1417,7 @@ void procscoop4(unsigned long long nonce, unsigned long long n, char *data, size
 	char sig2[32 + 64];
 	char sig3[32 + 64];
 	cache = data;
-	char tbuffer[9];
+//	char tbuffer[9];
 	unsigned long long v;
 
 	memcpy(sig0, signature, 32);
@@ -1428,9 +1440,9 @@ void procscoop4(unsigned long long nonce, unsigned long long n, char *data, size
 		memcpy(&sig3[32], &cache[(v + 3) * 64], 64);
 
 		
-		avx1_mshabal_init2(&x, 256);
-		avx1_mshabal(&x, (const unsigned char*)sig0, (const unsigned char*)sig1, (const unsigned char*)sig2, (const unsigned char*)sig3, 64 + 32);
-		avx1_mshabal_close(&x, 0, 0, 0, 0, 0, res0, res1, res2, res3);
+		sse4_mshabal_init(&x, 256);
+		sse4_mshabal(&x, (const unsigned char*)sig0, (const unsigned char*)sig1, (const unsigned char*)sig2, (const unsigned char*)sig3, 64 + 32);
+		sse4_mshabal_close(&x, 0, 0, 0, 0, 0, res0, res1, res2, res3);
 
 		unsigned long long *wertung = (unsigned long long*)res0;
 		unsigned long long *wertung1 = (unsigned long long*)res1;
@@ -1453,56 +1465,63 @@ void procscoop4(unsigned long long nonce, unsigned long long n, char *data, size
 			posn = 3;
 		}
 
+
 		if ((*wertung / baseTarget) <= bests[acc].targetDeadline)
 		{
 			if (send_best_only)
 			{
 				if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
 				{
-					Log("\nfound deadline=");	Log_llu(*wertung / baseTarget); Log(" nonce=");	Log_llu(nonce + v); Log(" for account: "); Log_llu(bests[acc].account_id); Log(" file: "); Log((char*)file_name.c_str());
-					pthread_mutex_lock(&bestsLock);
+					Log("\nfound deadline=");	Log_llu(*wertung / baseTarget); Log(" nonce=");	Log_llu(nonce + v + posn); Log(" for account: "); Log_llu(bests[acc].account_id); Log(" file: "); Log((char*)file_name.c_str());
+					EnterCriticalSection(&bestsLock);
 					bests[acc].best = *wertung;
-					bests[acc].nonce = nonce + v;
+					bests[acc].nonce = nonce + v + posn;
 					bests[acc].DL = *wertung / baseTarget;
-					pthread_mutex_unlock(&bestsLock);
-					pthread_mutex_lock(&sharesLock);
-					shares.emplace_back(file_name, bests[acc].account_id, bests[acc].best, bests[acc].nonce);
-					pthread_mutex_unlock(&sharesLock);
+					LeaveCriticalSection(&bestsLock);
+					EnterCriticalSection(&sharesLock);
+					shares.push_back({ file_name, bests[acc].account_id, bests[acc].best, bests[acc].nonce });
+					LeaveCriticalSection(&sharesLock);
 					if (use_debug)
 					{
+						char tbuffer[9];
 						_strtime(tbuffer);
 						wattron(win_main, COLOR_PAIR(2));
-						wprintw(win_main, "%s [%20llu] found DL:      %9llu\n", tbuffer, bests[acc].account_id, bests[acc].DL);
+						wprintw(win_main, "%s [%20llu] found DL:      %9llu\n", tbuffer, bests[acc].account_id, bests[acc].DL, 0);
 						wattroff(win_main, COLOR_PAIR(2));
 					}
 				}
 			}
 			else
 			{
-				pthread_mutex_lock(&bestsLock);
 				if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
 				{
+					Log("\nfound deadline=");	Log_llu(*wertung / baseTarget); Log(" nonce=");	Log_llu(nonce + v); Log(" for account: "); Log_llu(bests[acc].account_id); Log(" file: "); Log((char*)file_name.c_str());
+					EnterCriticalSection(&bestsLock);
 					bests[acc].best = *wertung;
-					bests[acc].nonce = nonce + v;
+					bests[acc].nonce = nonce + v + posn;
 					bests[acc].DL = *wertung / baseTarget;
+					LeaveCriticalSection(&bestsLock);
 				}
-				pthread_mutex_unlock(&bestsLock);
-				pthread_mutex_lock(&sharesLock);
-				shares.emplace_back(file_name, bests[acc].account_id, *wertung, nonce + v);
-				pthread_mutex_unlock(&sharesLock);
+				EnterCriticalSection(&sharesLock);
+				shares.push_back({ file_name, bests[acc].account_id, *wertung, nonce + v + posn });
+				LeaveCriticalSection(&sharesLock);
 				if (use_debug)
 				{
+					char tbuffer[9];
 					_strtime(tbuffer);
 					wattron(win_main, COLOR_PAIR(2));
-					wprintw(win_main, "%s [%20llu] found DL:      %9llu\n", tbuffer, bests[acc].account_id, bests[acc].DL);
+					wprintw(win_main, "%s [%20llu] found DL:      %9llu\n", tbuffer, bests[acc].account_id, *wertung / baseTarget, 0);
 					wattroff(win_main, COLOR_PAIR(2));
 				}
 			}
 		}
+
 	}
 }
 
 
+
+/*
 
 unsigned long long procscoop8(unsigned long long nonce, unsigned long long n, char *data, int acc, const std::string &file_name) {
 	char *cache;
@@ -1680,6 +1699,7 @@ void procscoop(const unsigned long long nonce, const unsigned long long n, char 
 			{
 				if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
 				{
+					Log("\nfound deadline=");	Log_llu(*wertung / baseTarget); Log(" nonce=");	Log_llu(nonce + v); Log(" for account: "); Log_llu(bests[acc].account_id); Log(" file: "); Log((char*)file_name.c_str());
 					EnterCriticalSection(&bestsLock);
 					bests[acc].best = *wertung;
 					bests[acc].nonce = nonce + v;
@@ -1694,7 +1714,7 @@ void procscoop(const unsigned long long nonce, const unsigned long long n, char 
 					char tbuffer[9];
 					_strtime(tbuffer);
 					wattron(win_main, COLOR_PAIR(2));
-					wprintw(win_main, "%s [%20llu] found DL:      %9llu\n", tbuffer, bests[acc].account_id, bests[acc].DL, 0);
+					wprintw(win_main, "%s [%20llu] found DL:      %9llu\n", tbuffer, bests[acc].account_id, *wertung / baseTarget, 0);
 					wattroff(win_main, COLOR_PAIR(2));
 				}
 			}
@@ -2272,6 +2292,7 @@ void pollLocal(void) {
 	struct addrinfo *result = nullptr;
 	struct addrinfo hints;
 	SOCKET UpdaterSocket = INVALID_SOCKET;
+	char tbuffer[9];
 
 	ZeroMemory(&hints, sizeof(hints));
 	hints.ai_family = AF_INET; //AF_UNSPEC;  // использовать IPv4 или IPv6, нам неважно
@@ -2299,13 +2320,14 @@ void pollLocal(void) {
 			if (++err_send_msg >= 1000) err_send_msg = 0;
 		}
 		else {
-				const unsigned t =10000;
+				const unsigned t =1000;
 				setsockopt(UpdaterSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&t, sizeof(unsigned));
 				Log("\n*Connecting to server: "); Log(updateraddr); Log(":"); Log_u(updaterport);
 				iResult = connect(UpdaterSocket, result->ai_addr, (int)result->ai_addrlen);
 				if (iResult == SOCKET_ERROR) {
 					wattron(win_main, COLOR_PAIR(12));
-					wprintw(win_main, "GMI: connect function failed with error: %ld\n", WSAGetLastError(), 0);
+					_strtime(tbuffer);
+					wprintw(win_main, "%s GMI: connect function failed with error: %ld\n", tbuffer, WSAGetLastError(), 0);
 					wattroff(win_main, COLOR_PAIR(12));
 					Log("\n*! Connect server error "); Log_u(WSAGetLastError());
 					if (++err_send_msg >= 1000) err_send_msg = 0;
@@ -2323,7 +2345,8 @@ void pollLocal(void) {
 					if (++err_send_msg >= 1000) err_send_msg = 0;
 					Log("\n*! Error sending request: "); Log_u(WSAGetLastError()); Log("Errors: "); Log_llu(err_send_msg);
 					wattron(win_main, COLOR_PAIR(12));
-					wprintw(win_main, "GMI: send request failed: %ld\n", WSAGetLastError());
+					_strtime(tbuffer);
+					wprintw(win_main, "%s GMI: send request failed: %ld\n", tbuffer, WSAGetLastError(), 0);
 					wattroff(win_main, COLOR_PAIR(12));
 				}
 				else{
@@ -2346,7 +2369,8 @@ void pollLocal(void) {
 						if (++err_rcv_msg >= 1000) err_rcv_msg = 0;
 						Log("\n*! Error response: "); Log_u(WSAGetLastError()); Log("Errors: "); Log_llu(err_rcv_msg);
 						wattron(win_main, COLOR_PAIR(12));
-						wprintw(win_main, "GMI: get mining info failed: %ld\n", WSAGetLastError(), 0);
+						_strtime(tbuffer);
+						wprintw(win_main, "%s GMI: get mining info failed: %ld\n", tbuffer, WSAGetLastError(), 0);
 						wattroff(win_main, COLOR_PAIR(12));
 					}
 					else {
@@ -2953,8 +2977,8 @@ int main(int argc, char **argv) {
 	hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
 	_COORD coord;
-	coord.X = 80;
-	coord.Y = 60;
+	coord.X = win_size_x;
+	coord.Y = win_size_y;
 
 	_SMALL_RECT Rect;
 	Rect.Top = 0;
@@ -2970,7 +2994,7 @@ int main(int argc, char **argv) {
 	cbreak();		// не использовать буфер для getch()
 	noecho();		// не отображать нажатия клавиш
 	curs_set(0);	// убрать курсор
-	start_color();	// Start color 			
+	start_color();	// будет всё цветное 			
 	
 	init_pair(2, COLOR_GREEN, COLOR_BLACK);
 	init_pair(4, COLOR_RED, COLOR_BLACK);
@@ -3001,10 +3025,7 @@ int main(int argc, char **argv) {
 	leaveok(win_progress, true);
 //	box(win_progress, 0, 0);
 //	wrefresh(win_progress);
-
 	
-
-
 	wattron(win_main, COLOR_PAIR(12));
 	wprintw(win_main, "\nBURST miner, %s", version, 0);
 	wattroff(win_main, COLOR_PAIR(12));
@@ -3140,8 +3161,6 @@ int main(int argc, char **argv) {
 		worker_progress.clear();
 		stopThreads = 0;
 		
-		// Run Sender
-		std::thread sender(send_i);
 
 		char scoopgen[40];
 		memmove(scoopgen, signature, 32);
@@ -3194,6 +3213,10 @@ int main(int argc, char **argv) {
 			//Log("\ntargetDeadline not found, targetDeadline: "); Log_llu(targetDeadlineInfo);
 		}
 
+		// Run Sender
+		std::thread sender(send_i);
+
+		// Run Threads
 		for (i = 0; i < paths_dir.size(); i++)
 		{
 			worker.push_back(std::thread(work_i, i));
@@ -3205,6 +3228,7 @@ int main(int argc, char **argv) {
 		unsigned long long old_baseTarget = baseTarget;
 		unsigned long long old_height = height;
 		wclear(win_progress);
+
 		// Wait until signature changed
 		while ((memcmp(signature, oldSignature, 32) == 0))
 		{
@@ -3234,7 +3258,6 @@ int main(int argc, char **argv) {
 			wrefresh(win_main);
 			wrefresh(win_progress);
 			
-			//doupdate();
 			std::this_thread::yield();
 			std::this_thread::sleep_for(std::chrono::milliseconds(39));
 		}
@@ -3264,8 +3287,6 @@ int main(int argc, char **argv) {
 	
 	if (updater.joinable()) updater.join();
 	Log("\nUpdater stopped");
-	//if (sender.joinable()) sender.join();
-	//Log("\nSender stopped");
 	if (enable_proxy) proxy.join();
 	worker.~vector();
 	worker_progress.~vector();

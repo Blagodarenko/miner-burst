@@ -18,13 +18,15 @@
 
 #include <stddef.h>
 #include <string.h>
-#include <emmintrin.h>
+#include <immintrin.h>
 
 #include "mshabal.h"
 
 #ifdef  __cplusplus
 extern "C" {
 #endif
+
+//#pragma optimize("s", on)
 
 #ifdef _MSC_VER
 #pragma warning (disable: 4146)
@@ -445,6 +447,7 @@ static void  avx1_mshabal_compress(mshabal_context *sc,
     }
 	_mm256_zeroupper();
   }
+  //#pragma optimize("", on)
 
 #ifdef  __cplusplus
   extern "C" {

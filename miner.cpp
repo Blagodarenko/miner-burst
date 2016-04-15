@@ -4,7 +4,6 @@
 
 //#pragma intrinsic( memset, memcpy, strlen, strcat, strcpy )
 
-//#include <vld.h> 
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
@@ -21,31 +20,22 @@
 #include <io.h>
 #include <vector>
 #include <thread>
-//#include <atomic>
-//#include <mutex>
-//#include <memory>
-//#include <deque>
+
 
 #pragma comment(lib,"Ws2_32.lib")
 #include <ws2tcpip.h>
 
 #include "curses.h" 
 #include "panel.h" 
-//#include "pthread.h"
 #include "sph_shabal.h"
 #include "mshabal.h"
 #include "mshabal256.h"
 #include "InstructionSet.h"
-//#include "PurgeStandbyList.cpp"
 
 #include "rapidjson/document.h"		// rapidjson's DOM-style API
 #include "rapidjson/prettywriter.h"	// for stringify JSON
 #include "rapidjson/filestream.h"	// wrapper of C stream for prettywriter as output
 using namespace rapidjson;
-
-
-//#include <winsock2.h>
-//#include <windows.h>
 
 
 
@@ -74,7 +64,11 @@ const InstructionSet::InstructionSet_Internal InstructionSet::CPU_Rep;
 
 HANDLE hConsole;
 bool exit_flag = false;
-char *version = "v1.160407";
+#ifdef __AVX__
+	char *version = "v1.160413_AVX";
+#else
+	char *version = "v1.160413";
+#endif 
 
 unsigned long long startnonce = 0;
 unsigned long nonces = 0;
@@ -82,15 +76,16 @@ unsigned int scoop = 0;
  
 unsigned long long deadline = 0;
 
-unsigned long long all_send_msg = 0;
-unsigned long long all_rcv_msg = 0;
-unsigned long long err_send_msg = 0;
-unsigned long long err_rcv_msg = 0;
+//unsigned long long all_send_msg = 0;
+//unsigned long long all_rcv_msg = 0;
+//unsigned long long err_send_msg = 0;
+//unsigned long long err_rcv_msg = 0;
 
-unsigned long long all_send_dl = 0;
-unsigned long long all_rcv_dl = 0;
-unsigned long long err_send_dl = 0;
-unsigned long long err_rcv_dl = 0;
+//unsigned long long all_send_dl = 0;
+//unsigned long long all_rcv_dl = 0;
+//unsigned long long err_send_dl = 0;
+//unsigned long long err_rcv_dl = 0;
+int network_quality = 100;
  
 char signature[33];
 char str_signature[65];
@@ -111,7 +106,6 @@ char *p_minerPath;					// путь к папке майнера
 size_t miner_mode = 0;				// режим майнера. 0=соло, 1=пул
 size_t cache_size = 100000;			// размер кэша чтения плотов
 std::vector<std::string> paths_dir; // пути
-//bool use_sorting = false;			// Использовать сортировку в отправщике
 bool show_msg = false;				// Показать общение с сервером в отправщике
 bool show_updates = false;			// Показать общение с сервером в апдейтере
 FILE * fp_Log;						// указатель на лог-файл
@@ -124,8 +118,8 @@ short win_size_y = 60;
 bool use_fast_rcv = false;
 bool use_debug = false;
 bool enable_proxy = false;
-bool use_generator = false;
 bool send_best_only = true;
+bool use_wakeup = false;
 bool use_log = true;				// Вести лог
 bool use_boost = false;				// Использовать повышенный приоритет для потоков
 bool show_winner = true;			// показывать победителя
@@ -200,12 +194,14 @@ unsigned long long height = 0;
 unsigned long long baseTarget = 0;
 unsigned long long targetDeadlineInfo = 0; // Максимальный дедлайн пула
 volatile int stopThreads = 0;
-char *pass;		// пароль
+char *pass;						// пароль
  
 CRITICAL_SECTION sessionsLock;	// обновление sessions
 CRITICAL_SECTION bestsLock;		// обновление bests
 CRITICAL_SECTION sharesLock;	// обновление shares
 
+
+void ShowMemError(void);
 
 void Log_init(void)
 {
@@ -214,9 +210,7 @@ void Log_init(void)
 		char * filename = (char*)calloc(MAX_PATH, sizeof(char));
 		if (filename == nullptr)
 		{
-			wattron(win_main, COLOR_PAIR(12));
-			wprintw(win_main, "LOG: Memory allocation error\n", 0);
-			wattroff(win_main, COLOR_PAIR(12));
+			ShowMemError();
 			use_log = false;
 			return;
 		}
@@ -266,9 +260,7 @@ void Log_server(char * strLog)
 		char * Msg_log = (char *)calloc(len_str * 2 + 1, sizeof(char));
 		if (Msg_log == nullptr)
 		{
-			wattron(win_main, COLOR_PAIR(12));
-			wprintw(win_main, "Error allocating memory\n", 0);
-			wattroff(win_main, COLOR_PAIR(12));
+			ShowMemError();
 			exit(-1);
 		}
 		for (size_t i = 0, j = 0; i<len_str; i++, j++)
@@ -319,6 +311,15 @@ void Log_u(size_t u_num)
 	}
 }
 
+void ShowMemError(void)
+{
+	Log("\n!!! Error allocating memory");
+	wattron(win_main, COLOR_PAIR(12));
+	wprintw(win_main, "Error allocating memory\n", 0);
+	wattroff(win_main, COLOR_PAIR(12));
+}
+
+
 int load_config(char *filename)
 {
 	FILE * pFile;
@@ -339,9 +340,7 @@ int load_config(char *filename)
 	_fseeki64(pFile, 0, SEEK_SET);
 	json = (char*)calloc(size + 1, sizeof(char));
 	if (json == nullptr) {
-		wattron(win_main, COLOR_PAIR(12));
-		wprintw(win_main, "Error allocating memory\n", 0);
-		wattroff(win_main, COLOR_PAIR(12));
+		ShowMemError();
 		exit(-1);
 	}
 	len = fread_s(json, size, 1, size - 1, pFile);
@@ -405,9 +404,9 @@ int load_config(char *filename)
 
 		Log("\nCacheSize: "); Log_u(cache_size);
 		
-		//if(document.HasMember("UseSorting") && (document["UseSorting"].IsBool()))		
-		//	use_sorting = document["UseSorting"].GetBool();
-		//Log("\nUseSorting: "); Log_u(use_sorting);
+		if(document.HasMember("UseHDDWakeUp") && (document["UseHDDWakeUp"].IsBool()))		
+			use_wakeup = document["UseHDDWakeUp"].GetBool();
+		Log("\nUseHDDWakeUp: "); Log_u(use_wakeup);
 
 		if(document.HasMember("ShowMsg") && (document["ShowMsg"].IsBool()))		
 			show_msg = document["ShowMsg"].GetBool();
@@ -577,9 +576,7 @@ void GetPass(char* p_strFolderPath)
   char * filename = (char*)calloc(MAX_PATH, sizeof(char));
   if (filename == nullptr)
   {
-	  wattron(win_main, COLOR_PAIR(12));
-	  wprintw(win_main, "Error allocating memory\n", 0);
-	  wattroff(win_main, COLOR_PAIR(12));
+	  ShowMemError();
 	  exit(-1);
   }
   sprintf_s(filename, _msize(filename), "%s%s", p_strFolderPath, "passphrases.txt");
@@ -601,9 +598,7 @@ void GetPass(char* p_strFolderPath)
   buffer = (unsigned char*)calloc(lSize + 1, sizeof(char));
   if (buffer == nullptr) 
   {
-	  wattron(win_main, COLOR_PAIR(12));
-	  wprintw(win_main, "Error allocating memory\n", 0);
-	  wattroff(win_main, COLOR_PAIR(12));
+	  ShowMemError();
 	  exit(-1);
   }
   
@@ -614,9 +609,7 @@ void GetPass(char* p_strFolderPath)
   pass = (char*)calloc(lSize * 3, sizeof(char));
   if (pass == nullptr)
   {
-	  wattron(win_main, COLOR_PAIR(12));
-	  wprintw(win_main, "Error allocating memory\n", 0);
-	  wattroff(win_main, COLOR_PAIR(12));
+	  ShowMemError();
 	  exit(-1);
   }
   
@@ -849,16 +842,12 @@ void proxy_i(void)
 	unsigned buffer_size = 1000;
 	char* buffer = (char*)calloc(buffer_size, sizeof(char));
 	if (buffer == nullptr) {
-		wattron(win_main, COLOR_PAIR(12));
-		wprintw(win_main, "Error allocating memory\n", 0);
-		wattroff(win_main, COLOR_PAIR(12));
+		ShowMemError();
 		exit(-1);
 	}
 	char* tmp_buffer = (char*)calloc(buffer_size, sizeof(char));
 	if (tmp_buffer == nullptr) {
-		wattron(win_main, COLOR_PAIR(12));
-		wprintw(win_main, "Error allocating memory\n, 0");
-		wattroff(win_main, COLOR_PAIR(12));
+		ShowMemError();
 		exit(-1);
 	}
 	char tbuffer[9];
@@ -923,13 +912,10 @@ void proxy_i(void)
 		struct sockaddr_in client_socket_address;
 		int iAddrSize = sizeof(struct sockaddr_in);
 		ClientSocket = accept(ServerSocket, (struct sockaddr *)&client_socket_address, (socklen_t*)&iAddrSize);
-		Log("\nProxy 1");
 		if (ClientSocket == INVALID_SOCKET)
 		{
-			Log("\nProxy 2");
 			if (WSAGetLastError() != WSAEWOULDBLOCK)
 			{
-				Log("\nProxy 2.2");
 				Log("\nProxy:! Error Proxy's accept: "); Log_u(WSAGetLastError());
 				wattron(win_main, COLOR_PAIR(12));
 				wprintw(win_main, "PROXY: can't accept. Error: %ld\n", WSAGetLastError(), 0);
@@ -938,14 +924,12 @@ void proxy_i(void)
 		}
 		else
 		{
-			Log("\nProxy 3");
 			memset(buffer, 0, _msize(buffer));
 			do{
 				memset(tmp_buffer, 0, _msize(buffer));
 				iResult = recv(ClientSocket, tmp_buffer, buffer_size - 1, 0);
 				strcat(buffer, tmp_buffer);
 			} while ((iResult > 0) && !use_fast_rcv);
-
 
 			Log("\nProxy get info: ");  Log_server(buffer);
 			unsigned long long get_accountId = 0;
@@ -1009,7 +993,6 @@ void proxy_i(void)
 							iResult = send(ClientSocket, buffer, bytes, 0);
 							if (iResult == SOCKET_ERROR)
 							{
-								if (++err_send_dl >= 1000) err_send_dl = 0;
 								Log("\nProxy: ! Error sending to client: "); Log_u(WSAGetLastError());
 								wattron(win_main, COLOR_PAIR(12));
 								wprintw(win_main, "PROXY: failed sending to client: %ld\n", WSAGetLastError(), 0);
@@ -1052,7 +1035,7 @@ void proxy_i(void)
 					{
 						if ((strstr(buffer, "getBlocks") != nullptr) || (strstr(buffer, "getAccount") != nullptr) || (strstr(buffer, "getRewardRecipient") != nullptr))
 						{
-							; // ничего не делаем
+							; // ничего не делаем, не ошибка, пропускаем
 						}
 						else
 						{
@@ -1081,18 +1064,10 @@ void send_i(void)
 	int iResult = 0;
 	char* buffer = (char*)calloc(1000, sizeof(char));
 	if (buffer == nullptr) {
-		wattron(win_main, COLOR_PAIR(12));
-		wprintw(win_main, "Error allocating memory\n", 0);
-		wattroff(win_main, COLOR_PAIR(12));
+		ShowMemError();
 		exit(-1);
 	}
-	//char* tmp_buffer = (char*)calloc(buffer_size, sizeof(char));
-	//if (tmp_buffer == nullptr) {
-	//	wattron(win_main, COLOR_PAIR(12));
-	//	wprintw(win_main, "Error allocating memory\n", 0);
-	//	wattroff(win_main, COLOR_PAIR(12));
-	//	exit(-1);
-	//}
+
 	char tbuffer[9];
 
 	struct addrinfo *result = nullptr;
@@ -1125,32 +1100,27 @@ void send_i(void)
 			return;
 		}
 
-		if (send_best_only) //Гасим все шары, которые больше текущего targetDeadline, актуально для режима Proxy
+		for (auto iter = shares.begin(); iter != shares.end();)
 		{
-			for (auto iter = shares.begin(); iter != shares.end(); ++iter)
+
+			if (send_best_only) //Гасим шару если она больше текущего targetDeadline, актуально для режима Proxy
 			{
-				size_t acc = Get_index_acc(iter->account_id);
-				//printf("\r\nshares id: %llu\n", shares[iter].account_id);
-				if ((iter->best / baseTarget) > bests[acc].targetDeadline)
+				if ((iter->best / baseTarget) > bests[Get_index_acc(iter->account_id)].targetDeadline)
 				{
 					if (use_debug)
 					{
 						_strtime(tbuffer);
 						wattron(win_main, COLOR_PAIR(4));
-						wprintw(win_main, "%s [%20llu]\t%llu > %llu  discarded\n", tbuffer, iter->account_id, iter->best / baseTarget, bests[acc].targetDeadline, 0);
+						wprintw(win_main, "%s [%20llu]\t%llu > %llu  discarded\n", tbuffer, iter->account_id, iter->best / baseTarget, bests[Get_index_acc(iter->account_id)].targetDeadline, 0);
 						wattroff(win_main, COLOR_PAIR(4));
 					}
 					EnterCriticalSection(&sharesLock);
 					iter = shares.erase(iter);
 					LeaveCriticalSection(&sharesLock);
+					continue;
 				}
 			}
-		}
 
-
-		for (auto iter = shares.begin(); iter != shares.end();)
-		{
-			//Log("\n*** Шар на отправку: "); Log_u(shares.size());
 			ZeroMemory(&hints, sizeof(hints));
 			hints.ai_family = AF_INET; //AF_UNSPEC;  // использовать IPv4 или IPv6, нам неважно
 			hints.ai_socktype = SOCK_STREAM;
@@ -1160,6 +1130,7 @@ void send_i(void)
 			_itoa((int)nodeport, nport, 10);
 			iResult = getaddrinfo(nodeaddr, nport, &hints, &result);
 			if (iResult != 0) {
+				if (network_quality > 0) network_quality--;
 				wattron(win_main, COLOR_PAIR(12));
 				wprintw(win_main, "SENDER: getaddrinfo failed with error: %d\n", iResult, 0);
 				wattroff(win_main, COLOR_PAIR(12));
@@ -1167,6 +1138,7 @@ void send_i(void)
 			}
 			ConnectSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
 			if (ConnectSocket == INVALID_SOCKET) {
+				if (network_quality > 0) network_quality--;
 				wattron(win_main, COLOR_PAIR(12));
 				wprintw(win_main, "SENDER: socket failed with error: %ld\n", WSAGetLastError(), 0);
 				wattroff(win_main, COLOR_PAIR(12));
@@ -1178,6 +1150,7 @@ void send_i(void)
 			iResult = connect(ConnectSocket, result->ai_addr, (int)result->ai_addrlen);
 			if (iResult == SOCKET_ERROR)
 			{
+				if (network_quality > 0) network_quality--;
 				Log("\nSender:! Error Sender's connect: "); Log_u(WSAGetLastError());
 				wattron(win_main, COLOR_PAIR(12));
 				_strtime(tbuffer);
@@ -1208,9 +1181,7 @@ void send_i(void)
 					char *str_len = (char*)calloc(MAX_PATH, sizeof(char));
 					if ((f1 == nullptr) || (str_len == nullptr))
 					{
-						wattron(win_main, COLOR_PAIR(12));
-						wprintw(win_main, "SENDER: Error allocating memory\n", 0);
-						wattroff(win_main, COLOR_PAIR(12));
+						ShowMemError();
 						exit(-1);
 					}
 
@@ -1223,11 +1194,11 @@ void send_i(void)
 				}
 
 				// Sending to server
-				if (++all_send_dl >= 1000) all_send_dl = 0;
+				
 				iResult = send(ConnectSocket, buffer, bytes, 0);
 				if (iResult == SOCKET_ERROR)
 				{
-					if (++err_send_dl >= 1000) err_send_dl = 0;
+					if (network_quality > 0) network_quality--;
 					Log("\nSender: ! Error deadline's sending: "); Log_u(WSAGetLastError());
 					wattron(win_main, COLOR_PAIR(12));
 					wprintw(win_main, "SENDER: send failed: %ld\n", WSAGetLastError(), 0);
@@ -1238,6 +1209,7 @@ void send_i(void)
 				{
 					unsigned long long dl = iter->best / baseTarget;
 					_strtime(tbuffer);
+					if (network_quality < 100) network_quality++;
 					wattron(win_main, COLOR_PAIR(9));
 					wprintw(win_main, "%s [%20llu] sent DL: %15llu %5llud %02llu:%02llu:%02llu\n", tbuffer, iter->account_id, dl, (dl) / (24 * 60 * 60), (dl % (24 * 60 * 60)) / (60 * 60), (dl % (60 * 60)) / 60, dl % 60, 0);
 					wattroff(win_main, COLOR_PAIR(9));
@@ -1268,12 +1240,13 @@ void send_i(void)
 				iResult = ioctlsocket(ConnectSocket, FIONBIO, (unsigned long*)&l);
 				if (iResult == SOCKET_ERROR)
 				{
+					if (network_quality > 0) network_quality--;
 					Log("\nSender: ! Error ioctlsocket's: "); Log_u(WSAGetLastError());
 					wattron(win_main, COLOR_PAIR(12));
 					wprintw(win_main, "SENDER: ioctlsocket failed: %ld\n", WSAGetLastError(), 0);
 					wattroff(win_main, COLOR_PAIR(12));
+					continue;
 				}
-
 				memset(buffer, 0, _msize(buffer));
 				int  pos = 0;
 				iResult = 0;
@@ -1281,23 +1254,11 @@ void send_i(void)
 					iResult = recv(ConnectSocket, &buffer[pos], 1000 - pos - 1, 0);
 					if (iResult > 0) pos += iResult;
 				} while ((iResult > 0) && !use_fast_rcv);
-
-
-
-				//memset(buffer, 0, buffer_size);
-				//size_t resp = 0;
-				//do{
-					//memset(tmp_buffer, 0, buffer_size);
-					//iResult = recv(ConnectSocket, tmp_buffer, buffer_size - 1, 0);
-					//strcat(buffer, tmp_buffer);
-					//resp++;
-				//} while ((iResult > 0) && !use_fast_rcv);
-
 				if (iResult == SOCKET_ERROR)
 				{
 					if (WSAGetLastError() != WSAEWOULDBLOCK)
 					{
-						if (++err_rcv_dl >= 1000) err_rcv_dl = 0;
+						if (network_quality > 0) network_quality--;
 						Log("\nSender: ! Error getting deadline's confirmation: "); Log_u(WSAGetLastError());
 						wattron(win_main, COLOR_PAIR(12));
 						wprintw(win_main, "SENDER: receiving confirmation failed: %ld\n", WSAGetLastError(), 0);
@@ -1307,7 +1268,8 @@ void send_i(void)
 				else
 				{
 					if (show_msg) wprintw(win_main, "\nReceived: %s\n", buffer, 0);
-					Log("\nSender:   Received from server: "); Log_server(buffer);// Log("\nCount responses: "); Log_u(resp);
+					Log("\nSender:   Received from server: "); Log_server(buffer);
+					if (network_quality < 100) network_quality++;
 
 					char *find = strstr(buffer, "\r\n\r\n");
 					if (find != nullptr)
@@ -1339,7 +1301,6 @@ void send_i(void)
 									ntargetDeadline = _strtoui64(rtargetDeadline, 0, 10);
 									bests[Get_index_acc(naccountId)].targetDeadline = ntargetDeadline;
 								}
-								if (++all_rcv_dl >= 1000) all_rcv_dl = 0;
 								Log("\nSender: confirmed deadline: "); Log_llu(ndeadline);
 								//unsigned long long years = (ndeadline % (24*60*60))/(60*60)
 								//unsigned month = (ndeadline % (365*24*60*60))/(24*60*60);
@@ -1351,8 +1312,8 @@ void send_i(void)
 								wattron(win_main, COLOR_PAIR(10));
 								if ((naccountId != 0) && (ntargetDeadline != 0))
 								{
-									wprintw(win_main, "%s [%20llu] confirmed DL: %9llu\t%llud %2u:%2u:%2u\n", tbuffer, naccountId, ndeadline, days, hours, min, sec, 0);
-									if (use_debug) wprintw(win_main, "%s [%20llu] Set targetDL\t%llu\n", tbuffer, naccountId, ntargetDeadline, 0);
+									wprintw(win_main, "%s [%20llu] confirmed DL: %10llu %5llud %02u:%02u:%02u\n", tbuffer, naccountId, ndeadline, days, hours, min, sec, 0);
+									if (use_debug) wprintw(win_main, "%s [%20llu] set targetDL: %10llu\n", tbuffer, naccountId, ntargetDeadline, 0);
 								}
 								else wprintw(win_main, "%s [%20llu] confirmed DL: %10llu %5llud %02u:%02u:%02u\n", tbuffer, iter->ID, ndeadline, days, hours, min, sec, 0);
 								wattroff(win_main, COLOR_PAIR(10));
@@ -1371,7 +1332,6 @@ void send_i(void)
 						{
 							_strtime(tbuffer);
 							deadline = bests[Get_index_acc(iter->ID)].DL;
-							if (++all_rcv_dl >= 1000) all_rcv_dl = 0;
 							wattron(win_main, COLOR_PAIR(10));
 							wprintw(win_main, "%s [%20llu] confirmed DL   %9llu\n", tbuffer, iter->ID, iter->deadline, 0);
 							wattroff(win_main, COLOR_PAIR(10));
@@ -1409,7 +1369,6 @@ void send_i(void)
 	return;
 }
 
-
 void procscoop4(unsigned long long nonce, unsigned long long n, char *data, size_t acc, const std::string &file_name) {
 	char *cache;
 	char sig0[32 + 64];
@@ -1417,7 +1376,7 @@ void procscoop4(unsigned long long nonce, unsigned long long n, char *data, size
 	char sig2[32 + 64];
 	char sig3[32 + 64];
 	cache = data;
-//	char tbuffer[9];
+	char tbuffer[9];
 	unsigned long long v;
 
 	memcpy(sig0, signature, 32);
@@ -1440,9 +1399,9 @@ void procscoop4(unsigned long long nonce, unsigned long long n, char *data, size
 		memcpy(&sig3[32], &cache[(v + 3) * 64], 64);
 
 		
-		sse4_mshabal_init(&x, 256);
-		sse4_mshabal(&x, (const unsigned char*)sig0, (const unsigned char*)sig1, (const unsigned char*)sig2, (const unsigned char*)sig3, 64 + 32);
-		sse4_mshabal_close(&x, 0, 0, 0, 0, 0, res0, res1, res2, res3);
+		avx1_mshabal_init(&x, 256);
+		avx1_mshabal(&x, (const unsigned char*)sig0, (const unsigned char*)sig1, (const unsigned char*)sig2, (const unsigned char*)sig3, 64 + 32);
+		avx1_mshabal_close(&x, 0, 0, 0, 0, 0, res0, res1, res2, res3);
 
 		unsigned long long *wertung = (unsigned long long*)res0;
 		unsigned long long *wertung1 = (unsigned long long*)res1;
@@ -1507,7 +1466,6 @@ void procscoop4(unsigned long long nonce, unsigned long long n, char *data, size
 				LeaveCriticalSection(&sharesLock);
 				if (use_debug)
 				{
-					char tbuffer[9];
 					_strtime(tbuffer);
 					wattron(win_main, COLOR_PAIR(2));
 					wprintw(win_main, "%s [%20llu] found DL:      %9llu\n", tbuffer, bests[acc].account_id, *wertung / baseTarget, 0);
@@ -1518,7 +1476,7 @@ void procscoop4(unsigned long long nonce, unsigned long long n, char *data, size
 
 	}
 }
-
+//#pragma optimize("", on)
 
 
 /*
@@ -1835,9 +1793,7 @@ void work_i(const size_t local_num) {
 
 		char *cache = (char *)VirtualAlloc(nullptr, cache_size_local * 64, MEM_COMMIT, PAGE_READWRITE);
 		if (cache == nullptr) {
-			wattron(win_main, COLOR_PAIR(12));
-			wprintw(win_main, "THREAD: Error allocating memory\n", 0);
-			wattroff(win_main, COLOR_PAIR(12));
+			ShowMemError();
 			exit(-1);
 		}
 
@@ -1885,9 +1841,11 @@ void work_i(const size_t local_num) {
 				if (bytes == cache_size_local * 64)
 				{
 					QueryPerformanceCounter((LARGE_INTEGER*)&start_time_proc);
-					
-					procscoop(n + nonce + i, cache_size_local, cache, acc, iter->Name);// Process block
-
+					#ifdef __AVX__
+						procscoop4(n + nonce + i, cache_size_local, cache, acc, iter->Name);// Process block
+					#else
+						procscoop(n + nonce + i, cache_size_local, cache, acc, iter->Name);// Process block
+					#endif
 					QueryPerformanceCounter(&li);
 					sum_time_proc += (double)(li.QuadPart - start_time_proc);
 					worker_progress[local_num] += bytes;
@@ -1931,22 +1889,37 @@ void work_i(const size_t local_num) {
 	return;
 }
 
-
+void HDD_wakeup_i(void) {
+	for (; !exit_flag;)
+	{
+		std::vector<t_files> tmp_files;
+		for (auto i = 0; i < paths_dir.size(); i++)		GetFiles(paths_dir[i], &tmp_files);
+		if (use_debug)
+		{
+			char tbuffer[9];
+			_strtime(tbuffer);
+			wattron(win_main, COLOR_PAIR(7));
+			wprintw(win_main, "%s HDD, WAKE UP !\n", tbuffer, 0);
+			wattroff(win_main, COLOR_PAIR(7));
+		}
+		std::this_thread::yield();
+		std::this_thread::sleep_for(std::chrono::milliseconds(360000));
+	}
+}
 
 
 void GetJSON(char* req) {
 	const unsigned BUF_SIZE = 1024;
-	char *buffer = (char*)calloc(BUF_SIZE, sizeof(char));
+
+	char *buffer = (char*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, BUF_SIZE);
 	if (buffer == nullptr) {
-		wattron(win_main, COLOR_PAIR(12));
-		wprintw(win_main, "Error allocating memory\n", 0);
-		wattroff(win_main, COLOR_PAIR(12));
+		ShowMemError();
 		exit(-1);
 	}
-	
+
 	char *find = nullptr;
 	unsigned long long msg_len = 0;
-	int iResult;
+	int iResult = 0;
 	struct addrinfo *result = nullptr;
 	struct addrinfo hints;
 	SOCKET WalletSocket = INVALID_SOCKET;
@@ -1967,7 +1940,7 @@ void GetJSON(char* req) {
 		wattroff(win_main, COLOR_PAIR(12));
 		Log("\nWinner: getaddrinfo error");
 	}
-	else 
+	else
 	{
 		WalletSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
 		if (WalletSocket == INVALID_SOCKET)
@@ -1977,7 +1950,7 @@ void GetJSON(char* req) {
 			wattroff(win_main, COLOR_PAIR(12));
 			Log("\nWinner: Socket error: "); Log_u(WSAGetLastError());
 		}
-		else 
+		else
 		{
 			unsigned t = 3000;
 			setsockopt(WalletSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&t, sizeof(unsigned));
@@ -1989,7 +1962,7 @@ void GetJSON(char* req) {
 				wattroff(win_main, COLOR_PAIR(12));
 				Log("\nWinner: Connect server error "); Log_u(WSAGetLastError());
 			}
-			else 
+			else
 			{
 				iResult = send(WalletSocket, req, (int)strlen(req), 0);
 				if (iResult == SOCKET_ERROR)
@@ -1997,72 +1970,55 @@ void GetJSON(char* req) {
 					wattron(win_main, COLOR_PAIR(12));
 					wprintw(win_main, "WINNER: Send request failed: %ld\n", WSAGetLastError(), 0);
 					wattroff(win_main, COLOR_PAIR(12));
-					Log("\nWinner: Error sending request: "); Log_u(WSAGetLastError()); Log("Errors: "); Log_llu(err_send_msg);
+					Log("\nWinner: Error sending request: "); Log_u(WSAGetLastError());
 				}
 				else
 				{
-					char *tmp_buffer = (char*)calloc(BUF_SIZE, sizeof(char));
-					if (tmp_buffer == nullptr) {
-						wattron(win_main, COLOR_PAIR(12));
-						wprintw(win_main, "Error allocating memory\n", 0);
-						wattroff(win_main, COLOR_PAIR(12));
-						exit(-1);
-					}
-					
-						do{
-							memset(tmp_buffer, 0, BUF_SIZE);
-							iResult = recv(WalletSocket, tmp_buffer, BUF_SIZE - 1, 0);
-							if (iResult > 0)
-							{
-								msg_len = msg_len + iResult;
-								if (msg_len >= BUF_SIZE - 1)
-								{
-									Log("\nrealloc: ");
-									char* tmp_buffer = (char*)realloc(buffer, msg_len * sizeof(char));
-									if (tmp_buffer == nullptr)
-									{
-										Log(" ERROR!");
-										break;
-									}
-									else
-									{
-										buffer = tmp_buffer;
-										buffer[msg_len - iResult] = 0;
-										Log_llu(msg_len);
-									}
-								}
-								strcat(buffer, tmp_buffer);
-							}
-						} while (iResult > 0);
-						free(tmp_buffer);
-
-						if (iResult == SOCKET_ERROR)
-						{
-							wattron(win_main, COLOR_PAIR(12));
-							wprintw(win_main, "WINNER: Get info failed: %ld\n", WSAGetLastError(), 0);
-							wattroff(win_main, COLOR_PAIR(12));
-							Log("\nWinner: Error response: "); Log_u(WSAGetLastError());
+					char *tmp_buffer;
+					unsigned long long msg_len = 0;
+					int iReceived_size = 0;
+					while ((iReceived_size = recv(WalletSocket, buffer + msg_len, BUF_SIZE - 1, 0)) > 0)
+					{
+						msg_len = msg_len + iReceived_size;
+						Log("\nrealloc: ");
+						tmp_buffer = (char*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, msg_len + BUF_SIZE);
+						if (tmp_buffer == nullptr) {
+							ShowMemError();
+							exit(-1);
 						}
-						else
+						memcpy(tmp_buffer, buffer, msg_len);
+						HeapFree(GetProcessHeap(), 0, buffer);
+						buffer = tmp_buffer;
+						buffer[msg_len + 1] = 0;
+						Log_llu(msg_len);
+					}
+
+					if (iReceived_size < 0)
+					{
+						wattron(win_main, COLOR_PAIR(12));
+						wprintw(win_main, "WINNER: Get info failed: %ld\n", WSAGetLastError(), 0);
+						wattroff(win_main, COLOR_PAIR(12));
+						Log("\nWinner: Error response: "); Log_u(WSAGetLastError());
+					}
+					else
+					{
+						find = strstr(buffer, "\r\n\r\n");
+						if (find != nullptr)
 						{
-							find = strstr(buffer, "\r\n\r\n");
-							if (find != nullptr)
-							{
-								json = (char*)calloc((msg_len), sizeof(char));
-								if (json == nullptr) {
-									wattron(win_main, COLOR_PAIR(12));
-									wprintw(win_main, "Error allocating memory\n", 0);
-									wattroff(win_main, COLOR_PAIR(12));
-									exit(-1);
-								}
-								sprintf_s(json, _msize(json), "%s", find + 4 * sizeof(char));
+							json = (char*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, msg_len);
+							if (json == nullptr) {
+								ShowMemError();
+								exit(-1);
 							}
-						} // recv() != SOCKET_ERROR
+							sprintf_s(json, _msize(json), "%s", find + 4 * sizeof(char));
+						}
+					} // recv() != SOCKET_ERROR
 				} //send() != SOCKET_ERROR
 			} // Connect() != SOCKET_ERROR
 		} // socket() != INVALID_SOCKET
 		iResult = closesocket(WalletSocket);
 	} // getaddrinfo() == 0
+	HeapFree(GetProcessHeap(), 0, buffer);
 	freeaddrinfo(result);
 }
 
@@ -2078,13 +2034,12 @@ void GetBlockInfo(unsigned num_block)
 	unsigned long long timestamp0 = 0;
 	unsigned long long timestamp1 = 0;
 	const unsigned req_size = 255;
+	char tbuffer[9];
 	// Запрос двух последних блоков из блокчейна
 
 	char* str_req = (char*)calloc(req_size, sizeof(char));
 	if (str_req == nullptr) {
-		wattron(win_main, COLOR_PAIR(12));
-		wprintw(win_main, "Error allocating memory\n", 0);
-		wattroff(win_main, COLOR_PAIR(12));
+		ShowMemError();
 		exit(-1);
 	}
 	sprintf_s(str_req, _msize(str_req), "POST /burst?requestType=getBlocks&firstIndex=%u&lastIndex=%u HTTP/1.0\r\nConnection: close\r\n\r\n", num_block, num_block + 1);
@@ -2104,17 +2059,13 @@ void GetBlockInfo(unsigned num_block)
 				const Value& bl_1 = blocks[SizeType(1)];
 				generatorRS = (char*)calloc(strlen(bl_0["generatorRS"].GetString()) + 1, sizeof(char));
 				if (generatorRS == nullptr) {
-					wattron(win_main, COLOR_PAIR(12));
-					wprintw(win_main, "Error allocating memory\n", 0);
-					wattroff(win_main, COLOR_PAIR(12));
+					ShowMemError();
 					exit(-1);
 				}
 				strcpy(generatorRS, bl_0["generatorRS"].GetString());
 				generator = (char*)calloc(strlen(bl_0["generator"].GetString()) + 1, sizeof(char));
 				if (generator == nullptr) {
-					wattron(win_main, COLOR_PAIR(12));
-					wprintw(win_main, "Error allocating memory\n", 0);
-					wattroff(win_main, COLOR_PAIR(12));
+					ShowMemError();
 					exit(-1);
 				}
 				strcpy(generator, bl_0["generator"].GetString());
@@ -2126,16 +2077,14 @@ void GetBlockInfo(unsigned num_block)
 		else Log("\n- error parsing JSON getBlocks");
 	}
 	free(str_req);
-	if (json != nullptr) free(json);
+	if (json != nullptr) HeapFree(GetProcessHeap(), 0, json);
 	if ((generator != nullptr) && (generatorRS != nullptr) && (timestamp0 != 0) && (timestamp1 != 0))
 	if (last_block_height == height - 1)
 	{
 		// Запрос данных аккаунта
 		str_req = (char*)calloc(req_size, sizeof(char));
 		if (str_req == nullptr) {
-			wattron(win_main, COLOR_PAIR(12));
-			wprintw(win_main, "Error allocating memory\n", 0);
-			wattroff(win_main, COLOR_PAIR(12));
+			ShowMemError();
 			exit(-1);
 		}
 		sprintf_s(str_req, _msize(str_req), "POST /burst?requestType=getAccount&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", generator);
@@ -2152,9 +2101,7 @@ void GetBlockInfo(unsigned num_block)
 				{
 					name = (char*)calloc(strlen(doc_acc["name"].GetString()) + 1, sizeof(char));
 					if (name == nullptr) {
-						wattron(win_main, COLOR_PAIR(12));
-						wprintw(win_main, "Error allocating memory\n", 0);
-						wattroff(win_main, COLOR_PAIR(12));
+						ShowMemError();
 						exit(-1);
 					}
 					strcpy(name, doc_acc["name"].GetString());
@@ -2163,14 +2110,12 @@ void GetBlockInfo(unsigned num_block)
 			else Log("\n- error parsing JSON getAccount");
 		}
 		free(str_req);
-		if (json != nullptr) free(json);
+		if (json != nullptr) HeapFree(GetProcessHeap(), 0, json);
 
 		// Запрос RewardAssighnment по данному аккаунту
 		str_req = (char*)calloc(req_size, sizeof(char));
 		if (str_req == nullptr) {
-			wattron(win_main, COLOR_PAIR(12));
-			wprintw(win_main, "Error allocating memory\n", 0);
-			wattroff(win_main, COLOR_PAIR(12));
+			ShowMemError();
 			exit(-1);
 		}
 		sprintf_s(str_req, _msize(str_req), "POST /burst?requestType=getRewardRecipient&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", generator);
@@ -2188,9 +2133,7 @@ void GetBlockInfo(unsigned num_block)
 				{
 					rewardRecipient = (char*)calloc(strlen(doc_reward["rewardRecipient"].GetString()) + 1, sizeof(char));
 					if (rewardRecipient == nullptr) {
-						wattron(win_main, COLOR_PAIR(12));
-						wprintw(win_main, "Error allocating memory\n", 0);
-						wattroff(win_main, COLOR_PAIR(12));
+						ShowMemError();
 						exit(-1);
 					}
 					strcpy(rewardRecipient, doc_reward["rewardRecipient"].GetString());
@@ -2199,7 +2142,7 @@ void GetBlockInfo(unsigned num_block)
 			else Log("\n-! error parsing JSON getRewardRecipient");
 		}
 		
-		if (json != nullptr) free(json);
+		if (json != nullptr) HeapFree(GetProcessHeap(), 0, json);
 		
 		if (rewardRecipient != nullptr)
 		{
@@ -2209,9 +2152,7 @@ void GetBlockInfo(unsigned num_block)
 				// Запрос данных аккаунта пула
 				str_req = (char*)calloc(req_size, sizeof(char));
 				if (str_req == nullptr) {
-					wattron(win_main, COLOR_PAIR(12));
-					wprintw(win_main, "Error allocating memory\n", 0);
-					wattroff(win_main, COLOR_PAIR(12));
+					ShowMemError();
 					exit(-1);
 				}
 				sprintf_s(str_req, _msize(str_req), "POST /burst?requestType=getAccount&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", rewardRecipient);
@@ -2229,9 +2170,7 @@ void GetBlockInfo(unsigned num_block)
 					{
 						pool_accountRS = (char*)calloc(strlen(doc_pool["accountRS"].GetString()) + 1, sizeof(char));
 						if (pool_accountRS == nullptr) {
-							wattron(win_main, COLOR_PAIR(12));
-							wprintw(win_main, "Error allocating memory\n", 0);
-							wattroff(win_main, COLOR_PAIR(12));
+							ShowMemError();
 							exit(-1);
 						}
 						strcpy(pool_accountRS, doc_pool["accountRS"].GetString());
@@ -2239,9 +2178,7 @@ void GetBlockInfo(unsigned num_block)
 						{
 							pool_name = (char*)calloc(strlen(doc_pool["name"].GetString()) + 1, sizeof(char));
 							if (pool_name == nullptr) {
-								wattron(win_main, COLOR_PAIR(12));
-								wprintw(win_main, "Error allocating memory\n", 0);
-								wattroff(win_main, COLOR_PAIR(12));
+								ShowMemError();
 								exit(-1);
 							}
 							strcpy(pool_name, doc_pool["name"].GetString());
@@ -2250,24 +2187,26 @@ void GetBlockInfo(unsigned num_block)
 					else Log("\n- error parsing JSON pool getAccount");
 				}
 				free(str_req);
-				free(json);
+				HeapFree(GetProcessHeap(), 0, json);
 			}
 		}
 
 		wattron(win_main, COLOR_PAIR(11));
-		if (name != nullptr) wprintw(win_main, "Winner: %llus by %s (%s)\n", timestamp0 - timestamp1, generatorRS + 6, name, 0);
-		else wprintw(win_main, "Winner: %llus by %s\n", timestamp0 - timestamp1, generatorRS + 6, 0);
+		_strtime(tbuffer);
+		if (name != nullptr) wprintw(win_main, "%s Winner: %llus by %s (%s)\n", tbuffer, timestamp0 - timestamp1, generatorRS + 6, name, 0);
+		else wprintw(win_main, "%s Winner: %llus by %s\n", tbuffer, timestamp0 - timestamp1, generatorRS + 6, 0);
 		if (pool_accountRS != nullptr)
 		{
-			if (pool_name != nullptr) wprintw(win_main, "Winner's pool: %s (%s)\n", pool_accountRS + 6, pool_name, 0);
-			else wprintw(win_main, "Winner's pool: %s\n", pool_accountRS + 6, 0);
+			if (pool_name != nullptr) wprintw(win_main, "%s Winner's pool: %s (%s)\n", tbuffer, pool_accountRS + 6, pool_name, 0);
+			else wprintw(win_main, "%s Winner's pool: %s\n", tbuffer, pool_accountRS + 6, 0);
 		}
 		wattroff(win_main, COLOR_PAIR(11));
 	}
 	else
 	{
+		_strtime(tbuffer);
 		wattron(win_main, COLOR_PAIR(11));
-		wprintw(win_main, "Winner: no info yet\n", 0);
+		wprintw(win_main, "%s Winner: no info yet\n", tbuffer, 0);
 		wattroff(win_main, COLOR_PAIR(11));
 	}
 	free(generatorRS);
@@ -2282,9 +2221,7 @@ void GetBlockInfo(unsigned num_block)
 void pollLocal(void) {
 	char *buffer = (char*)calloc(1000, sizeof(char));
 	if (buffer == nullptr) {
-		wattron(win_main, COLOR_PAIR(12));
-		wprintw(win_main, "Error allocating memory\n", 0);
-		wattroff(win_main, COLOR_PAIR(12));
+		ShowMemError();
 		exit(-1);
 	}
 
@@ -2292,7 +2229,6 @@ void pollLocal(void) {
 	struct addrinfo *result = nullptr;
 	struct addrinfo hints;
 	SOCKET UpdaterSocket = INVALID_SOCKET;
-	char tbuffer[9];
 
 	ZeroMemory(&hints, sizeof(hints));
 	hints.ai_family = AF_INET; //AF_UNSPEC;  // использовать IPv4 или IPv6, нам неважно
@@ -2303,38 +2239,26 @@ void pollLocal(void) {
 	_itoa((int)updaterport, uport, 10);
 	iResult = getaddrinfo(updateraddr, uport, &hints, &result);
 	if (iResult != 0) {
-		wattron(win_main, COLOR_PAIR(12));
-		wprintw(win_main, "GMI: getaddrinfo failed with error: %d\n", iResult, 0);
-		wattroff(win_main, COLOR_PAIR(12));
-		if (++err_send_msg >= 1000) err_send_msg = 0;
+		if (network_quality > 0) network_quality--;
+		Log("\n*! GMI: getaddrinfo failed with error: "); Log_u(WSAGetLastError());
 	}
 	else {
-		// Get Mininginfo from node:
 		UpdaterSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
 		if (UpdaterSocket == INVALID_SOCKET)
 		{
-			wattron(win_main, COLOR_PAIR(12));
-			wprintw(win_main, "GMI: socket function failed with error: %ld\n", WSAGetLastError(), 0);
-			wattroff(win_main, COLOR_PAIR(12));
-			Log("\n*! Socket error: "); Log_u(WSAGetLastError());
-			if (++err_send_msg >= 1000) err_send_msg = 0;
+			if (network_quality > 0) network_quality--;
+			Log("\n*! GMI: socket function failed with error: "); Log_u(WSAGetLastError());
 		}
 		else {
-				const unsigned t =1000;
-				setsockopt(UpdaterSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&t, sizeof(unsigned));
-				Log("\n*Connecting to server: "); Log(updateraddr); Log(":"); Log_u(updaterport);
-				iResult = connect(UpdaterSocket, result->ai_addr, (int)result->ai_addrlen);
-				if (iResult == SOCKET_ERROR) {
-					wattron(win_main, COLOR_PAIR(12));
-					_strtime(tbuffer);
-					wprintw(win_main, "%s GMI: connect function failed with error: %ld\n", tbuffer, WSAGetLastError(), 0);
-					wattroff(win_main, COLOR_PAIR(12));
-					Log("\n*! Connect server error "); Log_u(WSAGetLastError());
-					if (++err_send_msg >= 1000) err_send_msg = 0;
-				}
+			const unsigned t = 1000;
+			setsockopt(UpdaterSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&t, sizeof(unsigned));
+			Log("\n*Connecting to server: "); Log(updateraddr); Log(":"); Log_u(updaterport);
+			iResult = connect(UpdaterSocket, result->ai_addr, (int)result->ai_addrlen);
+			if (iResult == SOCKET_ERROR) {
+				if (network_quality > 0) network_quality--;
+				Log("\n*! GMI: connect function failed with error: "); Log_u(WSAGetLastError());
+			}
 			else {
-				// wrire some bytes
-				if (++all_send_msg >= 1000) all_send_msg = 0;
 				int bytes;
 				if (miner_mode == 2) bytes = sprintf_s(buffer, _msize(buffer), "GET /pool/getMiningInfo HTTP/1.0\r\nHost: %s:%llu\r\nContent-Type: text/plain;charset=UTF-8\r\n\r\n", updateraddr, updaterport);
 				else bytes = sprintf_s(buffer, _msize(buffer), "POST /burst?requestType=getMiningInfo HTTP/1.0\r\nConnection: close\r\n\r\n");
@@ -2342,19 +2266,13 @@ void pollLocal(void) {
 				iResult = send(UpdaterSocket, buffer, bytes, 0);
 				if (iResult == SOCKET_ERROR)
 				{
-					if (++err_send_msg >= 1000) err_send_msg = 0;
-					Log("\n*! Error sending request: "); Log_u(WSAGetLastError()); Log("Errors: "); Log_llu(err_send_msg);
-					wattron(win_main, COLOR_PAIR(12));
-					_strtime(tbuffer);
-					wprintw(win_main, "%s GMI: send request failed: %ld\n", tbuffer, WSAGetLastError(), 0);
-					wattroff(win_main, COLOR_PAIR(12));
+					if (network_quality > 0) network_quality--;
+					Log("\n*! GMI: send request failed: "); Log_u(WSAGetLastError());
 				}
 				else{
 					if (show_updates) wprintw(win_main, "Sent: \n%s\n", buffer, 0);
 					Log("\n*Sent to server: "); Log_server(buffer);
 
-					// read some bytes
-					if (++all_rcv_msg >= 1000) all_rcv_msg = 0;
 
 					memset(buffer, 0, _msize(buffer));
 					int  pos = 0;
@@ -2363,23 +2281,19 @@ void pollLocal(void) {
 						iResult = recv(UpdaterSocket, &buffer[pos], 1000 - pos - 1, 0);
 						if (iResult > 0) pos += iResult;
 					} while ((iResult > 0) && !use_fast_rcv);
-
 					if (iResult == SOCKET_ERROR)
 					{
-						if (++err_rcv_msg >= 1000) err_rcv_msg = 0;
-						Log("\n*! Error response: "); Log_u(WSAGetLastError()); Log("Errors: "); Log_llu(err_rcv_msg);
-						wattron(win_main, COLOR_PAIR(12));
-						_strtime(tbuffer);
-						wprintw(win_main, "%s GMI: get mining info failed: %ld\n", tbuffer, WSAGetLastError(), 0);
-						wattroff(win_main, COLOR_PAIR(12));
+						if (network_quality > 0) network_quality--;
+						Log("\n*! GMI: get mining info failed:: "); Log_u(WSAGetLastError());
 					}
 					else {
-						Log("\n*Received from server: "); Log_server(buffer);
+						if (network_quality < 100) network_quality++;
+						Log("\n* GMI: Received from server: "); Log_server(buffer);
 						if (show_updates)  wprintw(win_main, "Received: %s\n", buffer, 0);
 
 						// locate HTTP header
 						char *find = strstr(buffer, "\r\n\r\n");
-						if (find == nullptr)	Log("\n*! error in message from pool\n");
+						if (find == nullptr)	Log("\n*! GMI: error in message from pool");
 						else {
 							char *rbaseTarget = strstr(buffer, "\"baseTarget\":");
 							char *rheight = strstr(buffer, "\"height\":");
@@ -2389,7 +2303,7 @@ void pollLocal(void) {
 
 							if (rbaseTarget == nullptr || rheight == nullptr || generationSignature == nullptr)
 							{
-								Log("\n*! error parsing (1) message from server");
+								Log("\n*! GMI: error parsing (1) message from server");
 							}
 							else {
 								rbaseTarget = strpbrk(rbaseTarget, "0123456789");
@@ -2399,7 +2313,7 @@ void pollLocal(void) {
 								char *endGenerationSignature = strstr(generationSignature, "\"");
 
 								if (endBaseTarget == nullptr || endHeight == nullptr || endGenerationSignature == nullptr){
-									Log("\n*! error parsing (2) message from server");
+									Log("\n*! GMI: error parsing (2) message from server");
 								}
 								else {
 									// Set endpoints
@@ -2407,7 +2321,7 @@ void pollLocal(void) {
 									endHeight[0] = 0;
 									endGenerationSignature[0] = 0;
 
-									if (rtargetDeadline != nullptr) 
+									if (rtargetDeadline != nullptr)
 									{
 										rtargetDeadline = strpbrk(rtargetDeadline, "0123456789");
 										char* endBaseTarget = strpbrk(rtargetDeadline, "\"");
@@ -2419,23 +2333,16 @@ void pollLocal(void) {
 									}
 
 									unsigned long long  heightInfo = _strtoui64(rheight, 0, 10);
-									//if (heightInfo > height)
-									{
-										height = heightInfo;
-										baseTarget = _strtoui64(rbaseTarget, 0, 10);
-										// Parse
-										strcpy(str_signature, generationSignature);
-										//str_signature[65] = 0;
-										if (xstr2strr(signature, 33, generationSignature) == 0) 
-											Log("\n*! Node response: Error decoding generationsignature\n");
-									}
+									height = heightInfo;
+									baseTarget = _strtoui64(rbaseTarget, 0, 10);
+									strcpy(str_signature, generationSignature);
+									if (xstr2strr(signature, 33, generationSignature) == 0)	Log("\n*! GMI: Node response: Error decoding generationsignature\n");
 								}
 							}
 						}
 					}
 				}
 			}
-			//printf("\rblock: %llu  BT: %llu   %s\n", height, baseTarget, signature);
 			iResult = closesocket(UpdaterSocket);
 		}
 		freeaddrinfo(result);
@@ -2448,7 +2355,7 @@ void pollLocal(void) {
 void updater_i(void) {
 	if ((updaterport <= 0) && (strlen(updateraddr) <= 3))
 	{
-		Log("\nERROR in UpdaterAddr or UpdaterPort");
+		Log("\nGMI: ERROR in UpdaterAddr or UpdaterPort");
 		exit(2);
 	}
 	for (; !exit_flag;)
@@ -2495,6 +2402,26 @@ void GetCPUInfo(void)
 		if (InstructionSet::AVX())   wprintw(win_main, " AVX ", 0);
 		if (InstructionSet::AVX2())  	wprintw(win_main, " AVX2 ", 0);
 		
+#ifndef __AVX__
+		// Checking for AVX requires 3 things:
+		// 1) CPUID indicates that the OS uses XSAVE and XRSTORE instructions (allowing saving YMM registers on context switch)
+		// 2) CPUID indicates support for AVX
+		// 3) XGETBV indicates the AVX registers will be saved and restored on context switch
+		bool avxSupported = false;
+		int cpuInfo[4];
+		__cpuid(cpuInfo, 1);
+
+		bool osUsesXSAVE_XRSTORE = cpuInfo[2] & (1 << 27) || false;
+		bool cpuAVXSuport = cpuInfo[2] & (1 << 28) || false;
+
+		if (osUsesXSAVE_XRSTORE && cpuAVXSuport)
+		{
+			// Check if the OS will save the YMM registers
+			unsigned long long xcrFeatureMask = _xgetbv(_XCR_XFEATURE_ENABLED_MASK);
+			avxSupported = (xcrFeatureMask & 0x6) == 0x6;
+		}
+		if (avxSupported)	wprintw(win_main, "     [recomend use AVX]", 0);;
+#endif
 		SYSTEM_INFO sysinfo;
 		GetSystemInfo(&sysinfo);
 		wprintw(win_main, "\n%s", InstructionSet::Vendor().c_str(), 0);
@@ -2720,9 +2647,7 @@ int GPU_init(void)
 
 	cl_platform_id *platforms = (cl_platform_id*)calloc((size_t)num_platforms, sizeof(cl_platform_id));
 	if (platforms == nullptr) {
-		wattron(win_main, COLOR_PAIR(12));
-		wprintw(win_main, "Error allocating memory\n");
-		wattroff(win_main, COLOR_PAIR(12));
+		ShowMemError();
 		wrefresh(win_main);
 		return -1;
 	}
@@ -2769,9 +2694,7 @@ int GPU_init(void)
 	gpu_devices.devices = (cl_device_id*)calloc((size_t)gpu_devices.num_devices, sizeof(cl_device_id));
 	if (gpu_devices.devices == nullptr) 
 	{
-		wattron(win_main, COLOR_PAIR(12));
-		wprintw(win_main, "Error allocating memory\n");
-		wattroff(win_main, COLOR_PAIR(12));
+		ShowMemError();
 		free(platforms);
 		return -2;
 	}
@@ -2961,6 +2884,7 @@ int main(int argc, char **argv) {
 
 
 	std::thread proxy;
+	std::thread HDD_wakeup;
 	
 	InitializeCriticalSection(&sessionsLock);
 	InitializeCriticalSection(&bestsLock);
@@ -2998,7 +2922,7 @@ int main(int argc, char **argv) {
 	
 	init_pair(2, COLOR_GREEN, COLOR_BLACK);
 	init_pair(4, COLOR_RED, COLOR_BLACK);
-	init_pair(6, 6, COLOR_BLACK);
+	init_pair(6, COLOR_CYAN, COLOR_BLACK);
 	init_pair(7, COLOR_WHITE, COLOR_BLACK);
 	init_pair(9, 9, COLOR_BLACK);
 	init_pair(10, 10, COLOR_BLACK);
@@ -3037,9 +2961,7 @@ int main(int argc, char **argv) {
 	size_t cwdsz = GetCurrentDirectoryA(0, 0);
 	p_minerPath = (char*)calloc(cwdsz + 2, sizeof(char));
 	if (p_minerPath == nullptr) {
-		wattron(win_main, COLOR_PAIR(12));
-		wprintw(win_main, "Error allocating memory\n", 0);
-		wattroff(win_main, COLOR_PAIR(12));
+		ShowMemError();
 		exit(-1);
 	}
 	GetCurrentDirectoryA(DWORD(cwdsz), LPSTR(p_minerPath));
@@ -3047,9 +2969,7 @@ int main(int argc, char **argv) {
 
 	char* conf_filename = (char*)calloc(MAX_PATH, sizeof(char));
 	if (conf_filename == nullptr) {
-		wattron(win_main, COLOR_PAIR(12));
-		wprintw(win_main, "Error allocating memory\n", 0);
-		wattroff(win_main, COLOR_PAIR(12));
+		ShowMemError();
 		exit(-1);
 	}
 	if ((argc >= 2) && (strcmp(argv[1], "-config") == 0)){
@@ -3084,16 +3004,12 @@ int main(int argc, char **argv) {
 
 	char* updaterip = (char*)calloc(50, sizeof(char));
 	if (updaterip == nullptr) {
-		wattron(win_main, COLOR_PAIR(12));
-		wprintw(win_main, "Error allocating memory\n", 0);
-		wattroff(win_main, COLOR_PAIR(12));
+		ShowMemError();
 		exit(-1);
 	}
 	char* nodeip = (char*)calloc(50, sizeof(char));
 	if (nodeip == nullptr) {
-		wattron(win_main, COLOR_PAIR(12));
-		wprintw(win_main, "Error allocating memory\n", 0);
-		wattroff(win_main, COLOR_PAIR(12));
+		ShowMemError();
 		exit(-1);
 	}
 	wattron(win_main, COLOR_PAIR(11));
@@ -3125,7 +3041,7 @@ int main(int argc, char **argv) {
 		GetFiles(*iter, &files);
 		unsigned long long tot_size = 0;
 		for (auto it = files.begin(); it != files.end(); ++it) 	tot_size += it->Size;
-		wprintw(win_main, "%s\tfiles: %Iu\t size: %llu Gb\n", (char*)iter->c_str(), files.size(), tot_size / 1024 / 1024 / 1024, 0);
+		wprintw(win_main, "%s\tfiles: %2Iu\t size: %4llu Gb\n", (char*)iter->c_str(), files.size(), tot_size / 1024 / 1024 / 1024, 0);
 		total_size += tot_size;
 	}
 	
@@ -3145,6 +3061,12 @@ int main(int argc, char **argv) {
 	// Run updater;
 	std::thread updater(updater_i);
 	Log("\nUpdater thread started");
+
+	if (use_wakeup)
+	{
+		HDD_wakeup = std::thread(HDD_wakeup_i);
+		Log("\nHDD_wakeup thread started");
+	}
 
 	Log("\nUpdate mining info");
 	while (height == 0) 
@@ -3235,12 +3157,8 @@ int main(int argc, char **argv) {
 			switch (wgetch(win_main))
 			{
 			case 'q':
-				stopThreads = 1;
 				exit_flag = true;
-				memset(signature, 0, 33);
-				break;
-			case 's':
-				wscrl(win_main, -1);
+				memset(signature, 0, 33); //для выхода из цикла
 				break;
 			}
 			box(win_progress, 0, 0);
@@ -3250,9 +3168,9 @@ int main(int argc, char **argv) {
 			wmove(win_progress, 1, 1); 
 			wattron(win_progress, COLOR_PAIR(14));
 			if (deadline == 0)
-				wprintw(win_progress, "%llu%% %llu GB. no deadline\tsdl:%llu(%llu) cdl:%llu(%llu) ss:%llu(%llu) rs:%llu(%llu)", (bytesRead * 4096 * 100 / total_size), (bytesRead / (256 * 1024)), all_send_dl, err_send_dl, all_rcv_dl, err_rcv_dl, all_send_msg, err_send_msg, all_rcv_msg, err_rcv_msg, 0);
+				wprintw(win_progress, "%3llu%% %6llu GB. no deadline                   Network quality: %3u%%", (bytesRead * 4096 * 100 / total_size), (bytesRead / (256 * 1024)), network_quality, 0);
 			else
-				wprintw(win_progress, "%llu%% %llu GB. DL=%llu\tsdl:%llu(%llu) cdl:%llu(%llu) ss:%llu(%llu) rs:%llu(%llu)", (bytesRead * 4096 * 100 / total_size), (bytesRead / (256 * 1024)), deadline, all_send_dl, err_send_dl, all_rcv_dl, err_rcv_dl, all_send_msg, err_send_msg, all_rcv_msg, err_rcv_msg, 0);
+				wprintw(win_progress, "%3llu%% %6llu GB. Deadline =%10llu          Network quality: %3u%%", (bytesRead * 4096 * 100 / total_size), (bytesRead / (256 * 1024)), deadline, network_quality, 0);
 			wattroff(win_progress, COLOR_PAIR(14));
 			
 			wrefresh(win_main);
@@ -3262,7 +3180,7 @@ int main(int argc, char **argv) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(39));
 		}
 
-		stopThreads = 1;   // Tell all threads to stop:
+		stopThreads = 1;   // Tell all threads to stop
 
 		if (show_winner)	GetBlockInfo(0);
 
@@ -3287,6 +3205,7 @@ int main(int argc, char **argv) {
 	
 	if (updater.joinable()) updater.join();
 	Log("\nUpdater stopped");
+	if (use_wakeup)  HDD_wakeup.~thread();
 	if (enable_proxy) proxy.join();
 	worker.~vector();
 	worker_progress.~vector();

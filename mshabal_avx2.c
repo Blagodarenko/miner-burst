@@ -18,7 +18,7 @@
 
 #include <stddef.h>
 #include <string.h>
-#include <emmintrin.h>
+#include <immintrin.h>
 
 #include "mshabal.h"
 

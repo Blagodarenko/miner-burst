@@ -6,6 +6,8 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <sstream>
+#include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -63,11 +65,13 @@ const InstructionSet::InstructionSet_Internal InstructionSet::CPU_Rep;
 
 
 HANDLE hConsole;
+HANDLE hHeap;
+
 bool exit_flag = false;
 #ifdef __AVX__
-	char *version = "v1.160413_AVX";
+	char *version = "v1.160420_AVX";
 #else
-	char *version = "v1.160413";
+	char *version = "v1.160420";
 #endif 
 
 unsigned long long startnonce = 0;
@@ -76,15 +80,6 @@ unsigned int scoop = 0;
  
 unsigned long long deadline = 0;
 
-//unsigned long long all_send_msg = 0;
-//unsigned long long all_rcv_msg = 0;
-//unsigned long long err_send_msg = 0;
-//unsigned long long err_rcv_msg = 0;
-
-//unsigned long long all_send_dl = 0;
-//unsigned long long all_rcv_dl = 0;
-//unsigned long long err_send_dl = 0;
-//unsigned long long err_rcv_dl = 0;
 int network_quality = 100;
  
 char signature[33];
@@ -135,8 +130,18 @@ char *json = nullptr;
 WINDOW * win_main;
 //PANEL  *panel_main;
 
-std::vector<size_t> worker_progress;
+//std::vector<size_t> worker_progress_bytes;
+//std::vector<bool> worker_progress_alive;
 std::vector<std::thread> worker;
+
+struct t_worker_progress{
+	size_t Number;
+	unsigned long long Reads_bytes;
+	bool isAlive;
+};
+
+std::vector<t_worker_progress> worker_progress;
+
 std::map <u_long, unsigned long long> satellite_size; // Структура с объемами плотов сателлитов
 
 struct t_files{
@@ -207,47 +212,42 @@ void Log_init(void)
 {
 	if (use_log)
 	{
-		char * filename = (char*)calloc(MAX_PATH, sizeof(char));
-		if (filename == nullptr)
-		{
-			ShowMemError();
-			use_log = false;
-			return;
-		}
+		std::stringstream ss;
 		if (CreateDirectory(L"Logs", nullptr) == ERROR_PATH_NOT_FOUND)
 		{
 			wattron(win_main, COLOR_PAIR(12));
 			wprintw(win_main, "CreateDirectory failed (%d)\n", GetLastError(), 0);
 			wattroff(win_main, COLOR_PAIR(12));
 			use_log = false;
-			free(filename);
+			//free(filename);
 			return;
 		}
 		GetLocalTime(&cur_time);
-		sprintf_s(filename, _msize(filename), "Logs\\%02d-%02d-%02d_%02d_%02d_%02d.log", cur_time.wYear, cur_time.wMonth, cur_time.wDay, cur_time.wHour, cur_time.wMinute, cur_time.wSecond);
-		fopen_s(&fp_Log, filename, "wt");
-		if (fp_Log == nullptr)
+		//sprintf_s(filename, MAX_PATH, "Logs\\%02d-%02d-%02d_%02d_%02d_%02d.log", cur_time.wYear, cur_time.wMonth, cur_time.wDay, cur_time.wHour, cur_time.wMinute, cur_time.wSecond);
+		ss << "Logs\\" << cur_time.wYear << "-" << cur_time.wMonth << "-" << cur_time.wDay << "_" << cur_time.wHour << "_" << cur_time.wMinute << "_" << cur_time.wSecond << ".log";
+		std::string filename = ss.str();
+		
+		if (fopen_s(&fp_Log, filename.c_str(), "wt") != 0)
 		{
 			wattron(win_main, COLOR_PAIR(12));
 			wprintw(win_main, "LOG: file openinig error\n", 0);
 			wattroff(win_main, COLOR_PAIR(12));
 			use_log = false;
 		}
-		free(filename);
 	}
 }
 
 void Log(char * strLog)
 {
-	if (use_log)
+	if (use_log && fp_Log)
 	{
 		// если строка содержит интер, то добавить время  
 		if (strLog[0] == '\n')
 		{
 			GetLocalTime(&cur_time);
-			fprintf(fp_Log, "\n%02d:%02d:%02d %s", cur_time.wHour, cur_time.wMinute, cur_time.wSecond, strLog + 1);
+			fprintf_s(fp_Log, "\n%02d:%02d:%02d %s", cur_time.wHour, cur_time.wMinute, cur_time.wSecond, strLog + 1);
 		}
-		else fprintf(fp_Log, "%s", strLog);
+		else fprintf_s(fp_Log, "%s", strLog);
 		fflush(fp_Log);
 	}
 }
@@ -255,7 +255,7 @@ void Log(char * strLog)
 void Log_server(char * strLog)
 {
 	size_t len_str = strlen(strLog);
-	if ((len_str> 0) && use_log)
+	if ((len_str> 0) && use_log && fp_Log)
 	{
 		char * Msg_log = (char *)calloc(len_str * 2 + 1, sizeof(char));
 		if (Msg_log == nullptr)
@@ -287,7 +287,7 @@ void Log_server(char * strLog)
 				else Msg_log[j] = strLog[i];
 		}
 		
-		fprintf(fp_Log, "%s", Msg_log);
+		fprintf_s(fp_Log, "%s", Msg_log);
 		free(Msg_log);
 		fflush(fp_Log);
 	}
@@ -295,18 +295,18 @@ void Log_server(char * strLog)
 
 void Log_llu(unsigned long long llu_num)
 {
-	if (use_log)
+	if (use_log && fp_Log)
 	{
-		fprintf(fp_Log, "%llu", llu_num);
+		fprintf_s(fp_Log, "%llu", llu_num);
 		fflush(fp_Log);
 	}
 }
 
 void Log_u(size_t u_num)
 {
-	if (use_log)
+	if (use_log && fp_Log)
 	{
-		fprintf(fp_Log, "%u", (unsigned)u_num);
+		fprintf_s(fp_Log, "%u", (unsigned)u_num);
 		fflush(fp_Log);
 	}
 }
@@ -579,7 +579,7 @@ void GetPass(char* p_strFolderPath)
 	  ShowMemError();
 	  exit(-1);
   }
-  sprintf_s(filename, _msize(filename), "%s%s", p_strFolderPath, "passphrases.txt");
+  sprintf_s(filename, MAX_PATH, "%s%s", p_strFolderPath, "passphrases.txt");
   
 //  printf_s("\npass from: %s\n",filename);
   fopen_s(&pFile, filename, "rt");
@@ -728,9 +728,9 @@ void gen_nonce(unsigned long long addr, unsigned long long n, unsigned long long
 	#define PLOT_SIZE	(4096 * 64)
 	#define HASH_SIZE	32
 	#define HASH_CAP	4096
-	char * final = (char *)malloc(sizeof(char)*32);
-	char * gendata = (char *)malloc(sizeof(char)*(16 + PLOT_SIZE));
-	char * cache = (char *)malloc(sizeof(char)*(64*1000));
+	char * final = (char *)calloc(sizeof(char)*32);
+	char * gendata = (char *)calloc(sizeof(char)*(16 + PLOT_SIZE));
+	char * cache = (char *)calloc(sizeof(char)*(64*1000));
 	char *xv = (char*)&addr;
 	
 	gendata[PLOT_SIZE] = xv[7]; gendata[PLOT_SIZE+1] = xv[6]; gendata[PLOT_SIZE+2] = xv[5]; gendata[PLOT_SIZE+3] = xv[4];
@@ -924,9 +924,9 @@ void proxy_i(void)
 		}
 		else
 		{
-			memset(buffer, 0, _msize(buffer));
+			memset(buffer, 0, buffer_size);
 			do{
-				memset(tmp_buffer, 0, _msize(buffer));
+				memset(tmp_buffer, 0, buffer_size);
 				iResult = recv(ClientSocket, tmp_buffer, buffer_size - 1, 0);
 				strcat(buffer, tmp_buffer);
 			} while ((iResult > 0) && !use_fast_rcv);
@@ -987,9 +987,9 @@ void proxy_i(void)
 							Log("Proxy: received DL "); Log_llu(get_deadline); Log(" from "); Log(inet_ntoa(client_socket_address.sin_addr));
 
 							//Подтверждаем
-							memset(buffer, 0, _msize(buffer));
+							memset(buffer, 0, buffer_size);
 							size_t acc = Get_index_acc(get_accountId);
-							int bytes = sprintf_s(buffer, _msize(buffer), "HTTP/1.0 200 OK\r\nConnection: close\r\n\r\n{\"result\": \"proxy\",\"accountId\": %llu,\"deadline\": %llu,\"targetDeadline\": %llu}", get_accountId, get_deadline / baseTarget, bests[acc].targetDeadline);
+							int bytes = sprintf_s(buffer, buffer_size, "HTTP/1.0 200 OK\r\nConnection: close\r\n\r\n{\"result\": \"proxy\",\"accountId\": %llu,\"deadline\": %llu,\"targetDeadline\": %llu}", get_accountId, get_deadline / baseTarget, bests[acc].targetDeadline);
 							iResult = send(ClientSocket, buffer, bytes, 0);
 							if (iResult == SOCKET_ERROR)
 							{
@@ -1016,8 +1016,8 @@ void proxy_i(void)
 				{
 					if (strstr(buffer, "getMiningInfo") != nullptr)
 					{
-						memset(buffer, 0, _msize(buffer));
-						int bytes = sprintf_s(buffer, _msize(buffer), "HTTP/1.0 200 OK\r\nConnection: close\r\n\r\n{\"baseTarget\":\"%llu\",\"height\":\"%llu\",\"generationSignature\":\"%s\",\"targetDeadline\":%llu}", baseTarget, height, str_signature, targetDeadlineInfo);
+						memset(buffer, 0, buffer_size);
+						int bytes = sprintf_s(buffer, buffer_size, "HTTP/1.0 200 OK\r\nConnection: close\r\n\r\n{\"baseTarget\":\"%llu\",\"height\":\"%llu\",\"generationSignature\":\"%s\",\"targetDeadline\":%llu}", baseTarget, height, str_signature, targetDeadlineInfo);
 						iResult = send(ClientSocket, buffer, bytes, 0);
 						if (iResult == SOCKET_ERROR)
 						{
@@ -1062,7 +1062,8 @@ void send_i(void)
 	SOCKET ConnectSocket;
 
 	int iResult = 0;
-	char* buffer = (char*)calloc(1000, sizeof(char));
+	int buffer_size = 1000;
+	char* buffer = (char*)calloc(buffer_size, sizeof(char));
 	if (buffer == nullptr) {
 		ShowMemError();
 		exit(-1);
@@ -1164,16 +1165,16 @@ void send_i(void)
 				freeaddrinfo(result);
 
 				int bytes = 0;
-				memset(buffer, 0, _msize(buffer));
+				memset(buffer, 0, buffer_size);
 				if (miner_mode == 0)
 				{
-					bytes = sprintf_s(buffer, _msize(buffer), "POST /burst?requestType=submitNonce&secretPhrase=%s&nonce=%llu HTTP/1.0\r\nConnection: close\r\n\r\n", pass, iter->nonce);
+					bytes = sprintf_s(buffer, buffer_size, "POST /burst?requestType=submitNonce&secretPhrase=%s&nonce=%llu HTTP/1.0\r\nConnection: close\r\n\r\n", pass, iter->nonce);
 				}
 				if (miner_mode == 1)
 				{
 					unsigned long long total = total_size / 1024 / 1024 / 1024;
 					for (auto It = satellite_size.begin(); It != satellite_size.end(); ++It) total = total + It->second;
-					bytes = sprintf_s(buffer, _msize(buffer), "POST /burst?requestType=submitNonce&accountId=%llu&nonce=%llu&deadline=%llu HTTP/1.0\r\nX-Miner: Blago %s\r\nX-Capacity: %llu\r\nConnection: close\r\n\r\n", iter->account_id, iter->nonce, iter->best, version, total);
+					bytes = sprintf_s(buffer, buffer_size, "POST /burst?requestType=submitNonce&accountId=%llu&nonce=%llu&deadline=%llu HTTP/1.0\r\nX-Miner: Blago %s\r\nX-Capacity: %llu\r\nConnection: close\r\n\r\n", iter->account_id, iter->nonce, iter->best, version, total);
 				}
 				if (miner_mode == 2)
 				{
@@ -1185,10 +1186,10 @@ void send_i(void)
 						exit(-1);
 					}
 
-					int len = sprintf_s(f1, _msize(f1), "%llu:%llu:%llu\n", iter->account_id, iter->nonce, height);
+					int len = sprintf_s(f1, MAX_PATH, "%llu:%llu:%llu\n", iter->account_id, iter->nonce, height);
 					_itoa_s(len, str_len, 10, 10);
 
-					bytes = sprintf_s(buffer, _msize(buffer), "POST /pool/submitWork HTTP/1.0\r\nHost: %s:%llu\r\nContent-Type: text/plain;charset=UTF-8\r\nContent-Length: %i\r\n\r\n%s", nodeaddr, nodeport, len, f1);
+					bytes = sprintf_s(buffer, buffer_size, "POST /pool/submitWork HTTP/1.0\r\nHost: %s:%llu\r\nContent-Type: text/plain;charset=UTF-8\r\nContent-Length: %i\r\n\r\n%s", nodeaddr, nodeport, len, f1);
 					free(f1);
 					free(str_len);
 				}
@@ -1247,7 +1248,7 @@ void send_i(void)
 					wattroff(win_main, COLOR_PAIR(12));
 					continue;
 				}
-				memset(buffer, 0, _msize(buffer));
+				memset(buffer, 0, buffer_size);
 				int  pos = 0;
 				iResult = 0;
 				do{
@@ -1377,8 +1378,7 @@ void procscoop4(unsigned long long nonce, unsigned long long n, char *data, size
 	char sig3[32 + 64];
 	cache = data;
 	char tbuffer[9];
-	unsigned long long v;
-
+	
 	memcpy(sig0, signature, 32);
 	memcpy(sig1, signature, 32);
 	memcpy(sig2, signature, 32);
@@ -1391,7 +1391,7 @@ void procscoop4(unsigned long long nonce, unsigned long long n, char *data, size
 	unsigned posn;
 	mshabal_context x;
 
-	for (v = 0; v < n; v += 4)
+	for (unsigned long long v = 0; v < n; v += 4)
 	{
 		memcpy(&sig0[32], &cache[(v + 0) * 64], 64);
 		memcpy(&sig1[32], &cache[(v + 1) * 64], 64);
@@ -1413,12 +1413,12 @@ void procscoop4(unsigned long long nonce, unsigned long long n, char *data, size
 			*wertung = *wertung1;
 			posn = 1;
 		}
-		else if (*wertung2 < *wertung)
+		if (*wertung2 < *wertung)
 		{
 			*wertung = *wertung2;
 			posn = 2;
 		}
-		else if (*wertung3 < *wertung)
+		if (*wertung3 < *wertung)
 		{
 			*wertung = *wertung3;
 			posn = 3;
@@ -1848,7 +1848,8 @@ void work_i(const size_t local_num) {
 					#endif
 					QueryPerformanceCounter(&li);
 					sum_time_proc += (double)(li.QuadPart - start_time_proc);
-					worker_progress[local_num] += bytes;
+					worker_progress[local_num].Reads_bytes += bytes;
+					
 				}
 				else
 				{
@@ -1859,6 +1860,7 @@ void work_i(const size_t local_num) {
 
 				if (stopThreads) // New block while processing: Stop.
 				{
+					worker_progress[local_num].isAlive = false;
 					Log("\nReading file: ");	Log((char*)iter->Name.c_str()); Log(" interrupted");
 					CloseHandle(ifile);
 					files.clear();
@@ -1873,6 +1875,7 @@ void work_i(const size_t local_num) {
 		CloseHandle(ifile);
 		VirtualFree(cache, 0, MEM_RELEASE);
 	}
+	worker_progress[local_num].isAlive = false;
 	QueryPerformanceCounter((LARGE_INTEGER*)&end_work_time);
 	
 	//if (use_boost) SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL);
@@ -1889,29 +1892,11 @@ void work_i(const size_t local_num) {
 	return;
 }
 
-void HDD_wakeup_i(void) {
-	for (; !exit_flag;)
-	{
-		std::vector<t_files> tmp_files;
-		for (auto i = 0; i < paths_dir.size(); i++)		GetFiles(paths_dir[i], &tmp_files);
-		if (use_debug)
-		{
-			char tbuffer[9];
-			_strtime(tbuffer);
-			wattron(win_main, COLOR_PAIR(7));
-			wprintw(win_main, "%s HDD, WAKE UP !\n", tbuffer, 0);
-			wattroff(win_main, COLOR_PAIR(7));
-		}
-		std::this_thread::yield();
-		std::this_thread::sleep_for(std::chrono::milliseconds(360000));
-	}
-}
-
 
 void GetJSON(char* req) {
 	const unsigned BUF_SIZE = 1024;
 
-	char *buffer = (char*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, BUF_SIZE);
+	char *buffer = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, BUF_SIZE);
 	if (buffer == nullptr) {
 		ShowMemError();
 		exit(-1);
@@ -1981,13 +1966,13 @@ void GetJSON(char* req) {
 					{
 						msg_len = msg_len + iReceived_size;
 						Log("\nrealloc: ");
-						tmp_buffer = (char*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, msg_len + BUF_SIZE);
+						tmp_buffer = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, msg_len + BUF_SIZE);
 						if (tmp_buffer == nullptr) {
 							ShowMemError();
 							exit(-1);
 						}
 						memcpy(tmp_buffer, buffer, msg_len);
-						HeapFree(GetProcessHeap(), 0, buffer);
+						HeapFree(hHeap, 0, buffer);
 						buffer = tmp_buffer;
 						buffer[msg_len + 1] = 0;
 						Log_llu(msg_len);
@@ -2005,12 +1990,12 @@ void GetJSON(char* req) {
 						find = strstr(buffer, "\r\n\r\n");
 						if (find != nullptr)
 						{
-							json = (char*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, msg_len);
+							json = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, msg_len);
 							if (json == nullptr) {
 								ShowMemError();
 								exit(-1);
 							}
-							sprintf_s(json, _msize(json), "%s", find + 4 * sizeof(char));
+							sprintf_s(json, HeapSize(hHeap, 0, json), "%s", find + 4 * sizeof(char));
 						}
 					} // recv() != SOCKET_ERROR
 				} //send() != SOCKET_ERROR
@@ -2018,7 +2003,7 @@ void GetJSON(char* req) {
 		} // socket() != INVALID_SOCKET
 		iResult = closesocket(WalletSocket);
 	} // getaddrinfo() == 0
-	HeapFree(GetProcessHeap(), 0, buffer);
+	HeapFree(hHeap, 0, buffer);
 	freeaddrinfo(result);
 }
 
@@ -2042,7 +2027,7 @@ void GetBlockInfo(unsigned num_block)
 		ShowMemError();
 		exit(-1);
 	}
-	sprintf_s(str_req, _msize(str_req), "POST /burst?requestType=getBlocks&firstIndex=%u&lastIndex=%u HTTP/1.0\r\nConnection: close\r\n\r\n", num_block, num_block + 1);
+	sprintf_s(str_req, req_size, "POST /burst?requestType=getBlocks&firstIndex=%u&lastIndex=%u HTTP/1.0\r\nConnection: close\r\n\r\n", num_block, num_block + 1);
 	GetJSON(str_req);
 	//Log("\n getBlocks: ");
 
@@ -2077,7 +2062,7 @@ void GetBlockInfo(unsigned num_block)
 		else Log("\n- error parsing JSON getBlocks");
 	}
 	free(str_req);
-	if (json != nullptr) HeapFree(GetProcessHeap(), 0, json);
+	if (json != nullptr) HeapFree(hHeap, 0, json);
 	if ((generator != nullptr) && (generatorRS != nullptr) && (timestamp0 != 0) && (timestamp1 != 0))
 	if (last_block_height == height - 1)
 	{
@@ -2087,7 +2072,7 @@ void GetBlockInfo(unsigned num_block)
 			ShowMemError();
 			exit(-1);
 		}
-		sprintf_s(str_req, _msize(str_req), "POST /burst?requestType=getAccount&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", generator);
+		sprintf_s(str_req, req_size, "POST /burst?requestType=getAccount&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", generator);
 		GetJSON(str_req);
 		//Log("\n getAccount: ");
 
@@ -2110,7 +2095,7 @@ void GetBlockInfo(unsigned num_block)
 			else Log("\n- error parsing JSON getAccount");
 		}
 		free(str_req);
-		if (json != nullptr) HeapFree(GetProcessHeap(), 0, json);
+		if (json != nullptr) HeapFree(hHeap, 0, json);
 
 		// Запрос RewardAssighnment по данному аккаунту
 		str_req = (char*)calloc(req_size, sizeof(char));
@@ -2118,7 +2103,7 @@ void GetBlockInfo(unsigned num_block)
 			ShowMemError();
 			exit(-1);
 		}
-		sprintf_s(str_req, _msize(str_req), "POST /burst?requestType=getRewardRecipient&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", generator);
+		sprintf_s(str_req, req_size, "POST /burst?requestType=getRewardRecipient&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", generator);
 		GetJSON(str_req);
 		free(str_req);
 		//Log("\n getRewardRecipient: ");
@@ -2142,7 +2127,7 @@ void GetBlockInfo(unsigned num_block)
 			else Log("\n-! error parsing JSON getRewardRecipient");
 		}
 		
-		if (json != nullptr) HeapFree(GetProcessHeap(), 0, json);
+		if (json != nullptr) HeapFree(hHeap, 0, json);
 		
 		if (rewardRecipient != nullptr)
 		{
@@ -2155,7 +2140,7 @@ void GetBlockInfo(unsigned num_block)
 					ShowMemError();
 					exit(-1);
 				}
-				sprintf_s(str_req, _msize(str_req), "POST /burst?requestType=getAccount&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", rewardRecipient);
+				sprintf_s(str_req, req_size, "POST /burst?requestType=getAccount&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", rewardRecipient);
 				GetJSON(str_req);
 				//Log("\n getAccount: ");
 
@@ -2187,7 +2172,7 @@ void GetBlockInfo(unsigned num_block)
 					else Log("\n- error parsing JSON pool getAccount");
 				}
 				free(str_req);
-				HeapFree(GetProcessHeap(), 0, json);
+				HeapFree(hHeap, 0, json);
 			}
 		}
 
@@ -2219,7 +2204,8 @@ void GetBlockInfo(unsigned num_block)
 
 
 void pollLocal(void) {
-	char *buffer = (char*)calloc(1000, sizeof(char));
+	int buffer_size = 1000;
+	char *buffer = (char*)calloc(buffer_size, sizeof(char));
 	if (buffer == nullptr) {
 		ShowMemError();
 		exit(-1);
@@ -2260,8 +2246,8 @@ void pollLocal(void) {
 			}
 			else {
 				int bytes;
-				if (miner_mode == 2) bytes = sprintf_s(buffer, _msize(buffer), "GET /pool/getMiningInfo HTTP/1.0\r\nHost: %s:%llu\r\nContent-Type: text/plain;charset=UTF-8\r\n\r\n", updateraddr, updaterport);
-				else bytes = sprintf_s(buffer, _msize(buffer), "POST /burst?requestType=getMiningInfo HTTP/1.0\r\nConnection: close\r\n\r\n");
+				if (miner_mode == 2) bytes = sprintf_s(buffer, buffer_size, "GET /pool/getMiningInfo HTTP/1.0\r\nHost: %s:%llu\r\nContent-Type: text/plain;charset=UTF-8\r\n\r\n", updateraddr, updaterport);
+				else bytes = sprintf_s(buffer, buffer_size, "POST /burst?requestType=getMiningInfo HTTP/1.0\r\nConnection: close\r\n\r\n");
 
 				iResult = send(UpdaterSocket, buffer, bytes, 0);
 				if (iResult == SOCKET_ERROR)
@@ -2274,7 +2260,7 @@ void pollLocal(void) {
 					Log("\n*Sent to server: "); Log_server(buffer);
 
 
-					memset(buffer, 0, _msize(buffer));
+					memset(buffer, 0, buffer_size);
 					int  pos = 0;
 					iResult = 0;
 					do{
@@ -2878,19 +2864,23 @@ int GPU1(void)
 */
 
 int main(int argc, char **argv) {
+	hHeap = GetProcessHeap();
 	//low fragmentation heap. При переключении кучи в данный режим повышается расход памяти за счёт выделения чаще всего существенно большего фрагмента, чем был запрошен, но повышается общее быстродействие кучи
-	ULONG HeapInformation = 2;
-	HeapSetInformation(GetProcessHeap(), HeapCompatibilityInformation, &HeapInformation, sizeof(HeapInformation));
+	//ULONG HeapInformation = 2;
+	//HeapSetInformation(hHeap, HeapCompatibilityInformation, &HeapInformation, sizeof(HeapInformation));
+	HeapSetInformation(NULL, HeapEnableTerminationOnCorruption, NULL, 0);
 
+	LARGE_INTEGER li;
+	__int64 start_threads_time, end_threads_time, curr_time;
+	QueryPerformanceFrequency(&li);
+	double pcFreq = double(li.QuadPart);
 
 	std::thread proxy;
-	std::thread HDD_wakeup;
-	
+
 	InitializeCriticalSection(&sessionsLock);
 	InitializeCriticalSection(&bestsLock);
 	InitializeCriticalSection(&sharesLock);
 
-	size_t i = 0;
 	char tbuffer[9];
 	unsigned long long bytesRead = 0;
 
@@ -2899,6 +2889,7 @@ int main(int argc, char **argv) {
 	sessions.reserve(20);
 
 	hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+
 
 	_COORD coord;
 	coord.X = win_size_x;
@@ -2909,17 +2900,17 @@ int main(int argc, char **argv) {
 	Rect.Left = 0;
 	Rect.Bottom = coord.Y - 1;
 	Rect.Right = coord.X - 1;
-	
+
 	SetConsoleScreenBufferSize(hConsole, coord);
 	SetConsoleWindowInfo(hConsole, TRUE, &Rect);
-	
+
 	initscr();
 	raw();
 	cbreak();		// не использовать буфер для getch()
 	noecho();		// не отображать нажатия клавиш
 	curs_set(0);	// убрать курсор
 	start_color();	// будет всё цветное 			
-	
+
 	init_pair(2, COLOR_GREEN, COLOR_BLACK);
 	init_pair(4, COLOR_RED, COLOR_BLACK);
 	init_pair(6, COLOR_CYAN, COLOR_BLACK);
@@ -2933,7 +2924,7 @@ int main(int argc, char **argv) {
 
 	init_pair(25, 15, COLOR_BLUE);
 
-	win_main = newwin(LINES-2, COLS, 0, 0);
+	win_main = newwin(LINES - 2, COLS, 0, 0);
 
 	//box(win_main, 0, 0);
 	scrollok(win_main, true);
@@ -2945,11 +2936,11 @@ int main(int argc, char **argv) {
 
 	//panel_main = new_panel(win_main);
 
-	WINDOW * win_progress = newwin(3, COLS, LINES-3, 0);
+	WINDOW * win_progress = newwin(3, COLS, LINES - 3, 0);
 	leaveok(win_progress, true);
-//	box(win_progress, 0, 0);
-//	wrefresh(win_progress);
-	
+	//	box(win_progress, 0, 0);
+	//	wrefresh(win_progress);
+
 	wattron(win_main, COLOR_PAIR(12));
 	wprintw(win_main, "\nBURST miner, %s", version, 0);
 	wattroff(win_main, COLOR_PAIR(12));
@@ -2973,13 +2964,14 @@ int main(int argc, char **argv) {
 		exit(-1);
 	}
 	if ((argc >= 2) && (strcmp(argv[1], "-config") == 0)){
-		if (strstr(argv[2], ":\\")) sprintf_s(conf_filename, _msize(conf_filename), "%s", argv[2]);
-		else sprintf_s(conf_filename, _msize(conf_filename), "%s%s", p_minerPath, argv[2]);
+		if (strstr(argv[2], ":\\")) sprintf_s(conf_filename, MAX_PATH, "%s", argv[2]);
+		else sprintf_s(conf_filename, MAX_PATH, "%s%s", p_minerPath, argv[2]);
 	}
-	else sprintf_s(conf_filename, _msize(conf_filename), "%s%s", p_minerPath, "miner.conf");
+	else sprintf_s(conf_filename, MAX_PATH, "%s%s", p_minerPath, "miner.conf");
 
 	load_config(conf_filename);
 	free(conf_filename);
+
 	Log("\nMiner path: "); Log(p_minerPath);
 
 	GetCPUInfo();
@@ -3015,10 +3007,10 @@ int main(int argc, char **argv) {
 	wattron(win_main, COLOR_PAIR(11));
 
 	hostname_to_ip(nodeaddr, nodeip);
-	wprintw(win_main, "Pool address    %s (ip %s:%Iu)\n", nodeaddr, nodeip, nodeport, 0); 
+	wprintw(win_main, "Pool address    %s (ip %s:%Iu)\n", nodeaddr, nodeip, nodeport, 0);
 
 	if (strlen(updateraddr) > 3) hostname_to_ip(updateraddr, updaterip);
-	wprintw(win_main, "Updater address %s (ip %s:%Iu)\n", updateraddr, updaterip, updaterport, 0); 
+	wprintw(win_main, "Updater address %s (ip %s:%Iu)\n", updateraddr, updaterip, updaterport, 0);
 
 	wattroff(win_main, COLOR_PAIR(11));
 	free(updaterip);
@@ -3044,7 +3036,7 @@ int main(int argc, char **argv) {
 		wprintw(win_main, "%s\tfiles: %2Iu\t size: %4llu Gb\n", (char*)iter->c_str(), files.size(), tot_size / 1024 / 1024 / 1024, 0);
 		total_size += tot_size;
 	}
-	
+
 	wattron(win_main, COLOR_PAIR(15));
 	wprintw(win_main, "TOTAL: %llu Gb\n", total_size / 1024 / 1024 / 1024, 0);
 	wattroff(win_main, COLOR_PAIR(15));
@@ -3062,27 +3054,21 @@ int main(int argc, char **argv) {
 	std::thread updater(updater_i);
 	Log("\nUpdater thread started");
 
-	if (use_wakeup)
-	{
-		HDD_wakeup = std::thread(HDD_wakeup_i);
-		Log("\nHDD_wakeup thread started");
-	}
-
 	Log("\nUpdate mining info");
-	while (height == 0) 
+	while (height == 0)
 	{
 		std::this_thread::yield();
 		std::this_thread::sleep_for(std::chrono::milliseconds(2));
 	};
 
-	
+
 	// Main loop
-	for (; !exit_flag;) 
+	for (; !exit_flag;)
 	{
 		worker.clear();
 		worker_progress.clear();
 		stopThreads = 0;
-		
+
 
 		char scoopgen[40];
 		memmove(scoopgen, signature, 32);
@@ -3092,14 +3078,14 @@ int main(int argc, char **argv) {
 		sph_shabal_context x;
 		sph_shabal256_init(&x);
 		sph_shabal256(&x, (const unsigned char*)(const unsigned char*)scoopgen, 40);
-		char xcache[32]; 
+		char xcache[32];
 		sph_shabal256_close(&x, xcache);
 
 		scoop = (((unsigned char)xcache[31]) + 256 * (unsigned char)xcache[30]) % 4096;
 
 		deadline = 0;
 
-		
+
 
 		Log("\n------------------------    New block: "); Log_llu(height);
 
@@ -3126,23 +3112,23 @@ int main(int argc, char **argv) {
 		EnterCriticalSection(&bestsLock);
 		bests.clear();
 		LeaveCriticalSection(&bestsLock);
-		
+
 		if ((targetDeadlineInfo > 0) && (targetDeadlineInfo < my_target_deadline)){
 			Log("\nUpdate targetDeadline: "); Log_llu(targetDeadlineInfo);
 		}
-		else {
-			targetDeadlineInfo = my_target_deadline;
-			//Log("\ntargetDeadline not found, targetDeadline: "); Log_llu(targetDeadlineInfo);
-		}
+		else targetDeadlineInfo = my_target_deadline;
 
 		// Run Sender
 		std::thread sender(send_i);
 
 		// Run Threads
-		for (i = 0; i < paths_dir.size(); i++)
+		QueryPerformanceCounter((LARGE_INTEGER*)&start_threads_time);
+		double threads_speed = 0;
+
+		for (size_t i = 0; i < paths_dir.size(); i++)
 		{
+			worker_progress.push_back({ i, 0, true });
 			worker.push_back(std::thread(work_i, i));
-			worker_progress.push_back(0);
 		}
 
 
@@ -3151,42 +3137,73 @@ int main(int argc, char **argv) {
 		unsigned long long old_height = height;
 		wclear(win_progress);
 
-		// Wait until signature changed
-		while ((memcmp(signature, oldSignature, 32) == 0))
+		// Wait until signature changed or exit
+		while ((memcmp(signature, oldSignature, 32) == 0) && !exit_flag)
 		{
 			switch (wgetch(win_main))
 			{
 			case 'q':
 				exit_flag = true;
-				memset(signature, 0, 33); //для выхода из цикла
 				break;
+
 			}
 			box(win_progress, 0, 0);
 			bytesRead = 0;
-			for (auto it = worker_progress.begin(); it != worker_progress.end(); ++it) bytesRead += *it;
 
-			wmove(win_progress, 1, 1); 
+			int threads_runing = 0;
+			for (auto it = worker_progress.begin(); it != worker_progress.end(); ++it)
+			{
+				bytesRead += it->Reads_bytes;
+				threads_runing += it->isAlive;
+			}
+
+			if (threads_runing)
+			{
+				QueryPerformanceCounter((LARGE_INTEGER*)&end_threads_time);
+				threads_speed = (double)(bytesRead / (1024 * 1024)) / ((double)(end_threads_time - start_threads_time) / pcFreq);
+			}
+			else
+				if (use_wakeup)
+				{
+					QueryPerformanceCounter((LARGE_INTEGER*)&curr_time);
+					if ((curr_time - end_threads_time) / pcFreq > 360)
+					{
+						std::vector<t_files> tmp_files;
+						for (auto i = 0; i < paths_dir.size(); i++)		GetFiles(paths_dir[i], &tmp_files);
+						if (use_debug)
+						{
+							char tbuffer[9];
+							_strtime(tbuffer);
+							wattron(win_main, COLOR_PAIR(7));
+							wprintw(win_main, "%s HDD, WAKE UP !\n", tbuffer, 0);
+							wattroff(win_main, COLOR_PAIR(7));
+						}
+						end_threads_time = curr_time;
+					}
+				}
+
+			wmove(win_progress, 1, 1);
 			wattron(win_progress, COLOR_PAIR(14));
 			if (deadline == 0)
-				wprintw(win_progress, "%3llu%% %6llu GB. no deadline                   Network quality: %3u%%", (bytesRead * 4096 * 100 / total_size), (bytesRead / (256 * 1024)), network_quality, 0);
+				wprintw(win_progress, "%3llu%% %6llu GB (%.2f Mb/s). no deadline            Network quality: %3u%%", (bytesRead * 4096 * 100 / total_size), (bytesRead / (256 * 1024)), threads_speed, network_quality, 0);
 			else
-				wprintw(win_progress, "%3llu%% %6llu GB. Deadline =%10llu          Network quality: %3u%%", (bytesRead * 4096 * 100 / total_size), (bytesRead / (256 * 1024)), deadline, network_quality, 0);
+				wprintw(win_progress, "%3llu%% %6llu GB (%.2f Mb/s). Deadline =%10llu   Network quality: %3u%%", (bytesRead * 4096 * 100 / total_size), (bytesRead / (256 * 1024)), threads_speed, deadline, network_quality, 0);
 			wattroff(win_progress, COLOR_PAIR(14));
-			
+
 			wrefresh(win_main);
 			wrefresh(win_progress);
-			
+
 			std::this_thread::yield();
 			std::this_thread::sleep_for(std::chrono::milliseconds(39));
 		}
 
 		stopThreads = 1;   // Tell all threads to stop
 
-		if (show_winner)	GetBlockInfo(0);
+		if (show_winner && !exit_flag)	GetBlockInfo(0);
 
 		for (auto it = worker.begin(); it != worker.end(); ++it)
 		{
-			Log("\nInterrupt thread. ");	
+			Log("\nInterrupt thread. ");
 			if (it->joinable()) it->join();
 		}
 
@@ -3202,10 +3219,9 @@ int main(int argc, char **argv) {
 		//}
 
 	}
-	
+
 	if (updater.joinable()) updater.join();
 	Log("\nUpdater stopped");
-	if (use_wakeup)  HDD_wakeup.~thread();
 	if (enable_proxy) proxy.join();
 	worker.~vector();
 	worker_progress.~vector();
@@ -3219,6 +3235,7 @@ int main(int argc, char **argv) {
 	free(p_minerPath);
 
 	WSACleanup();
+	Log("\nexit");
+	fclose(fp_Log);
 	return 0;
 }
-

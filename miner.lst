@@ -1,0 +1,2394 @@
+Microsoft (R) Macro Assembler (x64) Version 12.00.40629.0   05/06/16 18:23:56
+shabal.asm						     Page 1 - 1
+
+
+				; Disassembly of file: shabal.o
+				; Thu Aug 28 22:55:22 2014
+				; Mode: 64 bits
+				; Syntax: MASM/ML64
+				; Instruction set: SSE2, x64
+				option dotname
+				
+				public asm_shabal_init
+				public asm_shabal
+				public asm_shabal_close
+				
+				
+				;_text   SEGMENT ALIGN(8) 'CODE'                         ; section number 1
+ 00000000			_text   SEGMENT 'CODE'                         ; section number 1
+				
+ 00000000			shabal_inner LABEL NEAR
+ 00000000  55			        push    rbp                                     ; 0000 _ 55
+ 00000001  48/ 8B EF		        mov     rbp, rdi                                ; 0001 _ 48: 89. FD
+ 00000004  48/ 8B FA		        mov     rdi, rdx                                ; 0004 _ 48: 89. D7
+ 00000007  48/ 8B C4		        mov     rax, rsp                                ; 0007 _ 48: 89. E0
+ 0000000A  48/ 83 EC 08		        sub     rsp, 8                                  ; 000A _ 48: 83. EC, 08
+ 0000000E  48/ 83 E4 C0		        and     rsp, 0FFFFFFFFFFFFFFC0H                 ; 000E _ 48: 83. E4, C0
+ 00000012  48/ 81 EC		        sub     rsp, 256                                ; 0012 _ 48: 81. EC, 00000100
+	   00000100
+ 00000019  48/ 89 84 24		        mov     qword ptr [rsp+100H], rax               ; 0019 _ 48: 89. 84 24, 00000100
+	   00000100
+				; Filling space: 7H
+				; Filler type: Multi-byte NOP
+				;       db 0FH, 1FH, 80H, 00H, 00H, 00H, 00H
+				
+				ALIGN   8
+				
+ 00000028			Lm0     LABEL NEAR
+ 00000028  F3/ 0F 6F 26		        movdqu  xmm4, xmmword ptr [rsi]                 ; 0028 _ F3: 0F 6F. 26
+ 0000002C  F3/ 0F 6F 6E		        movdqu  xmm5, xmmword ptr [rsi+10H]             ; 002C _ F3: 0F 6F. 6E, 10
+	   10
+ 00000031  F3/ 0F 6F 76		        movdqu  xmm6, xmmword ptr [rsi+20H]             ; 0031 _ F3: 0F 6F. 76, 20
+	   20
+ 00000036  F3/ 0F 6F 7E		        movdqu  xmm7, xmmword ptr [rsi+30H]             ; 0036 _ F3: 0F 6F. 7E, 30
+	   30
+ 0000003B  66| 0F 6F 45		        movdqa  xmm0, xmmword ptr [rbp+30H]             ; 003B _ 66: 0F 6F. 45, 30
+	   30
+ 00000040  66| 0F 6F 4D		        movdqa  xmm1, xmmword ptr [rbp+40H]             ; 0040 _ 66: 0F 6F. 4D, 40
+	   40
+ 00000045  66| 0F FE C4		        paddd   xmm0, xmm4                              ; 0045 _ 66: 0F FE. C4
+ 00000049  66| 0F FE CD		        paddd   xmm1, xmm5                              ; 0049 _ 66: 0F FE. CD
+ 0000004D  66| 0F 6F D0		        movdqa  xmm2, xmm0                              ; 004D _ 66: 0F 6F. D0
+ 00000051  66| 0F 6F D9		        movdqa  xmm3, xmm1                              ; 0051 _ 66: 0F 6F. D9
+ 00000055  66| 0F 72 D0		        psrld   xmm0, 15                                ; 0055 _ 66: 0F 72. D0, 0F
+	   0F
+ 0000005A  66| 0F 72 D1		        psrld   xmm1, 15                                ; 005A _ 66: 0F 72. D1, 0F
+	   0F
+ 0000005F  66| 0F 72 F2		        pslld   xmm2, 17                                ; 005F _ 66: 0F 72. F2, 11
+	   11
+ 00000064  66| 0F 72 F3		        pslld   xmm3, 17                                ; 0064 _ 66: 0F 72. F3, 11
+	   11
+ 00000069  66| 0F EB C2		        por     xmm0, xmm2                              ; 0069 _ 66: 0F EB. C2
+ 0000006D  66| 0F EB CB		        por     xmm1, xmm3                              ; 006D _ 66: 0F EB. CB
+ 00000071  66| 0F 7F 04 24	        movdqa  xmmword ptr [rsp], xmm0                 ; 0071 _ 66: 0F 7F. 04 24
+ 00000076  66| 0F 7F 4C 24	        movdqa  xmmword ptr [rsp+10H], xmm1             ; 0076 _ 66: 0F 7F. 4C 24, 10
+	   10
+ 0000007C  66| 0F 6F 45		        movdqa  xmm0, xmmword ptr [rbp+50H]             ; 007C _ 66: 0F 6F. 45, 50
+	   50
+ 00000081  66| 0F 6F 4D		        movdqa  xmm1, xmmword ptr [rbp+60H]             ; 0081 _ 66: 0F 6F. 4D, 60
+	   60
+ 00000086  66| 0F FE C6		        paddd   xmm0, xmm6                              ; 0086 _ 66: 0F FE. C6
+ 0000008A  66| 0F FE CF		        paddd   xmm1, xmm7                              ; 008A _ 66: 0F FE. CF
+ 0000008E  66| 0F 6F D0		        movdqa  xmm2, xmm0                              ; 008E _ 66: 0F 6F. D0
+ 00000092  66| 0F 6F D9		        movdqa  xmm3, xmm1                              ; 0092 _ 66: 0F 6F. D9
+ 00000096  66| 0F 72 D0		        psrld   xmm0, 15                                ; 0096 _ 66: 0F 72. D0, 0F
+	   0F
+ 0000009B  66| 0F 72 D1		        psrld   xmm1, 15                                ; 009B _ 66: 0F 72. D1, 0F
+	   0F
+ 000000A0  66| 0F 72 F2		        pslld   xmm2, 17                                ; 00A0 _ 66: 0F 72. F2, 11
+	   11
+ 000000A5  66| 0F 72 F3		        pslld   xmm3, 17                                ; 00A5 _ 66: 0F 72. F3, 11
+	   11
+ 000000AA  66| 0F EB C2		        por     xmm0, xmm2                              ; 00AA _ 66: 0F EB. C2
+ 000000AE  66| 0F EB CB		        por     xmm1, xmm3                              ; 00AE _ 66: 0F EB. CB
+ 000000B2  66| 0F 7F 44 24	        movdqa  xmmword ptr [rsp+20H], xmm0             ; 00B2 _ 66: 0F 7F. 44 24, 20
+	   20
+ 000000B8  66| 0F 7F 4C 24	        movdqa  xmmword ptr [rsp+30H], xmm1             ; 00B8 _ 66: 0F 7F. 4C 24, 30
+	   30
+ 000000BE  48/ 8B 85		        mov     rax, qword ptr [rbp+0B0H]               ; 00BE _ 48: 8B. 85, 000000B0
+	   000000B0
+ 000000C5  48/ 31 45 00		        xor     qword ptr [rbp], rax                    ; 00C5 _ 48: 31. 45, 00
+ 000000C9  8B 45 2C		        mov     eax, dword ptr [rbp+2CH]                ; 00C9 _ 8B. 45, 2C
+ 000000CC  C1 C0 0F		        rol     eax, 15                                 ; 00CC _ C1. C0, 0F
+ 000000CF  8B 54 24 18		        mov     edx, dword ptr [rsp+18H]                ; 00CF _ 8B. 54 24, 18
+ 000000D3  8D 04 80		        lea     eax, [rax+rax*4]                        ; 00D3 _ 8D. 04 80
+ 000000D6  66| 0F 7E E1		        movd    ecx, xmm4                               ; 00D6 _ 66: 0F 7E. E1
+ 000000DA  33 45 00		        xor     eax, dword ptr [rbp]                    ; 00DA _ 33. 45, 00
+ 000000DD  F7 D2		        not     edx                                     ; 00DD _ F7. D2
+ 000000DF  33 4C 24 34		        xor     ecx, dword ptr [rsp+34H]                ; 00DF _ 33. 4C 24, 34
+ 000000E3  23 54 24 24		        and     edx, dword ptr [rsp+24H]                ; 00E3 _ 23. 54 24, 24
+ 000000E7  33 85 00000090	        xor     eax, dword ptr [rbp+90H]                ; 00E7 _ 33. 85, 00000090
+ 000000ED  33 D1		        xor     edx, ecx                                ; 00ED _ 31. CA
+ 000000EF  8B 0C 24		        mov     ecx, dword ptr [rsp]                    ; 00EF _ 8B. 0C 24
+ 000000F2  8D 04 40		        lea     eax, [rax+rax*2]                        ; 00F2 _ 8D. 04 40
+ 000000F5  F7 D1		        not     ecx                                     ; 00F5 _ F7. D1
+ 000000F7  33 C2		        xor     eax, edx                                ; 00F7 _ 31. D0
+ 000000F9  D1 C1		        rol     ecx, 1                                  ; 00F9 _ D1. C1
+ 000000FB  89 45 00		        mov     dword ptr [rbp], eax                    ; 00FB _ 89. 45, 00
+ 000000FE  33 C8		        xor     ecx, eax                                ; 00FE _ 31. C1
+ 00000100  C1 C0 0F		        rol     eax, 15                                 ; 0100 _ C1. C0, 0F
+ 00000103  89 4C 24 40		        mov     dword ptr [rsp+40H], ecx                ; 0103 _ 89. 4C 24, 40
+ 00000107  66| 0F 70 C4		        pshufd  xmm0, xmm4, 01H                         ; 0107 _ 66: 0F 70. C4, 01
+	   01
+ 0000010C  8B 54 24 1C		        mov     edx, dword ptr [rsp+1CH]                ; 010C _ 8B. 54 24, 1C
+ 00000110  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0110 _ 8D. 04 80
+ 00000113  66| 0F 7E C1		        movd    ecx, xmm0                               ; 0113 _ 66: 0F 7E. C1
+ 00000117  33 45 04		        xor     eax, dword ptr [rbp+4H]                 ; 0117 _ 33. 45, 04
+ 0000011A  F7 D2		        not     edx                                     ; 011A _ F7. D2
+ 0000011C  33 4C 24 38		        xor     ecx, dword ptr [rsp+38H]                ; 011C _ 33. 4C 24, 38
+ 00000120  23 54 24 28		        and     edx, dword ptr [rsp+28H]                ; 0120 _ 23. 54 24, 28
+ 00000124  33 85 0000008C	        xor     eax, dword ptr [rbp+8CH]                ; 0124 _ 33. 85, 0000008C
+ 0000012A  33 D1		        xor     edx, ecx                                ; 012A _ 31. CA
+ 0000012C  8B 4C 24 04		        mov     ecx, dword ptr [rsp+4H]                 ; 012C _ 8B. 4C 24, 04
+ 00000130  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0130 _ 8D. 04 40
+ 00000133  F7 D1		        not     ecx                                     ; 0133 _ F7. D1
+ 00000135  33 C2		        xor     eax, edx                                ; 0135 _ 31. D0
+ 00000137  D1 C1		        rol     ecx, 1                                  ; 0137 _ D1. C1
+ 00000139  89 45 04		        mov     dword ptr [rbp+4H], eax                 ; 0139 _ 89. 45, 04
+ 0000013C  33 C8		        xor     ecx, eax                                ; 013C _ 31. C1
+ 0000013E  C1 C0 0F		        rol     eax, 15                                 ; 013E _ C1. C0, 0F
+ 00000141  89 4C 24 44		        mov     dword ptr [rsp+44H], ecx                ; 0141 _ 89. 4C 24, 44
+ 00000145  66| 0F 70 C4		        pshufd  xmm0, xmm4, 02H                         ; 0145 _ 66: 0F 70. C4, 02
+	   02
+ 0000014A  8B 54 24 20		        mov     edx, dword ptr [rsp+20H]                ; 014A _ 8B. 54 24, 20
+ 0000014E  8D 04 80		        lea     eax, [rax+rax*4]                        ; 014E _ 8D. 04 80
+ 00000151  66| 0F 7E C1		        movd    ecx, xmm0                               ; 0151 _ 66: 0F 7E. C1
+ 00000155  33 45 08		        xor     eax, dword ptr [rbp+8H]                 ; 0155 _ 33. 45, 08
+ 00000158  F7 D2		        not     edx                                     ; 0158 _ F7. D2
+ 0000015A  33 4C 24 3C		        xor     ecx, dword ptr [rsp+3CH]                ; 015A _ 33. 4C 24, 3C
+ 0000015E  23 54 24 2C		        and     edx, dword ptr [rsp+2CH]                ; 015E _ 23. 54 24, 2C
+ 00000162  33 85 00000088	        xor     eax, dword ptr [rbp+88H]                ; 0162 _ 33. 85, 00000088
+ 00000168  33 D1		        xor     edx, ecx                                ; 0168 _ 31. CA
+ 0000016A  8B 4C 24 08		        mov     ecx, dword ptr [rsp+8H]                 ; 016A _ 8B. 4C 24, 08
+ 0000016E  8D 04 40		        lea     eax, [rax+rax*2]                        ; 016E _ 8D. 04 40
+ 00000171  F7 D1		        not     ecx                                     ; 0171 _ F7. D1
+ 00000173  33 C2		        xor     eax, edx                                ; 0173 _ 31. D0
+ 00000175  D1 C1		        rol     ecx, 1                                  ; 0175 _ D1. C1
+ 00000177  89 45 08		        mov     dword ptr [rbp+8H], eax                 ; 0177 _ 89. 45, 08
+ 0000017A  33 C8		        xor     ecx, eax                                ; 017A _ 31. C1
+ 0000017C  C1 C0 0F		        rol     eax, 15                                 ; 017C _ C1. C0, 0F
+ 0000017F  89 4C 24 48		        mov     dword ptr [rsp+48H], ecx                ; 017F _ 89. 4C 24, 48
+ 00000183  66| 0F 70 C4		        pshufd  xmm0, xmm4, 03H                         ; 0183 _ 66: 0F 70. C4, 03
+	   03
+ 00000188  8B 54 24 24		        mov     edx, dword ptr [rsp+24H]                ; 0188 _ 8B. 54 24, 24
+ 0000018C  8D 04 80		        lea     eax, [rax+rax*4]                        ; 018C _ 8D. 04 80
+ 0000018F  66| 0F 7E C1		        movd    ecx, xmm0                               ; 018F _ 66: 0F 7E. C1
+ 00000193  33 45 0C		        xor     eax, dword ptr [rbp+0CH]                ; 0193 _ 33. 45, 0C
+ 00000196  F7 D2		        not     edx                                     ; 0196 _ F7. D2
+ 00000198  33 4C 24 40		        xor     ecx, dword ptr [rsp+40H]                ; 0198 _ 33. 4C 24, 40
+ 0000019C  23 54 24 30		        and     edx, dword ptr [rsp+30H]                ; 019C _ 23. 54 24, 30
+ 000001A0  33 85 00000084	        xor     eax, dword ptr [rbp+84H]                ; 01A0 _ 33. 85, 00000084
+ 000001A6  33 D1		        xor     edx, ecx                                ; 01A6 _ 31. CA
+ 000001A8  8B 4C 24 0C		        mov     ecx, dword ptr [rsp+0CH]                ; 01A8 _ 8B. 4C 24, 0C
+ 000001AC  8D 04 40		        lea     eax, [rax+rax*2]                        ; 01AC _ 8D. 04 40
+ 000001AF  F7 D1		        not     ecx                                     ; 01AF _ F7. D1
+ 000001B1  33 C2		        xor     eax, edx                                ; 01B1 _ 31. D0
+ 000001B3  D1 C1		        rol     ecx, 1                                  ; 01B3 _ D1. C1
+ 000001B5  89 45 0C		        mov     dword ptr [rbp+0CH], eax                ; 01B5 _ 89. 45, 0C
+ 000001B8  33 C8		        xor     ecx, eax                                ; 01B8 _ 31. C1
+ 000001BA  C1 C0 0F		        rol     eax, 15                                 ; 01BA _ C1. C0, 0F
+ 000001BD  89 4C 24 4C		        mov     dword ptr [rsp+4CH], ecx                ; 01BD _ 89. 4C 24, 4C
+ 000001C1  8B 54 24 28		        mov     edx, dword ptr [rsp+28H]                ; 01C1 _ 8B. 54 24, 28
+ 000001C5  8D 04 80		        lea     eax, [rax+rax*4]                        ; 01C5 _ 8D. 04 80
+ 000001C8  66| 0F 7E E9		        movd    ecx, xmm5                               ; 01C8 _ 66: 0F 7E. E9
+ 000001CC  33 45 10		        xor     eax, dword ptr [rbp+10H]                ; 01CC _ 33. 45, 10
+ 000001CF  F7 D2		        not     edx                                     ; 01CF _ F7. D2
+ 000001D1  33 4C 24 44		        xor     ecx, dword ptr [rsp+44H]                ; 01D1 _ 33. 4C 24, 44
+ 000001D5  23 54 24 34		        and     edx, dword ptr [rsp+34H]                ; 01D5 _ 23. 54 24, 34
+ 000001D9  33 85 00000080	        xor     eax, dword ptr [rbp+80H]                ; 01D9 _ 33. 85, 00000080
+ 000001DF  33 D1		        xor     edx, ecx                                ; 01DF _ 31. CA
+ 000001E1  8B 4C 24 10		        mov     ecx, dword ptr [rsp+10H]                ; 01E1 _ 8B. 4C 24, 10
+ 000001E5  8D 04 40		        lea     eax, [rax+rax*2]                        ; 01E5 _ 8D. 04 40
+ 000001E8  F7 D1		        not     ecx                                     ; 01E8 _ F7. D1
+ 000001EA  33 C2		        xor     eax, edx                                ; 01EA _ 31. D0
+ 000001EC  D1 C1		        rol     ecx, 1                                  ; 01EC _ D1. C1
+ 000001EE  89 45 10		        mov     dword ptr [rbp+10H], eax                ; 01EE _ 89. 45, 10
+ 000001F1  33 C8		        xor     ecx, eax                                ; 01F1 _ 31. C1
+ 000001F3  C1 C0 0F		        rol     eax, 15                                 ; 01F3 _ C1. C0, 0F
+ 000001F6  89 4C 24 50		        mov     dword ptr [rsp+50H], ecx                ; 01F6 _ 89. 4C 24, 50
+ 000001FA  66| 0F 70 C5		        pshufd  xmm0, xmm5, 01H                         ; 01FA _ 66: 0F 70. C5, 01
+	   01
+ 000001FF  8B 54 24 2C		        mov     edx, dword ptr [rsp+2CH]                ; 01FF _ 8B. 54 24, 2C
+ 00000203  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0203 _ 8D. 04 80
+ 00000206  66| 0F 7E C1		        movd    ecx, xmm0                               ; 0206 _ 66: 0F 7E. C1
+ 0000020A  33 45 14		        xor     eax, dword ptr [rbp+14H]                ; 020A _ 33. 45, 14
+ 0000020D  F7 D2		        not     edx                                     ; 020D _ F7. D2
+ 0000020F  33 4C 24 48		        xor     ecx, dword ptr [rsp+48H]                ; 020F _ 33. 4C 24, 48
+ 00000213  23 54 24 38		        and     edx, dword ptr [rsp+38H]                ; 0213 _ 23. 54 24, 38
+ 00000217  33 45 7C		        xor     eax, dword ptr [rbp+7CH]                ; 0217 _ 33. 45, 7C
+ 0000021A  33 D1		        xor     edx, ecx                                ; 021A _ 31. CA
+ 0000021C  8B 4C 24 14		        mov     ecx, dword ptr [rsp+14H]                ; 021C _ 8B. 4C 24, 14
+ 00000220  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0220 _ 8D. 04 40
+ 00000223  F7 D1		        not     ecx                                     ; 0223 _ F7. D1
+ 00000225  33 C2		        xor     eax, edx                                ; 0225 _ 31. D0
+ 00000227  D1 C1		        rol     ecx, 1                                  ; 0227 _ D1. C1
+ 00000229  89 45 14		        mov     dword ptr [rbp+14H], eax                ; 0229 _ 89. 45, 14
+ 0000022C  33 C8		        xor     ecx, eax                                ; 022C _ 31. C1
+ 0000022E  C1 C0 0F		        rol     eax, 15                                 ; 022E _ C1. C0, 0F
+ 00000231  89 4C 24 54		        mov     dword ptr [rsp+54H], ecx                ; 0231 _ 89. 4C 24, 54
+ 00000235  66| 0F 70 C5		        pshufd  xmm0, xmm5, 02H                         ; 0235 _ 66: 0F 70. C5, 02
+	   02
+ 0000023A  8B 54 24 30		        mov     edx, dword ptr [rsp+30H]                ; 023A _ 8B. 54 24, 30
+ 0000023E  8D 04 80		        lea     eax, [rax+rax*4]                        ; 023E _ 8D. 04 80
+ 00000241  66| 0F 7E C1		        movd    ecx, xmm0                               ; 0241 _ 66: 0F 7E. C1
+ 00000245  33 45 18		        xor     eax, dword ptr [rbp+18H]                ; 0245 _ 33. 45, 18
+ 00000248  F7 D2		        not     edx                                     ; 0248 _ F7. D2
+ 0000024A  33 4C 24 4C		        xor     ecx, dword ptr [rsp+4CH]                ; 024A _ 33. 4C 24, 4C
+ 0000024E  23 54 24 3C		        and     edx, dword ptr [rsp+3CH]                ; 024E _ 23. 54 24, 3C
+ 00000252  33 45 78		        xor     eax, dword ptr [rbp+78H]                ; 0252 _ 33. 45, 78
+ 00000255  33 D1		        xor     edx, ecx                                ; 0255 _ 31. CA
+ 00000257  8B 4C 24 18		        mov     ecx, dword ptr [rsp+18H]                ; 0257 _ 8B. 4C 24, 18
+ 0000025B  8D 04 40		        lea     eax, [rax+rax*2]                        ; 025B _ 8D. 04 40
+ 0000025E  F7 D1		        not     ecx                                     ; 025E _ F7. D1
+ 00000260  33 C2		        xor     eax, edx                                ; 0260 _ 31. D0
+ 00000262  D1 C1		        rol     ecx, 1                                  ; 0262 _ D1. C1
+ 00000264  89 45 18		        mov     dword ptr [rbp+18H], eax                ; 0264 _ 89. 45, 18
+ 00000267  33 C8		        xor     ecx, eax                                ; 0267 _ 31. C1
+ 00000269  C1 C0 0F		        rol     eax, 15                                 ; 0269 _ C1. C0, 0F
+ 0000026C  89 4C 24 58		        mov     dword ptr [rsp+58H], ecx                ; 026C _ 89. 4C 24, 58
+ 00000270  66| 0F 70 C5		        pshufd  xmm0, xmm5, 03H                         ; 0270 _ 66: 0F 70. C5, 03
+	   03
+ 00000275  8B 54 24 34		        mov     edx, dword ptr [rsp+34H]                ; 0275 _ 8B. 54 24, 34
+ 00000279  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0279 _ 8D. 04 80
+ 0000027C  66| 0F 7E C1		        movd    ecx, xmm0                               ; 027C _ 66: 0F 7E. C1
+ 00000280  33 45 1C		        xor     eax, dword ptr [rbp+1CH]                ; 0280 _ 33. 45, 1C
+ 00000283  F7 D2		        not     edx                                     ; 0283 _ F7. D2
+ 00000285  33 4C 24 50		        xor     ecx, dword ptr [rsp+50H]                ; 0285 _ 33. 4C 24, 50
+ 00000289  23 54 24 40		        and     edx, dword ptr [rsp+40H]                ; 0289 _ 23. 54 24, 40
+ 0000028D  33 45 74		        xor     eax, dword ptr [rbp+74H]                ; 028D _ 33. 45, 74
+ 00000290  33 D1		        xor     edx, ecx                                ; 0290 _ 31. CA
+ 00000292  8B 4C 24 1C		        mov     ecx, dword ptr [rsp+1CH]                ; 0292 _ 8B. 4C 24, 1C
+ 00000296  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0296 _ 8D. 04 40
+ 00000299  F7 D1		        not     ecx                                     ; 0299 _ F7. D1
+ 0000029B  33 C2		        xor     eax, edx                                ; 029B _ 31. D0
+ 0000029D  D1 C1		        rol     ecx, 1                                  ; 029D _ D1. C1
+ 0000029F  89 45 1C		        mov     dword ptr [rbp+1CH], eax                ; 029F _ 89. 45, 1C
+ 000002A2  33 C8		        xor     ecx, eax                                ; 02A2 _ 31. C1
+ 000002A4  C1 C0 0F		        rol     eax, 15                                 ; 02A4 _ C1. C0, 0F
+ 000002A7  89 4C 24 5C		        mov     dword ptr [rsp+5CH], ecx                ; 02A7 _ 89. 4C 24, 5C
+ 000002AB  8B 54 24 38		        mov     edx, dword ptr [rsp+38H]                ; 02AB _ 8B. 54 24, 38
+ 000002AF  8D 04 80		        lea     eax, [rax+rax*4]                        ; 02AF _ 8D. 04 80
+ 000002B2  66| 0F 7E F1		        movd    ecx, xmm6                               ; 02B2 _ 66: 0F 7E. F1
+ 000002B6  33 45 20		        xor     eax, dword ptr [rbp+20H]                ; 02B6 _ 33. 45, 20
+ 000002B9  F7 D2		        not     edx                                     ; 02B9 _ F7. D2
+ 000002BB  33 4C 24 54		        xor     ecx, dword ptr [rsp+54H]                ; 02BB _ 33. 4C 24, 54
+ 000002BF  23 54 24 44		        and     edx, dword ptr [rsp+44H]                ; 02BF _ 23. 54 24, 44
+ 000002C3  33 45 70		        xor     eax, dword ptr [rbp+70H]                ; 02C3 _ 33. 45, 70
+ 000002C6  33 D1		        xor     edx, ecx                                ; 02C6 _ 31. CA
+ 000002C8  8B 4C 24 20		        mov     ecx, dword ptr [rsp+20H]                ; 02C8 _ 8B. 4C 24, 20
+ 000002CC  8D 04 40		        lea     eax, [rax+rax*2]                        ; 02CC _ 8D. 04 40
+ 000002CF  F7 D1		        not     ecx                                     ; 02CF _ F7. D1
+ 000002D1  33 C2		        xor     eax, edx                                ; 02D1 _ 31. D0
+ 000002D3  D1 C1		        rol     ecx, 1                                  ; 02D3 _ D1. C1
+ 000002D5  89 45 20		        mov     dword ptr [rbp+20H], eax                ; 02D5 _ 89. 45, 20
+ 000002D8  33 C8		        xor     ecx, eax                                ; 02D8 _ 31. C1
+ 000002DA  C1 C0 0F		        rol     eax, 15                                 ; 02DA _ C1. C0, 0F
+ 000002DD  89 4C 24 60		        mov     dword ptr [rsp+60H], ecx                ; 02DD _ 89. 4C 24, 60
+ 000002E1  66| 0F 70 C6		        pshufd  xmm0, xmm6, 01H                         ; 02E1 _ 66: 0F 70. C6, 01
+	   01
+ 000002E6  8B 54 24 3C		        mov     edx, dword ptr [rsp+3CH]                ; 02E6 _ 8B. 54 24, 3C
+ 000002EA  8D 04 80		        lea     eax, [rax+rax*4]                        ; 02EA _ 8D. 04 80
+ 000002ED  66| 0F 7E C1		        movd    ecx, xmm0                               ; 02ED _ 66: 0F 7E. C1
+ 000002F1  33 45 24		        xor     eax, dword ptr [rbp+24H]                ; 02F1 _ 33. 45, 24
+ 000002F4  F7 D2		        not     edx                                     ; 02F4 _ F7. D2
+ 000002F6  33 4C 24 58		        xor     ecx, dword ptr [rsp+58H]                ; 02F6 _ 33. 4C 24, 58
+ 000002FA  23 54 24 48		        and     edx, dword ptr [rsp+48H]                ; 02FA _ 23. 54 24, 48
+ 000002FE  33 85 000000AC	        xor     eax, dword ptr [rbp+0ACH]               ; 02FE _ 33. 85, 000000AC
+ 00000304  33 D1		        xor     edx, ecx                                ; 0304 _ 31. CA
+ 00000306  8B 4C 24 24		        mov     ecx, dword ptr [rsp+24H]                ; 0306 _ 8B. 4C 24, 24
+ 0000030A  8D 04 40		        lea     eax, [rax+rax*2]                        ; 030A _ 8D. 04 40
+ 0000030D  F7 D1		        not     ecx                                     ; 030D _ F7. D1
+ 0000030F  33 C2		        xor     eax, edx                                ; 030F _ 31. D0
+ 00000311  D1 C1		        rol     ecx, 1                                  ; 0311 _ D1. C1
+ 00000313  89 45 24		        mov     dword ptr [rbp+24H], eax                ; 0313 _ 89. 45, 24
+ 00000316  33 C8		        xor     ecx, eax                                ; 0316 _ 31. C1
+ 00000318  C1 C0 0F		        rol     eax, 15                                 ; 0318 _ C1. C0, 0F
+ 0000031B  89 4C 24 64		        mov     dword ptr [rsp+64H], ecx                ; 031B _ 89. 4C 24, 64
+ 0000031F  66| 0F 70 C6		        pshufd  xmm0, xmm6, 02H                         ; 031F _ 66: 0F 70. C6, 02
+	   02
+ 00000324  8B 54 24 40		        mov     edx, dword ptr [rsp+40H]                ; 0324 _ 8B. 54 24, 40
+ 00000328  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0328 _ 8D. 04 80
+ 0000032B  66| 0F 7E C1		        movd    ecx, xmm0                               ; 032B _ 66: 0F 7E. C1
+ 0000032F  33 45 28		        xor     eax, dword ptr [rbp+28H]                ; 032F _ 33. 45, 28
+ 00000332  F7 D2		        not     edx                                     ; 0332 _ F7. D2
+ 00000334  33 4C 24 5C		        xor     ecx, dword ptr [rsp+5CH]                ; 0334 _ 33. 4C 24, 5C
+ 00000338  23 54 24 4C		        and     edx, dword ptr [rsp+4CH]                ; 0338 _ 23. 54 24, 4C
+ 0000033C  33 85 000000A8	        xor     eax, dword ptr [rbp+0A8H]               ; 033C _ 33. 85, 000000A8
+ 00000342  33 D1		        xor     edx, ecx                                ; 0342 _ 31. CA
+ 00000344  8B 4C 24 28		        mov     ecx, dword ptr [rsp+28H]                ; 0344 _ 8B. 4C 24, 28
+ 00000348  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0348 _ 8D. 04 40
+ 0000034B  F7 D1		        not     ecx                                     ; 034B _ F7. D1
+ 0000034D  33 C2		        xor     eax, edx                                ; 034D _ 31. D0
+ 0000034F  D1 C1		        rol     ecx, 1                                  ; 034F _ D1. C1
+ 00000351  89 45 28		        mov     dword ptr [rbp+28H], eax                ; 0351 _ 89. 45, 28
+ 00000354  33 C8		        xor     ecx, eax                                ; 0354 _ 31. C1
+ 00000356  C1 C0 0F		        rol     eax, 15                                 ; 0356 _ C1. C0, 0F
+ 00000359  89 4C 24 68		        mov     dword ptr [rsp+68H], ecx                ; 0359 _ 89. 4C 24, 68
+ 0000035D  66| 0F 70 C6		        pshufd  xmm0, xmm6, 03H                         ; 035D _ 66: 0F 70. C6, 03
+	   03
+ 00000362  8B 54 24 44		        mov     edx, dword ptr [rsp+44H]                ; 0362 _ 8B. 54 24, 44
+ 00000366  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0366 _ 8D. 04 80
+ 00000369  66| 0F 7E C1		        movd    ecx, xmm0                               ; 0369 _ 66: 0F 7E. C1
+ 0000036D  33 45 2C		        xor     eax, dword ptr [rbp+2CH]                ; 036D _ 33. 45, 2C
+ 00000370  F7 D2		        not     edx                                     ; 0370 _ F7. D2
+ 00000372  33 4C 24 60		        xor     ecx, dword ptr [rsp+60H]                ; 0372 _ 33. 4C 24, 60
+ 00000376  23 54 24 50		        and     edx, dword ptr [rsp+50H]                ; 0376 _ 23. 54 24, 50
+ 0000037A  33 85 000000A4	        xor     eax, dword ptr [rbp+0A4H]               ; 037A _ 33. 85, 000000A4
+ 00000380  33 D1		        xor     edx, ecx                                ; 0380 _ 31. CA
+ 00000382  8B 4C 24 2C		        mov     ecx, dword ptr [rsp+2CH]                ; 0382 _ 8B. 4C 24, 2C
+ 00000386  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0386 _ 8D. 04 40
+ 00000389  F7 D1		        not     ecx                                     ; 0389 _ F7. D1
+ 0000038B  33 C2		        xor     eax, edx                                ; 038B _ 31. D0
+ 0000038D  D1 C1		        rol     ecx, 1                                  ; 038D _ D1. C1
+ 0000038F  89 45 2C		        mov     dword ptr [rbp+2CH], eax                ; 038F _ 89. 45, 2C
+ 00000392  33 C8		        xor     ecx, eax                                ; 0392 _ 31. C1
+ 00000394  C1 C0 0F		        rol     eax, 15                                 ; 0394 _ C1. C0, 0F
+ 00000397  89 4C 24 6C		        mov     dword ptr [rsp+6CH], ecx                ; 0397 _ 89. 4C 24, 6C
+ 0000039B  8B 54 24 48		        mov     edx, dword ptr [rsp+48H]                ; 039B _ 8B. 54 24, 48
+ 0000039F  8D 04 80		        lea     eax, [rax+rax*4]                        ; 039F _ 8D. 04 80
+ 000003A2  66| 0F 7E F9		        movd    ecx, xmm7                               ; 03A2 _ 66: 0F 7E. F9
+ 000003A6  33 45 00		        xor     eax, dword ptr [rbp]                    ; 03A6 _ 33. 45, 00
+ 000003A9  F7 D2		        not     edx                                     ; 03A9 _ F7. D2
+ 000003AB  33 4C 24 64		        xor     ecx, dword ptr [rsp+64H]                ; 03AB _ 33. 4C 24, 64
+ 000003AF  23 54 24 54		        and     edx, dword ptr [rsp+54H]                ; 03AF _ 23. 54 24, 54
+ 000003B3  33 85 000000A0	        xor     eax, dword ptr [rbp+0A0H]               ; 03B3 _ 33. 85, 000000A0
+ 000003B9  33 D1		        xor     edx, ecx                                ; 03B9 _ 31. CA
+ 000003BB  8B 4C 24 30		        mov     ecx, dword ptr [rsp+30H]                ; 03BB _ 8B. 4C 24, 30
+ 000003BF  8D 04 40		        lea     eax, [rax+rax*2]                        ; 03BF _ 8D. 04 40
+ 000003C2  F7 D1		        not     ecx                                     ; 03C2 _ F7. D1
+ 000003C4  33 C2		        xor     eax, edx                                ; 03C4 _ 31. D0
+ 000003C6  D1 C1		        rol     ecx, 1                                  ; 03C6 _ D1. C1
+ 000003C8  89 45 00		        mov     dword ptr [rbp], eax                    ; 03C8 _ 89. 45, 00
+ 000003CB  33 C8		        xor     ecx, eax                                ; 03CB _ 31. C1
+ 000003CD  C1 C0 0F		        rol     eax, 15                                 ; 03CD _ C1. C0, 0F
+ 000003D0  89 4C 24 70		        mov     dword ptr [rsp+70H], ecx                ; 03D0 _ 89. 4C 24, 70
+ 000003D4  66| 0F 70 C7		        pshufd  xmm0, xmm7, 01H                         ; 03D4 _ 66: 0F 70. C7, 01
+	   01
+ 000003D9  8B 54 24 4C		        mov     edx, dword ptr [rsp+4CH]                ; 03D9 _ 8B. 54 24, 4C
+ 000003DD  8D 04 80		        lea     eax, [rax+rax*4]                        ; 03DD _ 8D. 04 80
+ 000003E0  66| 0F 7E C1		        movd    ecx, xmm0                               ; 03E0 _ 66: 0F 7E. C1
+ 000003E4  33 45 04		        xor     eax, dword ptr [rbp+4H]                 ; 03E4 _ 33. 45, 04
+ 000003E7  F7 D2		        not     edx                                     ; 03E7 _ F7. D2
+ 000003E9  33 4C 24 68		        xor     ecx, dword ptr [rsp+68H]                ; 03E9 _ 33. 4C 24, 68
+ 000003ED  23 54 24 58		        and     edx, dword ptr [rsp+58H]                ; 03ED _ 23. 54 24, 58
+ 000003F1  33 85 0000009C	        xor     eax, dword ptr [rbp+9CH]                ; 03F1 _ 33. 85, 0000009C
+ 000003F7  33 D1		        xor     edx, ecx                                ; 03F7 _ 31. CA
+ 000003F9  8B 4C 24 34		        mov     ecx, dword ptr [rsp+34H]                ; 03F9 _ 8B. 4C 24, 34
+ 000003FD  8D 04 40		        lea     eax, [rax+rax*2]                        ; 03FD _ 8D. 04 40
+ 00000400  F7 D1		        not     ecx                                     ; 0400 _ F7. D1
+ 00000402  33 C2		        xor     eax, edx                                ; 0402 _ 31. D0
+ 00000404  D1 C1		        rol     ecx, 1                                  ; 0404 _ D1. C1
+ 00000406  89 45 04		        mov     dword ptr [rbp+4H], eax                 ; 0406 _ 89. 45, 04
+ 00000409  33 C8		        xor     ecx, eax                                ; 0409 _ 31. C1
+ 0000040B  C1 C0 0F		        rol     eax, 15                                 ; 040B _ C1. C0, 0F
+ 0000040E  89 4C 24 74		        mov     dword ptr [rsp+74H], ecx                ; 040E _ 89. 4C 24, 74
+ 00000412  66| 0F 70 C7		        pshufd  xmm0, xmm7, 02H                         ; 0412 _ 66: 0F 70. C7, 02
+	   02
+ 00000417  8B 54 24 50		        mov     edx, dword ptr [rsp+50H]                ; 0417 _ 8B. 54 24, 50
+ 0000041B  8D 04 80		        lea     eax, [rax+rax*4]                        ; 041B _ 8D. 04 80
+ 0000041E  66| 0F 7E C1		        movd    ecx, xmm0                               ; 041E _ 66: 0F 7E. C1
+ 00000422  33 45 08		        xor     eax, dword ptr [rbp+8H]                 ; 0422 _ 33. 45, 08
+ 00000425  F7 D2		        not     edx                                     ; 0425 _ F7. D2
+ 00000427  33 4C 24 6C		        xor     ecx, dword ptr [rsp+6CH]                ; 0427 _ 33. 4C 24, 6C
+ 0000042B  23 54 24 5C		        and     edx, dword ptr [rsp+5CH]                ; 042B _ 23. 54 24, 5C
+ 0000042F  33 85 00000098	        xor     eax, dword ptr [rbp+98H]                ; 042F _ 33. 85, 00000098
+ 00000435  33 D1		        xor     edx, ecx                                ; 0435 _ 31. CA
+ 00000437  8B 4C 24 38		        mov     ecx, dword ptr [rsp+38H]                ; 0437 _ 8B. 4C 24, 38
+ 0000043B  8D 04 40		        lea     eax, [rax+rax*2]                        ; 043B _ 8D. 04 40
+ 0000043E  F7 D1		        not     ecx                                     ; 043E _ F7. D1
+ 00000440  33 C2		        xor     eax, edx                                ; 0440 _ 31. D0
+ 00000442  D1 C1		        rol     ecx, 1                                  ; 0442 _ D1. C1
+ 00000444  89 45 08		        mov     dword ptr [rbp+8H], eax                 ; 0444 _ 89. 45, 08
+ 00000447  33 C8		        xor     ecx, eax                                ; 0447 _ 31. C1
+ 00000449  C1 C0 0F		        rol     eax, 15                                 ; 0449 _ C1. C0, 0F
+ 0000044C  89 4C 24 78		        mov     dword ptr [rsp+78H], ecx                ; 044C _ 89. 4C 24, 78
+ 00000450  66| 0F 70 C7		        pshufd  xmm0, xmm7, 03H                         ; 0450 _ 66: 0F 70. C7, 03
+	   03
+ 00000455  8B 54 24 54		        mov     edx, dword ptr [rsp+54H]                ; 0455 _ 8B. 54 24, 54
+ 00000459  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0459 _ 8D. 04 80
+ 0000045C  66| 0F 7E C1		        movd    ecx, xmm0                               ; 045C _ 66: 0F 7E. C1
+ 00000460  33 45 0C		        xor     eax, dword ptr [rbp+0CH]                ; 0460 _ 33. 45, 0C
+ 00000463  F7 D2		        not     edx                                     ; 0463 _ F7. D2
+ 00000465  33 4C 24 70		        xor     ecx, dword ptr [rsp+70H]                ; 0465 _ 33. 4C 24, 70
+ 00000469  23 54 24 60		        and     edx, dword ptr [rsp+60H]                ; 0469 _ 23. 54 24, 60
+ 0000046D  33 85 00000094	        xor     eax, dword ptr [rbp+94H]                ; 046D _ 33. 85, 00000094
+ 00000473  33 D1		        xor     edx, ecx                                ; 0473 _ 31. CA
+ 00000475  8B 4C 24 3C		        mov     ecx, dword ptr [rsp+3CH]                ; 0475 _ 8B. 4C 24, 3C
+ 00000479  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0479 _ 8D. 04 40
+ 0000047C  F7 D1		        not     ecx                                     ; 047C _ F7. D1
+ 0000047E  33 C2		        xor     eax, edx                                ; 047E _ 31. D0
+ 00000480  D1 C1		        rol     ecx, 1                                  ; 0480 _ D1. C1
+ 00000482  89 45 0C		        mov     dword ptr [rbp+0CH], eax                ; 0482 _ 89. 45, 0C
+ 00000485  33 C8		        xor     ecx, eax                                ; 0485 _ 31. C1
+ 00000487  C1 C0 0F		        rol     eax, 15                                 ; 0487 _ C1. C0, 0F
+ 0000048A  89 4C 24 7C		        mov     dword ptr [rsp+7CH], ecx                ; 048A _ 89. 4C 24, 7C
+ 0000048E  8B 54 24 58		        mov     edx, dword ptr [rsp+58H]                ; 048E _ 8B. 54 24, 58
+ 00000492  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0492 _ 8D. 04 80
+ 00000495  66| 0F 7E E1		        movd    ecx, xmm4                               ; 0495 _ 66: 0F 7E. E1
+ 00000499  33 45 10		        xor     eax, dword ptr [rbp+10H]                ; 0499 _ 33. 45, 10
+ 0000049C  F7 D2		        not     edx                                     ; 049C _ F7. D2
+ 0000049E  33 4C 24 74		        xor     ecx, dword ptr [rsp+74H]                ; 049E _ 33. 4C 24, 74
+ 000004A2  23 54 24 64		        and     edx, dword ptr [rsp+64H]                ; 04A2 _ 23. 54 24, 64
+ 000004A6  33 85 00000090	        xor     eax, dword ptr [rbp+90H]                ; 04A6 _ 33. 85, 00000090
+ 000004AC  33 D1		        xor     edx, ecx                                ; 04AC _ 31. CA
+ 000004AE  8B 4C 24 40		        mov     ecx, dword ptr [rsp+40H]                ; 04AE _ 8B. 4C 24, 40
+ 000004B2  8D 04 40		        lea     eax, [rax+rax*2]                        ; 04B2 _ 8D. 04 40
+ 000004B5  F7 D1		        not     ecx                                     ; 04B5 _ F7. D1
+ 000004B7  33 C2		        xor     eax, edx                                ; 04B7 _ 31. D0
+ 000004B9  D1 C1		        rol     ecx, 1                                  ; 04B9 _ D1. C1
+ 000004BB  89 45 10		        mov     dword ptr [rbp+10H], eax                ; 04BB _ 89. 45, 10
+ 000004BE  33 C8		        xor     ecx, eax                                ; 04BE _ 31. C1
+ 000004C0  C1 C0 0F		        rol     eax, 15                                 ; 04C0 _ C1. C0, 0F
+ 000004C3  89 8C 24		        mov     dword ptr [rsp+80H], ecx                ; 04C3 _ 89. 8C 24, 00000080
+	   00000080
+ 000004CA  66| 0F 70 C4		        pshufd  xmm0, xmm4, 01H                         ; 04CA _ 66: 0F 70. C4, 01
+	   01
+ 000004CF  8B 54 24 5C		        mov     edx, dword ptr [rsp+5CH]                ; 04CF _ 8B. 54 24, 5C
+ 000004D3  8D 04 80		        lea     eax, [rax+rax*4]                        ; 04D3 _ 8D. 04 80
+ 000004D6  66| 0F 7E C1		        movd    ecx, xmm0                               ; 04D6 _ 66: 0F 7E. C1
+ 000004DA  33 45 14		        xor     eax, dword ptr [rbp+14H]                ; 04DA _ 33. 45, 14
+ 000004DD  F7 D2		        not     edx                                     ; 04DD _ F7. D2
+ 000004DF  33 4C 24 78		        xor     ecx, dword ptr [rsp+78H]                ; 04DF _ 33. 4C 24, 78
+ 000004E3  23 54 24 68		        and     edx, dword ptr [rsp+68H]                ; 04E3 _ 23. 54 24, 68
+ 000004E7  33 85 0000008C	        xor     eax, dword ptr [rbp+8CH]                ; 04E7 _ 33. 85, 0000008C
+ 000004ED  33 D1		        xor     edx, ecx                                ; 04ED _ 31. CA
+ 000004EF  8B 4C 24 44		        mov     ecx, dword ptr [rsp+44H]                ; 04EF _ 8B. 4C 24, 44
+ 000004F3  8D 04 40		        lea     eax, [rax+rax*2]                        ; 04F3 _ 8D. 04 40
+ 000004F6  F7 D1		        not     ecx                                     ; 04F6 _ F7. D1
+ 000004F8  33 C2		        xor     eax, edx                                ; 04F8 _ 31. D0
+ 000004FA  D1 C1		        rol     ecx, 1                                  ; 04FA _ D1. C1
+ 000004FC  89 45 14		        mov     dword ptr [rbp+14H], eax                ; 04FC _ 89. 45, 14
+ 000004FF  33 C8		        xor     ecx, eax                                ; 04FF _ 31. C1
+ 00000501  C1 C0 0F		        rol     eax, 15                                 ; 0501 _ C1. C0, 0F
+ 00000504  89 8C 24		        mov     dword ptr [rsp+84H], ecx                ; 0504 _ 89. 8C 24, 00000084
+	   00000084
+ 0000050B  66| 0F 70 C4		        pshufd  xmm0, xmm4, 02H                         ; 050B _ 66: 0F 70. C4, 02
+	   02
+ 00000510  8B 54 24 60		        mov     edx, dword ptr [rsp+60H]                ; 0510 _ 8B. 54 24, 60
+ 00000514  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0514 _ 8D. 04 80
+ 00000517  66| 0F 7E C1		        movd    ecx, xmm0                               ; 0517 _ 66: 0F 7E. C1
+ 0000051B  33 45 18		        xor     eax, dword ptr [rbp+18H]                ; 051B _ 33. 45, 18
+ 0000051E  F7 D2		        not     edx                                     ; 051E _ F7. D2
+ 00000520  33 4C 24 7C		        xor     ecx, dword ptr [rsp+7CH]                ; 0520 _ 33. 4C 24, 7C
+ 00000524  23 54 24 6C		        and     edx, dword ptr [rsp+6CH]                ; 0524 _ 23. 54 24, 6C
+ 00000528  33 85 00000088	        xor     eax, dword ptr [rbp+88H]                ; 0528 _ 33. 85, 00000088
+ 0000052E  33 D1		        xor     edx, ecx                                ; 052E _ 31. CA
+ 00000530  8B 4C 24 48		        mov     ecx, dword ptr [rsp+48H]                ; 0530 _ 8B. 4C 24, 48
+ 00000534  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0534 _ 8D. 04 40
+ 00000537  F7 D1		        not     ecx                                     ; 0537 _ F7. D1
+ 00000539  33 C2		        xor     eax, edx                                ; 0539 _ 31. D0
+ 0000053B  D1 C1		        rol     ecx, 1                                  ; 053B _ D1. C1
+ 0000053D  89 45 18		        mov     dword ptr [rbp+18H], eax                ; 053D _ 89. 45, 18
+ 00000540  33 C8		        xor     ecx, eax                                ; 0540 _ 31. C1
+ 00000542  C1 C0 0F		        rol     eax, 15                                 ; 0542 _ C1. C0, 0F
+ 00000545  89 8C 24		        mov     dword ptr [rsp+88H], ecx                ; 0545 _ 89. 8C 24, 00000088
+	   00000088
+ 0000054C  66| 0F 70 C4		        pshufd  xmm0, xmm4, 03H                         ; 054C _ 66: 0F 70. C4, 03
+	   03
+ 00000551  8B 54 24 64		        mov     edx, dword ptr [rsp+64H]                ; 0551 _ 8B. 54 24, 64
+ 00000555  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0555 _ 8D. 04 80
+ 00000558  66| 0F 7E C1		        movd    ecx, xmm0                               ; 0558 _ 66: 0F 7E. C1
+ 0000055C  33 45 1C		        xor     eax, dword ptr [rbp+1CH]                ; 055C _ 33. 45, 1C
+ 0000055F  F7 D2		        not     edx                                     ; 055F _ F7. D2
+ 00000561  33 8C 24		        xor     ecx, dword ptr [rsp+80H]                ; 0561 _ 33. 8C 24, 00000080
+	   00000080
+ 00000568  23 54 24 70		        and     edx, dword ptr [rsp+70H]                ; 0568 _ 23. 54 24, 70
+ 0000056C  33 85 00000084	        xor     eax, dword ptr [rbp+84H]                ; 056C _ 33. 85, 00000084
+ 00000572  33 D1		        xor     edx, ecx                                ; 0572 _ 31. CA
+ 00000574  8B 4C 24 4C		        mov     ecx, dword ptr [rsp+4CH]                ; 0574 _ 8B. 4C 24, 4C
+ 00000578  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0578 _ 8D. 04 40
+ 0000057B  F7 D1		        not     ecx                                     ; 057B _ F7. D1
+ 0000057D  33 C2		        xor     eax, edx                                ; 057D _ 31. D0
+ 0000057F  D1 C1		        rol     ecx, 1                                  ; 057F _ D1. C1
+ 00000581  89 45 1C		        mov     dword ptr [rbp+1CH], eax                ; 0581 _ 89. 45, 1C
+ 00000584  33 C8		        xor     ecx, eax                                ; 0584 _ 31. C1
+ 00000586  C1 C0 0F		        rol     eax, 15                                 ; 0586 _ C1. C0, 0F
+ 00000589  89 8C 24		        mov     dword ptr [rsp+8CH], ecx                ; 0589 _ 89. 8C 24, 0000008C
+	   0000008C
+ 00000590  8B 54 24 68		        mov     edx, dword ptr [rsp+68H]                ; 0590 _ 8B. 54 24, 68
+ 00000594  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0594 _ 8D. 04 80
+ 00000597  66| 0F 7E E9		        movd    ecx, xmm5                               ; 0597 _ 66: 0F 7E. E9
+ 0000059B  33 45 20		        xor     eax, dword ptr [rbp+20H]                ; 059B _ 33. 45, 20
+ 0000059E  F7 D2		        not     edx                                     ; 059E _ F7. D2
+ 000005A0  33 8C 24		        xor     ecx, dword ptr [rsp+84H]                ; 05A0 _ 33. 8C 24, 00000084
+	   00000084
+ 000005A7  23 54 24 74		        and     edx, dword ptr [rsp+74H]                ; 05A7 _ 23. 54 24, 74
+ 000005AB  33 85 00000080	        xor     eax, dword ptr [rbp+80H]                ; 05AB _ 33. 85, 00000080
+ 000005B1  33 D1		        xor     edx, ecx                                ; 05B1 _ 31. CA
+ 000005B3  8B 4C 24 50		        mov     ecx, dword ptr [rsp+50H]                ; 05B3 _ 8B. 4C 24, 50
+ 000005B7  8D 04 40		        lea     eax, [rax+rax*2]                        ; 05B7 _ 8D. 04 40
+ 000005BA  F7 D1		        not     ecx                                     ; 05BA _ F7. D1
+ 000005BC  33 C2		        xor     eax, edx                                ; 05BC _ 31. D0
+ 000005BE  D1 C1		        rol     ecx, 1                                  ; 05BE _ D1. C1
+ 000005C0  89 45 20		        mov     dword ptr [rbp+20H], eax                ; 05C0 _ 89. 45, 20
+ 000005C3  33 C8		        xor     ecx, eax                                ; 05C3 _ 31. C1
+ 000005C5  C1 C0 0F		        rol     eax, 15                                 ; 05C5 _ C1. C0, 0F
+ 000005C8  89 8C 24		        mov     dword ptr [rsp+90H], ecx                ; 05C8 _ 89. 8C 24, 00000090
+	   00000090
+ 000005CF  66| 0F 70 C5		        pshufd  xmm0, xmm5, 01H                         ; 05CF _ 66: 0F 70. C5, 01
+	   01
+ 000005D4  8B 54 24 6C		        mov     edx, dword ptr [rsp+6CH]                ; 05D4 _ 8B. 54 24, 6C
+ 000005D8  8D 04 80		        lea     eax, [rax+rax*4]                        ; 05D8 _ 8D. 04 80
+ 000005DB  66| 0F 7E C1		        movd    ecx, xmm0                               ; 05DB _ 66: 0F 7E. C1
+ 000005DF  33 45 24		        xor     eax, dword ptr [rbp+24H]                ; 05DF _ 33. 45, 24
+ 000005E2  F7 D2		        not     edx                                     ; 05E2 _ F7. D2
+ 000005E4  33 8C 24		        xor     ecx, dword ptr [rsp+88H]                ; 05E4 _ 33. 8C 24, 00000088
+	   00000088
+ 000005EB  23 54 24 78		        and     edx, dword ptr [rsp+78H]                ; 05EB _ 23. 54 24, 78
+ 000005EF  33 45 7C		        xor     eax, dword ptr [rbp+7CH]                ; 05EF _ 33. 45, 7C
+ 000005F2  33 D1		        xor     edx, ecx                                ; 05F2 _ 31. CA
+ 000005F4  8B 4C 24 54		        mov     ecx, dword ptr [rsp+54H]                ; 05F4 _ 8B. 4C 24, 54
+ 000005F8  8D 04 40		        lea     eax, [rax+rax*2]                        ; 05F8 _ 8D. 04 40
+ 000005FB  F7 D1		        not     ecx                                     ; 05FB _ F7. D1
+ 000005FD  33 C2		        xor     eax, edx                                ; 05FD _ 31. D0
+ 000005FF  D1 C1		        rol     ecx, 1                                  ; 05FF _ D1. C1
+ 00000601  89 45 24		        mov     dword ptr [rbp+24H], eax                ; 0601 _ 89. 45, 24
+ 00000604  33 C8		        xor     ecx, eax                                ; 0604 _ 31. C1
+ 00000606  C1 C0 0F		        rol     eax, 15                                 ; 0606 _ C1. C0, 0F
+ 00000609  89 8C 24		        mov     dword ptr [rsp+94H], ecx                ; 0609 _ 89. 8C 24, 00000094
+	   00000094
+ 00000610  66| 0F 70 C5		        pshufd  xmm0, xmm5, 02H                         ; 0610 _ 66: 0F 70. C5, 02
+	   02
+ 00000615  8B 54 24 70		        mov     edx, dword ptr [rsp+70H]                ; 0615 _ 8B. 54 24, 70
+ 00000619  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0619 _ 8D. 04 80
+ 0000061C  66| 0F 7E C1		        movd    ecx, xmm0                               ; 061C _ 66: 0F 7E. C1
+ 00000620  33 45 28		        xor     eax, dword ptr [rbp+28H]                ; 0620 _ 33. 45, 28
+ 00000623  F7 D2		        not     edx                                     ; 0623 _ F7. D2
+ 00000625  33 8C 24		        xor     ecx, dword ptr [rsp+8CH]                ; 0625 _ 33. 8C 24, 0000008C
+	   0000008C
+ 0000062C  23 54 24 7C		        and     edx, dword ptr [rsp+7CH]                ; 062C _ 23. 54 24, 7C
+ 00000630  33 45 78		        xor     eax, dword ptr [rbp+78H]                ; 0630 _ 33. 45, 78
+ 00000633  33 D1		        xor     edx, ecx                                ; 0633 _ 31. CA
+ 00000635  8B 4C 24 58		        mov     ecx, dword ptr [rsp+58H]                ; 0635 _ 8B. 4C 24, 58
+ 00000639  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0639 _ 8D. 04 40
+ 0000063C  F7 D1		        not     ecx                                     ; 063C _ F7. D1
+ 0000063E  33 C2		        xor     eax, edx                                ; 063E _ 31. D0
+ 00000640  D1 C1		        rol     ecx, 1                                  ; 0640 _ D1. C1
+ 00000642  89 45 28		        mov     dword ptr [rbp+28H], eax                ; 0642 _ 89. 45, 28
+ 00000645  33 C8		        xor     ecx, eax                                ; 0645 _ 31. C1
+ 00000647  C1 C0 0F		        rol     eax, 15                                 ; 0647 _ C1. C0, 0F
+ 0000064A  89 8C 24		        mov     dword ptr [rsp+98H], ecx                ; 064A _ 89. 8C 24, 00000098
+	   00000098
+ 00000651  66| 0F 70 C5		        pshufd  xmm0, xmm5, 03H                         ; 0651 _ 66: 0F 70. C5, 03
+	   03
+ 00000656  8B 54 24 74		        mov     edx, dword ptr [rsp+74H]                ; 0656 _ 8B. 54 24, 74
+ 0000065A  8D 04 80		        lea     eax, [rax+rax*4]                        ; 065A _ 8D. 04 80
+ 0000065D  66| 0F 7E C1		        movd    ecx, xmm0                               ; 065D _ 66: 0F 7E. C1
+ 00000661  33 45 2C		        xor     eax, dword ptr [rbp+2CH]                ; 0661 _ 33. 45, 2C
+ 00000664  F7 D2		        not     edx                                     ; 0664 _ F7. D2
+ 00000666  33 8C 24		        xor     ecx, dword ptr [rsp+90H]                ; 0666 _ 33. 8C 24, 00000090
+	   00000090
+ 0000066D  23 94 24		        and     edx, dword ptr [rsp+80H]                ; 066D _ 23. 94 24, 00000080
+	   00000080
+ 00000674  33 45 74		        xor     eax, dword ptr [rbp+74H]                ; 0674 _ 33. 45, 74
+ 00000677  33 D1		        xor     edx, ecx                                ; 0677 _ 31. CA
+ 00000679  8B 4C 24 5C		        mov     ecx, dword ptr [rsp+5CH]                ; 0679 _ 8B. 4C 24, 5C
+ 0000067D  8D 04 40		        lea     eax, [rax+rax*2]                        ; 067D _ 8D. 04 40
+ 00000680  F7 D1		        not     ecx                                     ; 0680 _ F7. D1
+ 00000682  33 C2		        xor     eax, edx                                ; 0682 _ 31. D0
+ 00000684  D1 C1		        rol     ecx, 1                                  ; 0684 _ D1. C1
+ 00000686  89 45 2C		        mov     dword ptr [rbp+2CH], eax                ; 0686 _ 89. 45, 2C
+ 00000689  33 C8		        xor     ecx, eax                                ; 0689 _ 31. C1
+ 0000068B  C1 C0 0F		        rol     eax, 15                                 ; 068B _ C1. C0, 0F
+ 0000068E  89 8C 24		        mov     dword ptr [rsp+9CH], ecx                ; 068E _ 89. 8C 24, 0000009C
+	   0000009C
+ 00000695  8B 54 24 78		        mov     edx, dword ptr [rsp+78H]                ; 0695 _ 8B. 54 24, 78
+ 00000699  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0699 _ 8D. 04 80
+ 0000069C  66| 0F 7E F1		        movd    ecx, xmm6                               ; 069C _ 66: 0F 7E. F1
+ 000006A0  33 45 00		        xor     eax, dword ptr [rbp]                    ; 06A0 _ 33. 45, 00
+ 000006A3  F7 D2		        not     edx                                     ; 06A3 _ F7. D2
+ 000006A5  33 8C 24		        xor     ecx, dword ptr [rsp+94H]                ; 06A5 _ 33. 8C 24, 00000094
+	   00000094
+ 000006AC  23 94 24		        and     edx, dword ptr [rsp+84H]                ; 06AC _ 23. 94 24, 00000084
+	   00000084
+ 000006B3  33 45 70		        xor     eax, dword ptr [rbp+70H]                ; 06B3 _ 33. 45, 70
+ 000006B6  33 D1		        xor     edx, ecx                                ; 06B6 _ 31. CA
+ 000006B8  8B 4C 24 60		        mov     ecx, dword ptr [rsp+60H]                ; 06B8 _ 8B. 4C 24, 60
+ 000006BC  8D 04 40		        lea     eax, [rax+rax*2]                        ; 06BC _ 8D. 04 40
+ 000006BF  F7 D1		        not     ecx                                     ; 06BF _ F7. D1
+ 000006C1  33 C2		        xor     eax, edx                                ; 06C1 _ 31. D0
+ 000006C3  D1 C1		        rol     ecx, 1                                  ; 06C3 _ D1. C1
+ 000006C5  89 45 00		        mov     dword ptr [rbp], eax                    ; 06C5 _ 89. 45, 00
+ 000006C8  33 C8		        xor     ecx, eax                                ; 06C8 _ 31. C1
+ 000006CA  C1 C0 0F		        rol     eax, 15                                 ; 06CA _ C1. C0, 0F
+ 000006CD  89 8C 24		        mov     dword ptr [rsp+0A0H], ecx               ; 06CD _ 89. 8C 24, 000000A0
+	   000000A0
+ 000006D4  66| 0F 70 C6		        pshufd  xmm0, xmm6, 01H                         ; 06D4 _ 66: 0F 70. C6, 01
+	   01
+ 000006D9  8B 54 24 7C		        mov     edx, dword ptr [rsp+7CH]                ; 06D9 _ 8B. 54 24, 7C
+ 000006DD  8D 04 80		        lea     eax, [rax+rax*4]                        ; 06DD _ 8D. 04 80
+ 000006E0  66| 0F 7E C1		        movd    ecx, xmm0                               ; 06E0 _ 66: 0F 7E. C1
+ 000006E4  33 45 04		        xor     eax, dword ptr [rbp+4H]                 ; 06E4 _ 33. 45, 04
+ 000006E7  F7 D2		        not     edx                                     ; 06E7 _ F7. D2
+ 000006E9  33 8C 24		        xor     ecx, dword ptr [rsp+98H]                ; 06E9 _ 33. 8C 24, 00000098
+	   00000098
+ 000006F0  23 94 24		        and     edx, dword ptr [rsp+88H]                ; 06F0 _ 23. 94 24, 00000088
+	   00000088
+ 000006F7  33 85 000000AC	        xor     eax, dword ptr [rbp+0ACH]               ; 06F7 _ 33. 85, 000000AC
+ 000006FD  33 D1		        xor     edx, ecx                                ; 06FD _ 31. CA
+ 000006FF  8B 4C 24 64		        mov     ecx, dword ptr [rsp+64H]                ; 06FF _ 8B. 4C 24, 64
+ 00000703  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0703 _ 8D. 04 40
+ 00000706  F7 D1		        not     ecx                                     ; 0706 _ F7. D1
+ 00000708  33 C2		        xor     eax, edx                                ; 0708 _ 31. D0
+ 0000070A  D1 C1		        rol     ecx, 1                                  ; 070A _ D1. C1
+ 0000070C  89 45 04		        mov     dword ptr [rbp+4H], eax                 ; 070C _ 89. 45, 04
+ 0000070F  33 C8		        xor     ecx, eax                                ; 070F _ 31. C1
+ 00000711  C1 C0 0F		        rol     eax, 15                                 ; 0711 _ C1. C0, 0F
+ 00000714  89 8C 24		        mov     dword ptr [rsp+0A4H], ecx               ; 0714 _ 89. 8C 24, 000000A4
+	   000000A4
+ 0000071B  66| 0F 70 C6		        pshufd  xmm0, xmm6, 02H                         ; 071B _ 66: 0F 70. C6, 02
+	   02
+ 00000720  8B 94 24		        mov     edx, dword ptr [rsp+80H]                ; 0720 _ 8B. 94 24, 00000080
+	   00000080
+ 00000727  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0727 _ 8D. 04 80
+ 0000072A  66| 0F 7E C1		        movd    ecx, xmm0                               ; 072A _ 66: 0F 7E. C1
+ 0000072E  33 45 08		        xor     eax, dword ptr [rbp+8H]                 ; 072E _ 33. 45, 08
+ 00000731  F7 D2		        not     edx                                     ; 0731 _ F7. D2
+ 00000733  33 8C 24		        xor     ecx, dword ptr [rsp+9CH]                ; 0733 _ 33. 8C 24, 0000009C
+	   0000009C
+ 0000073A  23 94 24		        and     edx, dword ptr [rsp+8CH]                ; 073A _ 23. 94 24, 0000008C
+	   0000008C
+ 00000741  33 85 000000A8	        xor     eax, dword ptr [rbp+0A8H]               ; 0741 _ 33. 85, 000000A8
+ 00000747  33 D1		        xor     edx, ecx                                ; 0747 _ 31. CA
+ 00000749  8B 4C 24 68		        mov     ecx, dword ptr [rsp+68H]                ; 0749 _ 8B. 4C 24, 68
+ 0000074D  8D 04 40		        lea     eax, [rax+rax*2]                        ; 074D _ 8D. 04 40
+ 00000750  F7 D1		        not     ecx                                     ; 0750 _ F7. D1
+ 00000752  33 C2		        xor     eax, edx                                ; 0752 _ 31. D0
+ 00000754  D1 C1		        rol     ecx, 1                                  ; 0754 _ D1. C1
+ 00000756  89 45 08		        mov     dword ptr [rbp+8H], eax                 ; 0756 _ 89. 45, 08
+ 00000759  33 C8		        xor     ecx, eax                                ; 0759 _ 31. C1
+ 0000075B  C1 C0 0F		        rol     eax, 15                                 ; 075B _ C1. C0, 0F
+ 0000075E  89 8C 24		        mov     dword ptr [rsp+0A8H], ecx               ; 075E _ 89. 8C 24, 000000A8
+	   000000A8
+ 00000765  66| 0F 70 C6		        pshufd  xmm0, xmm6, 03H                         ; 0765 _ 66: 0F 70. C6, 03
+	   03
+ 0000076A  8B 94 24		        mov     edx, dword ptr [rsp+84H]                ; 076A _ 8B. 94 24, 00000084
+	   00000084
+ 00000771  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0771 _ 8D. 04 80
+ 00000774  66| 0F 7E C1		        movd    ecx, xmm0                               ; 0774 _ 66: 0F 7E. C1
+ 00000778  33 45 0C		        xor     eax, dword ptr [rbp+0CH]                ; 0778 _ 33. 45, 0C
+ 0000077B  F7 D2		        not     edx                                     ; 077B _ F7. D2
+ 0000077D  33 8C 24		        xor     ecx, dword ptr [rsp+0A0H]               ; 077D _ 33. 8C 24, 000000A0
+	   000000A0
+ 00000784  23 94 24		        and     edx, dword ptr [rsp+90H]                ; 0784 _ 23. 94 24, 00000090
+	   00000090
+ 0000078B  33 85 000000A4	        xor     eax, dword ptr [rbp+0A4H]               ; 078B _ 33. 85, 000000A4
+ 00000791  33 D1		        xor     edx, ecx                                ; 0791 _ 31. CA
+ 00000793  8B 4C 24 6C		        mov     ecx, dword ptr [rsp+6CH]                ; 0793 _ 8B. 4C 24, 6C
+ 00000797  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0797 _ 8D. 04 40
+ 0000079A  F7 D1		        not     ecx                                     ; 079A _ F7. D1
+ 0000079C  33 C2		        xor     eax, edx                                ; 079C _ 31. D0
+ 0000079E  D1 C1		        rol     ecx, 1                                  ; 079E _ D1. C1
+ 000007A0  89 45 0C		        mov     dword ptr [rbp+0CH], eax                ; 07A0 _ 89. 45, 0C
+ 000007A3  33 C8		        xor     ecx, eax                                ; 07A3 _ 31. C1
+ 000007A5  C1 C0 0F		        rol     eax, 15                                 ; 07A5 _ C1. C0, 0F
+ 000007A8  89 8C 24		        mov     dword ptr [rsp+0ACH], ecx               ; 07A8 _ 89. 8C 24, 000000AC
+	   000000AC
+ 000007AF  8B 94 24		        mov     edx, dword ptr [rsp+88H]                ; 07AF _ 8B. 94 24, 00000088
+	   00000088
+ 000007B6  8D 04 80		        lea     eax, [rax+rax*4]                        ; 07B6 _ 8D. 04 80
+ 000007B9  66| 0F 7E F9		        movd    ecx, xmm7                               ; 07B9 _ 66: 0F 7E. F9
+ 000007BD  33 45 10		        xor     eax, dword ptr [rbp+10H]                ; 07BD _ 33. 45, 10
+ 000007C0  F7 D2		        not     edx                                     ; 07C0 _ F7. D2
+ 000007C2  33 8C 24		        xor     ecx, dword ptr [rsp+0A4H]               ; 07C2 _ 33. 8C 24, 000000A4
+	   000000A4
+ 000007C9  23 94 24		        and     edx, dword ptr [rsp+94H]                ; 07C9 _ 23. 94 24, 00000094
+	   00000094
+ 000007D0  33 85 000000A0	        xor     eax, dword ptr [rbp+0A0H]               ; 07D0 _ 33. 85, 000000A0
+ 000007D6  33 D1		        xor     edx, ecx                                ; 07D6 _ 31. CA
+ 000007D8  8B 4C 24 70		        mov     ecx, dword ptr [rsp+70H]                ; 07D8 _ 8B. 4C 24, 70
+ 000007DC  8D 04 40		        lea     eax, [rax+rax*2]                        ; 07DC _ 8D. 04 40
+ 000007DF  F7 D1		        not     ecx                                     ; 07DF _ F7. D1
+ 000007E1  33 C2		        xor     eax, edx                                ; 07E1 _ 31. D0
+ 000007E3  D1 C1		        rol     ecx, 1                                  ; 07E3 _ D1. C1
+ 000007E5  89 45 10		        mov     dword ptr [rbp+10H], eax                ; 07E5 _ 89. 45, 10
+ 000007E8  33 C8		        xor     ecx, eax                                ; 07E8 _ 31. C1
+ 000007EA  C1 C0 0F		        rol     eax, 15                                 ; 07EA _ C1. C0, 0F
+ 000007ED  89 8C 24		        mov     dword ptr [rsp+0B0H], ecx               ; 07ED _ 89. 8C 24, 000000B0
+	   000000B0
+ 000007F4  66| 0F 70 C7		        pshufd  xmm0, xmm7, 01H                         ; 07F4 _ 66: 0F 70. C7, 01
+	   01
+ 000007F9  8B 94 24		        mov     edx, dword ptr [rsp+8CH]                ; 07F9 _ 8B. 94 24, 0000008C
+	   0000008C
+ 00000800  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0800 _ 8D. 04 80
+ 00000803  66| 0F 7E C1		        movd    ecx, xmm0                               ; 0803 _ 66: 0F 7E. C1
+ 00000807  33 45 14		        xor     eax, dword ptr [rbp+14H]                ; 0807 _ 33. 45, 14
+ 0000080A  F7 D2		        not     edx                                     ; 080A _ F7. D2
+ 0000080C  33 8C 24		        xor     ecx, dword ptr [rsp+0A8H]               ; 080C _ 33. 8C 24, 000000A8
+	   000000A8
+ 00000813  23 94 24		        and     edx, dword ptr [rsp+98H]                ; 0813 _ 23. 94 24, 00000098
+	   00000098
+ 0000081A  33 85 0000009C	        xor     eax, dword ptr [rbp+9CH]                ; 081A _ 33. 85, 0000009C
+ 00000820  33 D1		        xor     edx, ecx                                ; 0820 _ 31. CA
+ 00000822  8B 4C 24 74		        mov     ecx, dword ptr [rsp+74H]                ; 0822 _ 8B. 4C 24, 74
+ 00000826  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0826 _ 8D. 04 40
+ 00000829  F7 D1		        not     ecx                                     ; 0829 _ F7. D1
+ 0000082B  33 C2		        xor     eax, edx                                ; 082B _ 31. D0
+ 0000082D  D1 C1		        rol     ecx, 1                                  ; 082D _ D1. C1
+ 0000082F  89 45 14		        mov     dword ptr [rbp+14H], eax                ; 082F _ 89. 45, 14
+ 00000832  33 C8		        xor     ecx, eax                                ; 0832 _ 31. C1
+ 00000834  C1 C0 0F		        rol     eax, 15                                 ; 0834 _ C1. C0, 0F
+ 00000837  89 8C 24		        mov     dword ptr [rsp+0B4H], ecx               ; 0837 _ 89. 8C 24, 000000B4
+	   000000B4
+ 0000083E  66| 0F 70 C7		        pshufd  xmm0, xmm7, 02H                         ; 083E _ 66: 0F 70. C7, 02
+	   02
+ 00000843  8B 94 24		        mov     edx, dword ptr [rsp+90H]                ; 0843 _ 8B. 94 24, 00000090
+	   00000090
+ 0000084A  8D 04 80		        lea     eax, [rax+rax*4]                        ; 084A _ 8D. 04 80
+ 0000084D  66| 0F 7E C1		        movd    ecx, xmm0                               ; 084D _ 66: 0F 7E. C1
+ 00000851  33 45 18		        xor     eax, dword ptr [rbp+18H]                ; 0851 _ 33. 45, 18
+ 00000854  F7 D2		        not     edx                                     ; 0854 _ F7. D2
+ 00000856  33 8C 24		        xor     ecx, dword ptr [rsp+0ACH]               ; 0856 _ 33. 8C 24, 000000AC
+	   000000AC
+ 0000085D  23 94 24		        and     edx, dword ptr [rsp+9CH]                ; 085D _ 23. 94 24, 0000009C
+	   0000009C
+ 00000864  33 85 00000098	        xor     eax, dword ptr [rbp+98H]                ; 0864 _ 33. 85, 00000098
+ 0000086A  33 D1		        xor     edx, ecx                                ; 086A _ 31. CA
+ 0000086C  8B 4C 24 78		        mov     ecx, dword ptr [rsp+78H]                ; 086C _ 8B. 4C 24, 78
+ 00000870  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0870 _ 8D. 04 40
+ 00000873  F7 D1		        not     ecx                                     ; 0873 _ F7. D1
+ 00000875  33 C2		        xor     eax, edx                                ; 0875 _ 31. D0
+ 00000877  D1 C1		        rol     ecx, 1                                  ; 0877 _ D1. C1
+ 00000879  89 45 18		        mov     dword ptr [rbp+18H], eax                ; 0879 _ 89. 45, 18
+ 0000087C  33 C8		        xor     ecx, eax                                ; 087C _ 31. C1
+ 0000087E  C1 C0 0F		        rol     eax, 15                                 ; 087E _ C1. C0, 0F
+ 00000881  89 8C 24		        mov     dword ptr [rsp+0B8H], ecx               ; 0881 _ 89. 8C 24, 000000B8
+	   000000B8
+ 00000888  66| 0F 70 C7		        pshufd  xmm0, xmm7, 03H                         ; 0888 _ 66: 0F 70. C7, 03
+	   03
+ 0000088D  8B 94 24		        mov     edx, dword ptr [rsp+94H]                ; 088D _ 8B. 94 24, 00000094
+	   00000094
+ 00000894  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0894 _ 8D. 04 80
+ 00000897  66| 0F 7E C1		        movd    ecx, xmm0                               ; 0897 _ 66: 0F 7E. C1
+ 0000089B  33 45 1C		        xor     eax, dword ptr [rbp+1CH]                ; 089B _ 33. 45, 1C
+ 0000089E  F7 D2		        not     edx                                     ; 089E _ F7. D2
+ 000008A0  33 8C 24		        xor     ecx, dword ptr [rsp+0B0H]               ; 08A0 _ 33. 8C 24, 000000B0
+	   000000B0
+ 000008A7  23 94 24		        and     edx, dword ptr [rsp+0A0H]               ; 08A7 _ 23. 94 24, 000000A0
+	   000000A0
+ 000008AE  33 85 00000094	        xor     eax, dword ptr [rbp+94H]                ; 08AE _ 33. 85, 00000094
+ 000008B4  33 D1		        xor     edx, ecx                                ; 08B4 _ 31. CA
+ 000008B6  8B 4C 24 7C		        mov     ecx, dword ptr [rsp+7CH]                ; 08B6 _ 8B. 4C 24, 7C
+ 000008BA  8D 04 40		        lea     eax, [rax+rax*2]                        ; 08BA _ 8D. 04 40
+ 000008BD  F7 D1		        not     ecx                                     ; 08BD _ F7. D1
+ 000008BF  33 C2		        xor     eax, edx                                ; 08BF _ 31. D0
+ 000008C1  D1 C1		        rol     ecx, 1                                  ; 08C1 _ D1. C1
+ 000008C3  89 45 1C		        mov     dword ptr [rbp+1CH], eax                ; 08C3 _ 89. 45, 1C
+ 000008C6  33 C8		        xor     ecx, eax                                ; 08C6 _ 31. C1
+ 000008C8  C1 C0 0F		        rol     eax, 15                                 ; 08C8 _ C1. C0, 0F
+ 000008CB  89 8C 24		        mov     dword ptr [rsp+0BCH], ecx               ; 08CB _ 89. 8C 24, 000000BC
+	   000000BC
+ 000008D2  8B 94 24		        mov     edx, dword ptr [rsp+98H]                ; 08D2 _ 8B. 94 24, 00000098
+	   00000098
+ 000008D9  8D 04 80		        lea     eax, [rax+rax*4]                        ; 08D9 _ 8D. 04 80
+ 000008DC  66| 0F 7E E1		        movd    ecx, xmm4                               ; 08DC _ 66: 0F 7E. E1
+ 000008E0  33 45 20		        xor     eax, dword ptr [rbp+20H]                ; 08E0 _ 33. 45, 20
+ 000008E3  F7 D2		        not     edx                                     ; 08E3 _ F7. D2
+ 000008E5  33 8C 24		        xor     ecx, dword ptr [rsp+0B4H]               ; 08E5 _ 33. 8C 24, 000000B4
+	   000000B4
+ 000008EC  23 94 24		        and     edx, dword ptr [rsp+0A4H]               ; 08EC _ 23. 94 24, 000000A4
+	   000000A4
+ 000008F3  33 85 00000090	        xor     eax, dword ptr [rbp+90H]                ; 08F3 _ 33. 85, 00000090
+ 000008F9  33 D1		        xor     edx, ecx                                ; 08F9 _ 31. CA
+ 000008FB  8B 8C 24		        mov     ecx, dword ptr [rsp+80H]                ; 08FB _ 8B. 8C 24, 00000080
+	   00000080
+ 00000902  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0902 _ 8D. 04 40
+ 00000905  F7 D1		        not     ecx                                     ; 0905 _ F7. D1
+ 00000907  33 C2		        xor     eax, edx                                ; 0907 _ 31. D0
+ 00000909  D1 C1		        rol     ecx, 1                                  ; 0909 _ D1. C1
+ 0000090B  89 45 20		        mov     dword ptr [rbp+20H], eax                ; 090B _ 89. 45, 20
+ 0000090E  33 C8		        xor     ecx, eax                                ; 090E _ 31. C1
+ 00000910  C1 C0 0F		        rol     eax, 15                                 ; 0910 _ C1. C0, 0F
+ 00000913  89 8C 24		        mov     dword ptr [rsp+0C0H], ecx               ; 0913 _ 89. 8C 24, 000000C0
+	   000000C0
+ 0000091A  66| 0F 70 C4		        pshufd  xmm0, xmm4, 01H                         ; 091A _ 66: 0F 70. C4, 01
+	   01
+ 0000091F  8B 94 24		        mov     edx, dword ptr [rsp+9CH]                ; 091F _ 8B. 94 24, 0000009C
+	   0000009C
+ 00000926  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0926 _ 8D. 04 80
+ 00000929  66| 0F 7E C1		        movd    ecx, xmm0                               ; 0929 _ 66: 0F 7E. C1
+ 0000092D  33 45 24		        xor     eax, dword ptr [rbp+24H]                ; 092D _ 33. 45, 24
+ 00000930  F7 D2		        not     edx                                     ; 0930 _ F7. D2
+ 00000932  33 8C 24		        xor     ecx, dword ptr [rsp+0B8H]               ; 0932 _ 33. 8C 24, 000000B8
+	   000000B8
+ 00000939  23 94 24		        and     edx, dword ptr [rsp+0A8H]               ; 0939 _ 23. 94 24, 000000A8
+	   000000A8
+ 00000940  33 85 0000008C	        xor     eax, dword ptr [rbp+8CH]                ; 0940 _ 33. 85, 0000008C
+ 00000946  33 D1		        xor     edx, ecx                                ; 0946 _ 31. CA
+ 00000948  8B 8C 24		        mov     ecx, dword ptr [rsp+84H]                ; 0948 _ 8B. 8C 24, 00000084
+	   00000084
+ 0000094F  8D 04 40		        lea     eax, [rax+rax*2]                        ; 094F _ 8D. 04 40
+ 00000952  F7 D1		        not     ecx                                     ; 0952 _ F7. D1
+ 00000954  33 C2		        xor     eax, edx                                ; 0954 _ 31. D0
+ 00000956  D1 C1		        rol     ecx, 1                                  ; 0956 _ D1. C1
+ 00000958  89 45 24		        mov     dword ptr [rbp+24H], eax                ; 0958 _ 89. 45, 24
+ 0000095B  33 C8		        xor     ecx, eax                                ; 095B _ 31. C1
+ 0000095D  C1 C0 0F		        rol     eax, 15                                 ; 095D _ C1. C0, 0F
+ 00000960  89 8C 24		        mov     dword ptr [rsp+0C4H], ecx               ; 0960 _ 89. 8C 24, 000000C4
+	   000000C4
+ 00000967  66| 0F 70 C4		        pshufd  xmm0, xmm4, 02H                         ; 0967 _ 66: 0F 70. C4, 02
+	   02
+ 0000096C  8B 94 24		        mov     edx, dword ptr [rsp+0A0H]               ; 096C _ 8B. 94 24, 000000A0
+	   000000A0
+ 00000973  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0973 _ 8D. 04 80
+ 00000976  66| 0F 7E C1		        movd    ecx, xmm0                               ; 0976 _ 66: 0F 7E. C1
+ 0000097A  33 45 28		        xor     eax, dword ptr [rbp+28H]                ; 097A _ 33. 45, 28
+ 0000097D  F7 D2		        not     edx                                     ; 097D _ F7. D2
+ 0000097F  33 8C 24		        xor     ecx, dword ptr [rsp+0BCH]               ; 097F _ 33. 8C 24, 000000BC
+	   000000BC
+ 00000986  23 94 24		        and     edx, dword ptr [rsp+0ACH]               ; 0986 _ 23. 94 24, 000000AC
+	   000000AC
+ 0000098D  33 85 00000088	        xor     eax, dword ptr [rbp+88H]                ; 098D _ 33. 85, 00000088
+ 00000993  33 D1		        xor     edx, ecx                                ; 0993 _ 31. CA
+ 00000995  8B 8C 24		        mov     ecx, dword ptr [rsp+88H]                ; 0995 _ 8B. 8C 24, 00000088
+	   00000088
+ 0000099C  8D 04 40		        lea     eax, [rax+rax*2]                        ; 099C _ 8D. 04 40
+ 0000099F  F7 D1		        not     ecx                                     ; 099F _ F7. D1
+ 000009A1  33 C2		        xor     eax, edx                                ; 09A1 _ 31. D0
+ 000009A3  D1 C1		        rol     ecx, 1                                  ; 09A3 _ D1. C1
+ 000009A5  89 45 28		        mov     dword ptr [rbp+28H], eax                ; 09A5 _ 89. 45, 28
+ 000009A8  33 C8		        xor     ecx, eax                                ; 09A8 _ 31. C1
+ 000009AA  C1 C0 0F		        rol     eax, 15                                 ; 09AA _ C1. C0, 0F
+ 000009AD  89 8C 24		        mov     dword ptr [rsp+0C8H], ecx               ; 09AD _ 89. 8C 24, 000000C8
+	   000000C8
+ 000009B4  66| 0F 70 C4		        pshufd  xmm0, xmm4, 03H                         ; 09B4 _ 66: 0F 70. C4, 03
+	   03
+ 000009B9  8B 94 24		        mov     edx, dword ptr [rsp+0A4H]               ; 09B9 _ 8B. 94 24, 000000A4
+	   000000A4
+ 000009C0  8D 04 80		        lea     eax, [rax+rax*4]                        ; 09C0 _ 8D. 04 80
+ 000009C3  66| 0F 7E C1		        movd    ecx, xmm0                               ; 09C3 _ 66: 0F 7E. C1
+ 000009C7  33 45 2C		        xor     eax, dword ptr [rbp+2CH]                ; 09C7 _ 33. 45, 2C
+ 000009CA  F7 D2		        not     edx                                     ; 09CA _ F7. D2
+ 000009CC  33 8C 24		        xor     ecx, dword ptr [rsp+0C0H]               ; 09CC _ 33. 8C 24, 000000C0
+	   000000C0
+ 000009D3  23 94 24		        and     edx, dword ptr [rsp+0B0H]               ; 09D3 _ 23. 94 24, 000000B0
+	   000000B0
+ 000009DA  33 85 00000084	        xor     eax, dword ptr [rbp+84H]                ; 09DA _ 33. 85, 00000084
+ 000009E0  33 D1		        xor     edx, ecx                                ; 09E0 _ 31. CA
+ 000009E2  8B 8C 24		        mov     ecx, dword ptr [rsp+8CH]                ; 09E2 _ 8B. 8C 24, 0000008C
+	   0000008C
+ 000009E9  8D 04 40		        lea     eax, [rax+rax*2]                        ; 09E9 _ 8D. 04 40
+ 000009EC  F7 D1		        not     ecx                                     ; 09EC _ F7. D1
+ 000009EE  33 C2		        xor     eax, edx                                ; 09EE _ 31. D0
+ 000009F0  D1 C1		        rol     ecx, 1                                  ; 09F0 _ D1. C1
+ 000009F2  89 45 2C		        mov     dword ptr [rbp+2CH], eax                ; 09F2 _ 89. 45, 2C
+ 000009F5  33 C8		        xor     ecx, eax                                ; 09F5 _ 31. C1
+ 000009F7  C1 C0 0F		        rol     eax, 15                                 ; 09F7 _ C1. C0, 0F
+ 000009FA  89 8C 24		        mov     dword ptr [rsp+0CCH], ecx               ; 09FA _ 89. 8C 24, 000000CC
+	   000000CC
+ 00000A01  8B 94 24		        mov     edx, dword ptr [rsp+0A8H]               ; 0A01 _ 8B. 94 24, 000000A8
+	   000000A8
+ 00000A08  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0A08 _ 8D. 04 80
+ 00000A0B  66| 0F 7E E9		        movd    ecx, xmm5                               ; 0A0B _ 66: 0F 7E. E9
+ 00000A0F  33 45 00		        xor     eax, dword ptr [rbp]                    ; 0A0F _ 33. 45, 00
+ 00000A12  F7 D2		        not     edx                                     ; 0A12 _ F7. D2
+ 00000A14  33 8C 24		        xor     ecx, dword ptr [rsp+0C4H]               ; 0A14 _ 33. 8C 24, 000000C4
+	   000000C4
+ 00000A1B  23 94 24		        and     edx, dword ptr [rsp+0B4H]               ; 0A1B _ 23. 94 24, 000000B4
+	   000000B4
+ 00000A22  33 85 00000080	        xor     eax, dword ptr [rbp+80H]                ; 0A22 _ 33. 85, 00000080
+ 00000A28  33 D1		        xor     edx, ecx                                ; 0A28 _ 31. CA
+ 00000A2A  8B 8C 24		        mov     ecx, dword ptr [rsp+90H]                ; 0A2A _ 8B. 8C 24, 00000090
+	   00000090
+ 00000A31  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0A31 _ 8D. 04 40
+ 00000A34  F7 D1		        not     ecx                                     ; 0A34 _ F7. D1
+ 00000A36  33 C2		        xor     eax, edx                                ; 0A36 _ 31. D0
+ 00000A38  D1 C1		        rol     ecx, 1                                  ; 0A38 _ D1. C1
+ 00000A3A  89 45 00		        mov     dword ptr [rbp], eax                    ; 0A3A _ 89. 45, 00
+ 00000A3D  33 C8		        xor     ecx, eax                                ; 0A3D _ 31. C1
+ 00000A3F  C1 C0 0F		        rol     eax, 15                                 ; 0A3F _ C1. C0, 0F
+ 00000A42  89 8C 24		        mov     dword ptr [rsp+0D0H], ecx               ; 0A42 _ 89. 8C 24, 000000D0
+	   000000D0
+ 00000A49  66| 0F 70 C5		        pshufd  xmm0, xmm5, 01H                         ; 0A49 _ 66: 0F 70. C5, 01
+	   01
+ 00000A4E  8B 94 24		        mov     edx, dword ptr [rsp+0ACH]               ; 0A4E _ 8B. 94 24, 000000AC
+	   000000AC
+ 00000A55  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0A55 _ 8D. 04 80
+ 00000A58  66| 0F 7E C1		        movd    ecx, xmm0                               ; 0A58 _ 66: 0F 7E. C1
+ 00000A5C  33 45 04		        xor     eax, dword ptr [rbp+4H]                 ; 0A5C _ 33. 45, 04
+ 00000A5F  F7 D2		        not     edx                                     ; 0A5F _ F7. D2
+ 00000A61  33 8C 24		        xor     ecx, dword ptr [rsp+0C8H]               ; 0A61 _ 33. 8C 24, 000000C8
+	   000000C8
+ 00000A68  23 94 24		        and     edx, dword ptr [rsp+0B8H]               ; 0A68 _ 23. 94 24, 000000B8
+	   000000B8
+ 00000A6F  33 45 7C		        xor     eax, dword ptr [rbp+7CH]                ; 0A6F _ 33. 45, 7C
+ 00000A72  33 D1		        xor     edx, ecx                                ; 0A72 _ 31. CA
+ 00000A74  8B 8C 24		        mov     ecx, dword ptr [rsp+94H]                ; 0A74 _ 8B. 8C 24, 00000094
+	   00000094
+ 00000A7B  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0A7B _ 8D. 04 40
+ 00000A7E  F7 D1		        not     ecx                                     ; 0A7E _ F7. D1
+ 00000A80  33 C2		        xor     eax, edx                                ; 0A80 _ 31. D0
+ 00000A82  D1 C1		        rol     ecx, 1                                  ; 0A82 _ D1. C1
+ 00000A84  89 45 04		        mov     dword ptr [rbp+4H], eax                 ; 0A84 _ 89. 45, 04
+ 00000A87  33 C8		        xor     ecx, eax                                ; 0A87 _ 31. C1
+ 00000A89  C1 C0 0F		        rol     eax, 15                                 ; 0A89 _ C1. C0, 0F
+ 00000A8C  89 8C 24		        mov     dword ptr [rsp+0D4H], ecx               ; 0A8C _ 89. 8C 24, 000000D4
+	   000000D4
+ 00000A93  66| 0F 70 C5		        pshufd  xmm0, xmm5, 02H                         ; 0A93 _ 66: 0F 70. C5, 02
+	   02
+ 00000A98  8B 94 24		        mov     edx, dword ptr [rsp+0B0H]               ; 0A98 _ 8B. 94 24, 000000B0
+	   000000B0
+ 00000A9F  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0A9F _ 8D. 04 80
+ 00000AA2  66| 0F 7E C1		        movd    ecx, xmm0                               ; 0AA2 _ 66: 0F 7E. C1
+ 00000AA6  33 45 08		        xor     eax, dword ptr [rbp+8H]                 ; 0AA6 _ 33. 45, 08
+ 00000AA9  F7 D2		        not     edx                                     ; 0AA9 _ F7. D2
+ 00000AAB  33 8C 24		        xor     ecx, dword ptr [rsp+0CCH]               ; 0AAB _ 33. 8C 24, 000000CC
+	   000000CC
+ 00000AB2  23 94 24		        and     edx, dword ptr [rsp+0BCH]               ; 0AB2 _ 23. 94 24, 000000BC
+	   000000BC
+ 00000AB9  33 45 78		        xor     eax, dword ptr [rbp+78H]                ; 0AB9 _ 33. 45, 78
+ 00000ABC  33 D1		        xor     edx, ecx                                ; 0ABC _ 31. CA
+ 00000ABE  8B 8C 24		        mov     ecx, dword ptr [rsp+98H]                ; 0ABE _ 8B. 8C 24, 00000098
+	   00000098
+ 00000AC5  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0AC5 _ 8D. 04 40
+ 00000AC8  F7 D1		        not     ecx                                     ; 0AC8 _ F7. D1
+ 00000ACA  33 C2		        xor     eax, edx                                ; 0ACA _ 31. D0
+ 00000ACC  D1 C1		        rol     ecx, 1                                  ; 0ACC _ D1. C1
+ 00000ACE  89 45 08		        mov     dword ptr [rbp+8H], eax                 ; 0ACE _ 89. 45, 08
+ 00000AD1  33 C8		        xor     ecx, eax                                ; 0AD1 _ 31. C1
+ 00000AD3  C1 C0 0F		        rol     eax, 15                                 ; 0AD3 _ C1. C0, 0F
+ 00000AD6  89 8C 24		        mov     dword ptr [rsp+0D8H], ecx               ; 0AD6 _ 89. 8C 24, 000000D8
+	   000000D8
+ 00000ADD  66| 0F 70 C5		        pshufd  xmm0, xmm5, 03H                         ; 0ADD _ 66: 0F 70. C5, 03
+	   03
+ 00000AE2  8B 94 24		        mov     edx, dword ptr [rsp+0B4H]               ; 0AE2 _ 8B. 94 24, 000000B4
+	   000000B4
+ 00000AE9  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0AE9 _ 8D. 04 80
+ 00000AEC  66| 0F 7E C1		        movd    ecx, xmm0                               ; 0AEC _ 66: 0F 7E. C1
+ 00000AF0  33 45 0C		        xor     eax, dword ptr [rbp+0CH]                ; 0AF0 _ 33. 45, 0C
+ 00000AF3  F7 D2		        not     edx                                     ; 0AF3 _ F7. D2
+ 00000AF5  33 8C 24		        xor     ecx, dword ptr [rsp+0D0H]               ; 0AF5 _ 33. 8C 24, 000000D0
+	   000000D0
+ 00000AFC  23 94 24		        and     edx, dword ptr [rsp+0C0H]               ; 0AFC _ 23. 94 24, 000000C0
+	   000000C0
+ 00000B03  33 45 74		        xor     eax, dword ptr [rbp+74H]                ; 0B03 _ 33. 45, 74
+ 00000B06  33 D1		        xor     edx, ecx                                ; 0B06 _ 31. CA
+ 00000B08  8B 8C 24		        mov     ecx, dword ptr [rsp+9CH]                ; 0B08 _ 8B. 8C 24, 0000009C
+	   0000009C
+ 00000B0F  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0B0F _ 8D. 04 40
+ 00000B12  F7 D1		        not     ecx                                     ; 0B12 _ F7. D1
+ 00000B14  33 C2		        xor     eax, edx                                ; 0B14 _ 31. D0
+ 00000B16  D1 C1		        rol     ecx, 1                                  ; 0B16 _ D1. C1
+ 00000B18  89 45 0C		        mov     dword ptr [rbp+0CH], eax                ; 0B18 _ 89. 45, 0C
+ 00000B1B  33 C8		        xor     ecx, eax                                ; 0B1B _ 31. C1
+ 00000B1D  C1 C0 0F		        rol     eax, 15                                 ; 0B1D _ C1. C0, 0F
+ 00000B20  89 8C 24		        mov     dword ptr [rsp+0DCH], ecx               ; 0B20 _ 89. 8C 24, 000000DC
+	   000000DC
+ 00000B27  8B 94 24		        mov     edx, dword ptr [rsp+0B8H]               ; 0B27 _ 8B. 94 24, 000000B8
+	   000000B8
+ 00000B2E  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0B2E _ 8D. 04 80
+ 00000B31  66| 0F 7E F1		        movd    ecx, xmm6                               ; 0B31 _ 66: 0F 7E. F1
+ 00000B35  33 45 10		        xor     eax, dword ptr [rbp+10H]                ; 0B35 _ 33. 45, 10
+ 00000B38  F7 D2		        not     edx                                     ; 0B38 _ F7. D2
+ 00000B3A  33 8C 24		        xor     ecx, dword ptr [rsp+0D4H]               ; 0B3A _ 33. 8C 24, 000000D4
+	   000000D4
+ 00000B41  23 94 24		        and     edx, dword ptr [rsp+0C4H]               ; 0B41 _ 23. 94 24, 000000C4
+	   000000C4
+ 00000B48  33 45 70		        xor     eax, dword ptr [rbp+70H]                ; 0B48 _ 33. 45, 70
+ 00000B4B  33 D1		        xor     edx, ecx                                ; 0B4B _ 31. CA
+ 00000B4D  8B 8C 24		        mov     ecx, dword ptr [rsp+0A0H]               ; 0B4D _ 8B. 8C 24, 000000A0
+	   000000A0
+ 00000B54  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0B54 _ 8D. 04 40
+ 00000B57  F7 D1		        not     ecx                                     ; 0B57 _ F7. D1
+ 00000B59  33 C2		        xor     eax, edx                                ; 0B59 _ 31. D0
+ 00000B5B  D1 C1		        rol     ecx, 1                                  ; 0B5B _ D1. C1
+ 00000B5D  89 45 10		        mov     dword ptr [rbp+10H], eax                ; 0B5D _ 89. 45, 10
+ 00000B60  33 C8		        xor     ecx, eax                                ; 0B60 _ 31. C1
+ 00000B62  C1 C0 0F		        rol     eax, 15                                 ; 0B62 _ C1. C0, 0F
+ 00000B65  89 8C 24		        mov     dword ptr [rsp+0E0H], ecx               ; 0B65 _ 89. 8C 24, 000000E0
+	   000000E0
+ 00000B6C  66| 0F 70 C6		        pshufd  xmm0, xmm6, 01H                         ; 0B6C _ 66: 0F 70. C6, 01
+	   01
+ 00000B71  8B 94 24		        mov     edx, dword ptr [rsp+0BCH]               ; 0B71 _ 8B. 94 24, 000000BC
+	   000000BC
+ 00000B78  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0B78 _ 8D. 04 80
+ 00000B7B  66| 0F 7E C1		        movd    ecx, xmm0                               ; 0B7B _ 66: 0F 7E. C1
+ 00000B7F  33 45 14		        xor     eax, dword ptr [rbp+14H]                ; 0B7F _ 33. 45, 14
+ 00000B82  F7 D2		        not     edx                                     ; 0B82 _ F7. D2
+ 00000B84  33 8C 24		        xor     ecx, dword ptr [rsp+0D8H]               ; 0B84 _ 33. 8C 24, 000000D8
+	   000000D8
+ 00000B8B  23 94 24		        and     edx, dword ptr [rsp+0C8H]               ; 0B8B _ 23. 94 24, 000000C8
+	   000000C8
+ 00000B92  33 85 000000AC	        xor     eax, dword ptr [rbp+0ACH]               ; 0B92 _ 33. 85, 000000AC
+ 00000B98  33 D1		        xor     edx, ecx                                ; 0B98 _ 31. CA
+ 00000B9A  8B 8C 24		        mov     ecx, dword ptr [rsp+0A4H]               ; 0B9A _ 8B. 8C 24, 000000A4
+	   000000A4
+ 00000BA1  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0BA1 _ 8D. 04 40
+ 00000BA4  F7 D1		        not     ecx                                     ; 0BA4 _ F7. D1
+ 00000BA6  33 C2		        xor     eax, edx                                ; 0BA6 _ 31. D0
+ 00000BA8  D1 C1		        rol     ecx, 1                                  ; 0BA8 _ D1. C1
+ 00000BAA  89 45 14		        mov     dword ptr [rbp+14H], eax                ; 0BAA _ 89. 45, 14
+ 00000BAD  33 C8		        xor     ecx, eax                                ; 0BAD _ 31. C1
+ 00000BAF  C1 C0 0F		        rol     eax, 15                                 ; 0BAF _ C1. C0, 0F
+ 00000BB2  89 8C 24		        mov     dword ptr [rsp+0E4H], ecx               ; 0BB2 _ 89. 8C 24, 000000E4
+	   000000E4
+ 00000BB9  66| 0F 70 C6		        pshufd  xmm0, xmm6, 02H                         ; 0BB9 _ 66: 0F 70. C6, 02
+	   02
+ 00000BBE  8B 94 24		        mov     edx, dword ptr [rsp+0C0H]               ; 0BBE _ 8B. 94 24, 000000C0
+	   000000C0
+ 00000BC5  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0BC5 _ 8D. 04 80
+ 00000BC8  66| 0F 7E C1		        movd    ecx, xmm0                               ; 0BC8 _ 66: 0F 7E. C1
+ 00000BCC  33 45 18		        xor     eax, dword ptr [rbp+18H]                ; 0BCC _ 33. 45, 18
+ 00000BCF  F7 D2		        not     edx                                     ; 0BCF _ F7. D2
+ 00000BD1  33 8C 24		        xor     ecx, dword ptr [rsp+0DCH]               ; 0BD1 _ 33. 8C 24, 000000DC
+	   000000DC
+ 00000BD8  23 94 24		        and     edx, dword ptr [rsp+0CCH]               ; 0BD8 _ 23. 94 24, 000000CC
+	   000000CC
+ 00000BDF  33 85 000000A8	        xor     eax, dword ptr [rbp+0A8H]               ; 0BDF _ 33. 85, 000000A8
+ 00000BE5  33 D1		        xor     edx, ecx                                ; 0BE5 _ 31. CA
+ 00000BE7  8B 8C 24		        mov     ecx, dword ptr [rsp+0A8H]               ; 0BE7 _ 8B. 8C 24, 000000A8
+	   000000A8
+ 00000BEE  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0BEE _ 8D. 04 40
+ 00000BF1  F7 D1		        not     ecx                                     ; 0BF1 _ F7. D1
+ 00000BF3  33 C2		        xor     eax, edx                                ; 0BF3 _ 31. D0
+ 00000BF5  D1 C1		        rol     ecx, 1                                  ; 0BF5 _ D1. C1
+ 00000BF7  89 45 18		        mov     dword ptr [rbp+18H], eax                ; 0BF7 _ 89. 45, 18
+ 00000BFA  33 C8		        xor     ecx, eax                                ; 0BFA _ 31. C1
+ 00000BFC  C1 C0 0F		        rol     eax, 15                                 ; 0BFC _ C1. C0, 0F
+ 00000BFF  89 8C 24		        mov     dword ptr [rsp+0E8H], ecx               ; 0BFF _ 89. 8C 24, 000000E8
+	   000000E8
+ 00000C06  66| 0F 70 C6		        pshufd  xmm0, xmm6, 03H                         ; 0C06 _ 66: 0F 70. C6, 03
+	   03
+ 00000C0B  8B 94 24		        mov     edx, dword ptr [rsp+0C4H]               ; 0C0B _ 8B. 94 24, 000000C4
+	   000000C4
+ 00000C12  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0C12 _ 8D. 04 80
+ 00000C15  66| 0F 7E C1		        movd    ecx, xmm0                               ; 0C15 _ 66: 0F 7E. C1
+ 00000C19  33 45 1C		        xor     eax, dword ptr [rbp+1CH]                ; 0C19 _ 33. 45, 1C
+ 00000C1C  F7 D2		        not     edx                                     ; 0C1C _ F7. D2
+ 00000C1E  33 8C 24		        xor     ecx, dword ptr [rsp+0E0H]               ; 0C1E _ 33. 8C 24, 000000E0
+	   000000E0
+ 00000C25  23 94 24		        and     edx, dword ptr [rsp+0D0H]               ; 0C25 _ 23. 94 24, 000000D0
+	   000000D0
+ 00000C2C  33 85 000000A4	        xor     eax, dword ptr [rbp+0A4H]               ; 0C2C _ 33. 85, 000000A4
+ 00000C32  33 D1		        xor     edx, ecx                                ; 0C32 _ 31. CA
+ 00000C34  8B 8C 24		        mov     ecx, dword ptr [rsp+0ACH]               ; 0C34 _ 8B. 8C 24, 000000AC
+	   000000AC
+ 00000C3B  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0C3B _ 8D. 04 40
+ 00000C3E  F7 D1		        not     ecx                                     ; 0C3E _ F7. D1
+ 00000C40  33 C2		        xor     eax, edx                                ; 0C40 _ 31. D0
+ 00000C42  D1 C1		        rol     ecx, 1                                  ; 0C42 _ D1. C1
+ 00000C44  89 45 1C		        mov     dword ptr [rbp+1CH], eax                ; 0C44 _ 89. 45, 1C
+ 00000C47  33 C8		        xor     ecx, eax                                ; 0C47 _ 31. C1
+ 00000C49  C1 C0 0F		        rol     eax, 15                                 ; 0C49 _ C1. C0, 0F
+ 00000C4C  89 8C 24		        mov     dword ptr [rsp+0ECH], ecx               ; 0C4C _ 89. 8C 24, 000000EC
+	   000000EC
+ 00000C53  8B 94 24		        mov     edx, dword ptr [rsp+0C8H]               ; 0C53 _ 8B. 94 24, 000000C8
+	   000000C8
+ 00000C5A  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0C5A _ 8D. 04 80
+ 00000C5D  66| 0F 7E F9		        movd    ecx, xmm7                               ; 0C5D _ 66: 0F 7E. F9
+ 00000C61  33 45 20		        xor     eax, dword ptr [rbp+20H]                ; 0C61 _ 33. 45, 20
+ 00000C64  F7 D2		        not     edx                                     ; 0C64 _ F7. D2
+ 00000C66  33 8C 24		        xor     ecx, dword ptr [rsp+0E4H]               ; 0C66 _ 33. 8C 24, 000000E4
+	   000000E4
+ 00000C6D  23 94 24		        and     edx, dword ptr [rsp+0D4H]               ; 0C6D _ 23. 94 24, 000000D4
+	   000000D4
+ 00000C74  33 85 000000A0	        xor     eax, dword ptr [rbp+0A0H]               ; 0C74 _ 33. 85, 000000A0
+ 00000C7A  33 D1		        xor     edx, ecx                                ; 0C7A _ 31. CA
+ 00000C7C  8B 8C 24		        mov     ecx, dword ptr [rsp+0B0H]               ; 0C7C _ 8B. 8C 24, 000000B0
+	   000000B0
+ 00000C83  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0C83 _ 8D. 04 40
+ 00000C86  F7 D1		        not     ecx                                     ; 0C86 _ F7. D1
+ 00000C88  33 C2		        xor     eax, edx                                ; 0C88 _ 31. D0
+ 00000C8A  D1 C1		        rol     ecx, 1                                  ; 0C8A _ D1. C1
+ 00000C8C  89 45 20		        mov     dword ptr [rbp+20H], eax                ; 0C8C _ 89. 45, 20
+ 00000C8F  33 C8		        xor     ecx, eax                                ; 0C8F _ 31. C1
+ 00000C91  C1 C0 0F		        rol     eax, 15                                 ; 0C91 _ C1. C0, 0F
+ 00000C94  89 8C 24		        mov     dword ptr [rsp+0F0H], ecx               ; 0C94 _ 89. 8C 24, 000000F0
+	   000000F0
+ 00000C9B  66| 0F 70 C7		        pshufd  xmm0, xmm7, 01H                         ; 0C9B _ 66: 0F 70. C7, 01
+	   01
+ 00000CA0  8B 94 24		        mov     edx, dword ptr [rsp+0CCH]               ; 0CA0 _ 8B. 94 24, 000000CC
+	   000000CC
+ 00000CA7  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0CA7 _ 8D. 04 80
+ 00000CAA  66| 0F 7E C1		        movd    ecx, xmm0                               ; 0CAA _ 66: 0F 7E. C1
+ 00000CAE  33 45 24		        xor     eax, dword ptr [rbp+24H]                ; 0CAE _ 33. 45, 24
+ 00000CB1  F7 D2		        not     edx                                     ; 0CB1 _ F7. D2
+ 00000CB3  33 8C 24		        xor     ecx, dword ptr [rsp+0E8H]               ; 0CB3 _ 33. 8C 24, 000000E8
+	   000000E8
+ 00000CBA  23 94 24		        and     edx, dword ptr [rsp+0D8H]               ; 0CBA _ 23. 94 24, 000000D8
+	   000000D8
+ 00000CC1  33 85 0000009C	        xor     eax, dword ptr [rbp+9CH]                ; 0CC1 _ 33. 85, 0000009C
+ 00000CC7  33 D1		        xor     edx, ecx                                ; 0CC7 _ 31. CA
+ 00000CC9  8B 8C 24		        mov     ecx, dword ptr [rsp+0B4H]               ; 0CC9 _ 8B. 8C 24, 000000B4
+	   000000B4
+ 00000CD0  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0CD0 _ 8D. 04 40
+ 00000CD3  F7 D1		        not     ecx                                     ; 0CD3 _ F7. D1
+ 00000CD5  33 C2		        xor     eax, edx                                ; 0CD5 _ 31. D0
+ 00000CD7  D1 C1		        rol     ecx, 1                                  ; 0CD7 _ D1. C1
+ 00000CD9  89 45 24		        mov     dword ptr [rbp+24H], eax                ; 0CD9 _ 89. 45, 24
+ 00000CDC  33 C8		        xor     ecx, eax                                ; 0CDC _ 31. C1
+ 00000CDE  C1 C0 0F		        rol     eax, 15                                 ; 0CDE _ C1. C0, 0F
+ 00000CE1  89 8C 24		        mov     dword ptr [rsp+0F4H], ecx               ; 0CE1 _ 89. 8C 24, 000000F4
+	   000000F4
+ 00000CE8  66| 0F 70 C7		        pshufd  xmm0, xmm7, 02H                         ; 0CE8 _ 66: 0F 70. C7, 02
+	   02
+ 00000CED  8B 94 24		        mov     edx, dword ptr [rsp+0D0H]               ; 0CED _ 8B. 94 24, 000000D0
+	   000000D0
+ 00000CF4  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0CF4 _ 8D. 04 80
+ 00000CF7  66| 0F 7E C1		        movd    ecx, xmm0                               ; 0CF7 _ 66: 0F 7E. C1
+ 00000CFB  33 45 28		        xor     eax, dword ptr [rbp+28H]                ; 0CFB _ 33. 45, 28
+ 00000CFE  F7 D2		        not     edx                                     ; 0CFE _ F7. D2
+ 00000D00  33 8C 24		        xor     ecx, dword ptr [rsp+0ECH]               ; 0D00 _ 33. 8C 24, 000000EC
+	   000000EC
+ 00000D07  23 94 24		        and     edx, dword ptr [rsp+0DCH]               ; 0D07 _ 23. 94 24, 000000DC
+	   000000DC
+ 00000D0E  33 85 00000098	        xor     eax, dword ptr [rbp+98H]                ; 0D0E _ 33. 85, 00000098
+ 00000D14  33 D1		        xor     edx, ecx                                ; 0D14 _ 31. CA
+ 00000D16  8B 8C 24		        mov     ecx, dword ptr [rsp+0B8H]               ; 0D16 _ 8B. 8C 24, 000000B8
+	   000000B8
+ 00000D1D  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0D1D _ 8D. 04 40
+ 00000D20  F7 D1		        not     ecx                                     ; 0D20 _ F7. D1
+ 00000D22  33 C2		        xor     eax, edx                                ; 0D22 _ 31. D0
+ 00000D24  D1 C1		        rol     ecx, 1                                  ; 0D24 _ D1. C1
+ 00000D26  89 45 28		        mov     dword ptr [rbp+28H], eax                ; 0D26 _ 89. 45, 28
+ 00000D29  33 C8		        xor     ecx, eax                                ; 0D29 _ 31. C1
+ 00000D2B  C1 C0 0F		        rol     eax, 15                                 ; 0D2B _ C1. C0, 0F
+ 00000D2E  89 8C 24		        mov     dword ptr [rsp+0F8H], ecx               ; 0D2E _ 89. 8C 24, 000000F8
+	   000000F8
+ 00000D35  66| 0F 70 C7		        pshufd  xmm0, xmm7, 03H                         ; 0D35 _ 66: 0F 70. C7, 03
+	   03
+ 00000D3A  8B 94 24		        mov     edx, dword ptr [rsp+0D4H]               ; 0D3A _ 8B. 94 24, 000000D4
+	   000000D4
+ 00000D41  8D 04 80		        lea     eax, [rax+rax*4]                        ; 0D41 _ 8D. 04 80
+ 00000D44  66| 0F 7E C1		        movd    ecx, xmm0                               ; 0D44 _ 66: 0F 7E. C1
+ 00000D48  33 45 2C		        xor     eax, dword ptr [rbp+2CH]                ; 0D48 _ 33. 45, 2C
+ 00000D4B  F7 D2		        not     edx                                     ; 0D4B _ F7. D2
+ 00000D4D  33 8C 24		        xor     ecx, dword ptr [rsp+0F0H]               ; 0D4D _ 33. 8C 24, 000000F0
+	   000000F0
+ 00000D54  23 94 24		        and     edx, dword ptr [rsp+0E0H]               ; 0D54 _ 23. 94 24, 000000E0
+	   000000E0
+ 00000D5B  33 85 00000094	        xor     eax, dword ptr [rbp+94H]                ; 0D5B _ 33. 85, 00000094
+ 00000D61  33 D1		        xor     edx, ecx                                ; 0D61 _ 31. CA
+ 00000D63  8B 8C 24		        mov     ecx, dword ptr [rsp+0BCH]               ; 0D63 _ 8B. 8C 24, 000000BC
+	   000000BC
+ 00000D6A  8D 04 40		        lea     eax, [rax+rax*2]                        ; 0D6A _ 8D. 04 40
+ 00000D6D  F7 D1		        not     ecx                                     ; 0D6D _ F7. D1
+ 00000D6F  33 C2		        xor     eax, edx                                ; 0D6F _ 31. D0
+ 00000D71  D1 C1		        rol     ecx, 1                                  ; 0D71 _ D1. C1
+ 00000D73  89 45 2C		        mov     dword ptr [rbp+2CH], eax                ; 0D73 _ 89. 45, 2C
+ 00000D76  33 C8		        xor     ecx, eax                                ; 0D76 _ 31. C1
+ 00000D78  89 8C 24		        mov     dword ptr [rsp+0FCH], ecx               ; 0D78 _ 89. 8C 24, 000000FC
+	   000000FC
+ 00000D7F  66| 0F 6F 45		        movdqa  xmm0, xmmword ptr [rbp+70H]             ; 0D7F _ 66: 0F 6F. 45, 70
+	   70
+ 00000D84  66| 0F 6F 8D		        movdqa  xmm1, xmmword ptr [rbp+80H]             ; 0D84 _ 66: 0F 6F. 8D, 00000080
+	   00000080
+ 00000D8C  66| 0F 6F 95		        movdqa  xmm2, xmmword ptr [rbp+90H]             ; 0D8C _ 66: 0F 6F. 95, 00000090
+	   00000090
+ 00000D94  66| 0F 6F 9D		        movdqa  xmm3, xmmword ptr [rbp+0A0H]            ; 0D94 _ 66: 0F 6F. 9D, 000000A0
+	   000000A0
+ 00000D9C  66| 0F FA C4		        psubd   xmm0, xmm4                              ; 0D9C _ 66: 0F FA. C4
+ 00000DA0  66| 0F FA CD		        psubd   xmm1, xmm5                              ; 0DA0 _ 66: 0F FA. CD
+ 00000DA4  66| 0F FA D6		        psubd   xmm2, xmm6                              ; 0DA4 _ 66: 0F FA. D6
+ 00000DA8  66| 0F FA DF		        psubd   xmm3, xmm7                              ; 0DA8 _ 66: 0F FA. DF
+ 00000DAC  66| 0F 7F 45		        movdqa  xmmword ptr [rbp+30H], xmm0             ; 0DAC _ 66: 0F 7F. 45, 30
+	   30
+ 00000DB1  66| 0F 7F 4D		        movdqa  xmmword ptr [rbp+40H], xmm1             ; 0DB1 _ 66: 0F 7F. 4D, 40
+	   40
+ 00000DB6  66| 0F 7F 55		        movdqa  xmmword ptr [rbp+50H], xmm2             ; 0DB6 _ 66: 0F 7F. 55, 50
+	   50
+ 00000DBB  66| 0F 7F 5D		        movdqa  xmmword ptr [rbp+60H], xmm3             ; 0DBB _ 66: 0F 7F. 5D, 60
+	   60
+ 00000DC0  66| 0F 6F 45		        movdqa  xmm0, xmmword ptr [rbp+70H]             ; 0DC0 _ 66: 0F 6F. 45, 70
+	   70
+ 00000DC5  F3/ 0F 6F 4D		        movdqu  xmm1, xmmword ptr [rbp+7CH]             ; 0DC5 _ F3: 0F 6F. 4D, 7C
+	   7C
+ 00000DCA  F3/ 0F 6F 95		        movdqu  xmm2, xmmword ptr [rbp+8CH]             ; 0DCA _ F3: 0F 6F. 95, 0000008C
+	   0000008C
+ 00000DD2  66| 0F 73 F8		        pslldq  xmm0, 4                                 ; 0DD2 _ 66: 0F 73. F8, 04
+	   04
+ 00000DD7  8B 85 000000AC	        mov     eax, dword ptr [rbp+0ACH]               ; 0DD7 _ 8B. 85, 000000AC
+ 00000DDD  F3/ 0F 6F 9D		        movdqu  xmm3, xmmword ptr [rbp+9CH]             ; 0DDD _ F3: 0F 6F. 9D, 0000009C
+	   0000009C
+ 00000DE5  66| 0F 6F 65		        movdqa  xmm4, xmmword ptr [rbp]                 ; 0DE5 _ 66: 0F 6F. 65, 00
+	   00
+ 00000DEA  66| 0F 6E F8		        movd    xmm7, eax                               ; 0DEA _ 66: 0F 6E. F8
+ 00000DEE  66| 0F 6F 6D		        movdqa  xmm5, xmmword ptr [rbp+10H]             ; 0DEE _ 66: 0F 6F. 6D, 10
+	   10
+ 00000DF3  66| 0F 6F 75		        movdqa  xmm6, xmmword ptr [rbp+20H]             ; 0DF3 _ 66: 0F 6F. 75, 20
+	   20
+ 00000DF8  66| 0F EB C7		        por     xmm0, xmm7                              ; 0DF8 _ 66: 0F EB. C7
+ 00000DFC  66| 0F FE E9		        paddd   xmm5, xmm1                              ; 0DFC _ 66: 0F FE. E9
+ 00000E00  66| 0F FE CB		        paddd   xmm1, xmm3                              ; 0E00 _ 66: 0F FE. CB
+ 00000E04  66| 0F FE EA		        paddd   xmm5, xmm2                              ; 0E04 _ 66: 0F FE. EA
+ 00000E08  66| 0F FE F2		        paddd   xmm6, xmm2                              ; 0E08 _ 66: 0F FE. F2
+ 00000E0C  66| 0F FE E1		        paddd   xmm4, xmm1                              ; 0E0C _ 66: 0F FE. E1
+ 00000E10  66| 0F FE E8		        paddd   xmm5, xmm0                              ; 0E10 _ 66: 0F FE. E8
+ 00000E14  66| 0F FE F1		        paddd   xmm6, xmm1                              ; 0E14 _ 66: 0F FE. F1
+ 00000E18  66| 0F FE E0		        paddd   xmm4, xmm0                              ; 0E18 _ 66: 0F FE. E0
+ 00000E1C  66| 0F 7F 6D		        movdqa  xmmword ptr [rbp+10H], xmm5             ; 0E1C _ 66: 0F 7F. 6D, 10
+	   10
+ 00000E21  66| 0F 7F 75		        movdqa  xmmword ptr [rbp+20H], xmm6             ; 0E21 _ 66: 0F 7F. 75, 20
+	   20
+ 00000E26  66| 0F 7F 65		        movdqa  xmmword ptr [rbp], xmm4                 ; 0E26 _ 66: 0F 7F. 65, 00
+	   00
+ 00000E2B  66| 0F 6F 84 24	        movdqa  xmm0, xmmword ptr [rsp+0C0H]            ; 0E2B _ 66: 0F 6F. 84 24, 000000C0
+	   000000C0
+ 00000E34  66| 0F 6F 8C 24	        movdqa  xmm1, xmmword ptr [rsp+0D0H]            ; 0E34 _ 66: 0F 6F. 8C 24, 000000D0
+	   000000D0
+ 00000E3D  66| 0F 6F 94 24	        movdqa  xmm2, xmmword ptr [rsp+0E0H]            ; 0E3D _ 66: 0F 6F. 94 24, 000000E0
+	   000000E0
+ 00000E46  66| 0F 6F 9C 24	        movdqa  xmm3, xmmword ptr [rsp+0F0H]            ; 0E46 _ 66: 0F 6F. 9C 24, 000000F0
+	   000000F0
+ 00000E4F  66| 0F 7F 45		        movdqa  xmmword ptr [rbp+70H], xmm0             ; 0E4F _ 66: 0F 7F. 45, 70
+	   70
+ 00000E54  66| 0F 7F 8D		        movdqa  xmmword ptr [rbp+80H], xmm1             ; 0E54 _ 66: 0F 7F. 8D, 00000080
+	   00000080
+ 00000E5C  66| 0F 7F 95		        movdqa  xmmword ptr [rbp+90H], xmm2             ; 0E5C _ 66: 0F 7F. 95, 00000090
+	   00000090
+ 00000E64  66| 0F 7F 9D		        movdqa  xmmword ptr [rbp+0A0H], xmm3            ; 0E64 _ 66: 0F 7F. 9D, 000000A0
+	   000000A0
+ 00000E6C  48/ FF 85		        inc     qword ptr [rbp+0B0H]                    ; 0E6C _ 48: FF. 85, 000000B0
+	   000000B0
+ 00000E73  48/ 83 C6 40		        add     rsi, 64                                 ; 0E73 _ 48: 83. C6, 40
+ 00000E77  48/ FF CF		        dec     rdi                                     ; 0E77 _ 48: FF. CF
+ 00000E7A  0F 85 FFFFF1A8	        jne     Lm0                                     ; 0E7A _ 0F 85, FFFFF1A8
+ 00000E80  48/ 8B 84 24		        mov     rax, qword ptr [rsp+100H]               ; 0E80 _ 48: 8B. 84 24, 00000100
+	   00000100
+ 00000E88  48/ 8B E0		        mov     rsp, rax                                ; 0E88 _ 48: 89. C4
+ 00000E8B  5D			        pop     rbp                                     ; 0E8B _ 5D
+ 00000E8C  C3			        ret                                             ; 0E8C _ C3
+				
+ 00000E8D			asm_shabal_init PROC
+				
+				  ; Make space for 10 xmm registers, 2 G.P. registers, 
+				  ; and align stack by 16
+ 00000E8D  48/ 81 EC		  sub     rsp, 184;   10*16 + 2*8 + 8
+	   000000B8
+				        
+				  ; Register rsi, rdi and xmm6 - xmm15 have callee-save status
+				  ; in Windows, but not in Unix:
+ 00000E94  48/ 89 34 24		  mov     [rsp],     rsi
+ 00000E98  48/ 89 7C 24		  mov     [rsp+8],   rdi
+	   08
+ 00000E9D  0F 29 74 24 10	  movaps  [rsp+10h], xmm6
+ 00000EA2  0F 29 7C 24 20	  movaps  [rsp+20h], xmm7
+ 00000EA7  44/ 0F 29 44 24	  movaps  [rsp+30h], xmm8
+	   30
+ 00000EAD  44/ 0F 29 4C 24	  movaps  [rsp+40h], xmm9
+	   40
+ 00000EB3  44/ 0F 29 54 24	  movaps  [rsp+50h], xmm10
+	   50
+ 00000EB9  44/ 0F 29 5C 24	  movaps  [rsp+60h], xmm11
+	   60
+ 00000EBF  44/ 0F 29 64 24	  movaps  [rsp+70h], xmm12
+	   70
+ 00000EC5  44/ 0F 29 AC 24	  movaps  [rsp+80h], xmm13
+	   00000080
+ 00000ECE  44/ 0F 29 B4 24	  movaps  [rsp+90h], xmm14
+	   00000090
+ 00000ED7  44/ 0F 29 BC 24	  movaps  [rsp+0A0h],xmm15
+	   000000A0
+				
+				  ; Windows parameters (rcx,rdx,r8,r9) -> Unix parameters (rdi,rsi,rdx,rcx)
+ 00000EE0  48/ 8B F9		  mov     rdi, rcx
+ 00000EE3  48/ 8B F2		  mov     rsi, rdx
+ 00000EE6  49/ 8B D0		  mov     rdx, r8
+ 00000EE9  49/ 8B C9		  mov     rcx, r9    
+				
+				
+ 00000EEC  8B C6		        mov     eax, esi                                ; 0E8D _ 89. F0
+ 00000EEE  E8 00000000		        call    Li1                                     ; 0E8F _ E8, 00000000
+				
+ 00000EF3			Li1     LABEL NEAR
+ 00000EF3  5E			        pop     rsi                                     ; 0E94 _ 5E
+				; Note: Immediate operand could be made smaller by sign extension
+				        ;add     rsi, -116                               ; 0E95 _ 48: 81. C6, FFFFFF8C
+				
+				  ; Obtain address of 'iv' in a position-independent way.
+ 00000EF4  48/ 81 C6		  add    rsi, iv - Li1 - 176
+	   FFFFFFDD
+				
+ 00000EFB  89 87 00000100	        mov     dword ptr [rdi+100H], eax               ; 0E9C _ 89. 87, 00000100
+ 00000F01  C1 E8 05		        shr     eax, 5                                  ; 0EA2 _ C1. E8, 05
+ 00000F04  69 C0 000000B0	        imul    eax, eax, 176                           ; 0EA5 _ 69. C0, 000000B0
+ 00000F0A  48/ 03 F0		        add     rsi, rax                                ; 0EAB _ 48: 01. C6
+ 00000F0D  48/ 83 C7 48		        add     rdi, 72                                 ; 0EAE _ 48: 83. C7, 48
+ 00000F11  B9 00000016		        mov     ecx, 22                                 ; 0EB2 _ B9, 00000016
+ 00000F16  F3/ 48/ A5		        rep movsq                                       ; 0EB7 _ F3 48: A5
+ 00000F19  B8 00000001		        mov     eax, 1                                  ; 0EBA _ B8, 00000001
+ 00000F1E  48/ AB		        stosq                                           ; 0EBF _ 48: AB
+ 00000F20  48/ 81 EF		        sub     rdi, 192                                ; 0EC1 _ 48: 81. EF, 000000C0
+	   000000C0
+ 00000F27  33 C0		        xor     eax, eax                                ; 0EC8 _ 31. C0
+ 00000F29  48/ AB		        stosq                                           ; 0ECA _ 48: AB
+				
+				
+				  ; Restore saved registers
+ 00000F2B  48/ 8B 34 24		  mov     rsi,   [rsp]
+ 00000F2F  48/ 8B 7C 24		  mov     rdi,   [rsp+8]
+	   08
+ 00000F34  0F 28 74 24 10	  movaps  xmm6,  [rsp+10h]
+ 00000F39  0F 28 7C 24 20	  movaps  xmm7,  [rsp+20h] 
+ 00000F3E  44/ 0F 28 44 24	  movaps  xmm8,  [rsp+30h] 
+	   30
+ 00000F44  44/ 0F 28 4C 24	  movaps  xmm9,  [rsp+40h] 
+	   40
+ 00000F4A  44/ 0F 28 54 24	  movaps  xmm10, [rsp+50h] 
+	   50
+ 00000F50  44/ 0F 28 5C 24	  movaps  xmm11, [rsp+60h] 
+	   60
+ 00000F56  44/ 0F 28 64 24	  movaps  xmm12, [rsp+70h] 
+	   70
+ 00000F5C  44/ 0F 28 AC 24	  movaps  xmm13, [rsp+80h] 
+	   00000080
+ 00000F65  44/ 0F 28 B4 24	  movaps  xmm14, [rsp+90h] 
+	   00000090
+ 00000F6E  44/ 0F 28 BC 24	  movaps  xmm15, [rsp+0A0h]        
+	   000000A0
+				        
+				  ; restore stack pointer
+ 00000F77  48/ 81 C4		  add     rsp, 184
+	   000000B8
+				
+ 00000F7E  C3			        ret                                             ; 0ECC _ C3
+ 00000F7F			asm_shabal_init ENDP
+				
+				; Filling space: 3H
+				; Filler type: Multi-byte NOP
+				;       db 0FH, 1FH, 00H
+				
+				ALIGN   8
+				
+ 00000F80			iv      label byte
+ 00000F80  24 16 99 30 D1	        db 24H, 16H, 99H, 30H, 0D1H, 13H, 68H, 80H      ; 0ED0 _ $..0..h.
+	   13 68 80
+ 00000F88  CB 62 A6 BC 3E	        db 0CBH, 62H, 0A6H, 0BCH, 3EH, 9EH, 2BH, 0D1H   ; 0ED8 _ .b..>.+.
+	   9E 2B D1
+ 00000F90  E0 94 5C 01 9D	        db 0E0H, 94H, 5CH, 01H, 9DH, 4CH, 86H, 90H      ; 0EE0 _ ..\..L..
+	   4C 86 90
+ 00000F98  28 76 E8 8E 70	        db 28H, 76H, 0E8H, 8EH, 70H, 66H, 0B1H, 0C9H    ; 0EE8 _ (v..pf..
+	   66 B1 C9
+ 00000FA0  6B 43 00 63 72	        db 6BH, 43H, 00H, 63H, 72H, 43H, 0B7H, 00H      ; 0EF0 _ kC.crC..
+	   43 B7 00
+ 00000FA8  2C F2 10 64 A8	        db 2CH, 0F2H, 10H, 64H, 0A8H, 0CCH, 7CH, 72H    ; 0EF8 _ ,..d..|r
+	   CC 7C 72
+ 00000FB0  CA 62 57 40 DD	        db 0CAH, 62H, 57H, 40H, 0DDH, 0A2H, 0AFH, 0ADH  ; 0F00 _ .bW@....
+	   A2 AF AD
+ 00000FB8  D4 20 4A 09 0E	        db 0D4H, 20H, 4AH, 09H, 0EH, 0DBH, 99H, 02H     ; 0F08 _ . J.....
+	   DB 99 02
+ 00000FC0  24 70 69 8E 29	        db 24H, 70H, 69H, 8EH, 29H, 14H, 30H, 80H       ; 0F10 _ $pi.).0.
+	   14 30 80
+ 00000FC8  12 3B D4 9F 51	        db 12H, 3BH, 0D4H, 9FH, 51H, 98H, 42H, 43H      ; 0F18 _ .;..Q.BC
+	   98 42 43
+ 00000FD0  E7 9C CE B6 E8	        db 0E7H, 9CH, 0CEH, 0B6H, 0E8H, 01H, 7EH, 0FDH  ; 0F20 _ ......~.
+	   01 7E FD
+ 00000FD8  32 88 C0 05 F9	        db 32H, 88H, 0C0H, 05H, 0F9H, 9BH, 0BH, 1BH     ; 0F28 _ 2.......
+	   9B 0B 1B
+ 00000FE0  BE 39 31 20 78	        db 0BEH, 39H, 31H, 20H, 78H, 1AH, 94H, 0DFH     ; 0F30 _ .91 x...
+	   1A 94 DF
+ 00000FE8  03 DC 28 90 88	        db 03H, 0DCH, 28H, 90H, 88H, 9EH, 07H, 0D5H     ; 0F38 _ ..(.....
+	   9E 07 D5
+ 00000FF0  34 B1 16 DC 0F	        db 34H, 0B1H, 16H, 0DCH, 0FH, 2CH, 90H, 1DH     ; 0F40 _ 4....,..
+	   2C 90 1D
+ 00000FF8  1C DE AB 7F 56	        db 1CH, 0DEH, 0ABH, 7FH, 56H, 0CH, 0D0H, 3BH    ; 0F48 _ ....V..;
+	   0C D0 3B
+ 00001000  DA 30 61 2C F4	        db 0DAH, 30H, 61H, 2CH, 0F4H, 0F5H, 0ACH, 0DDH  ; 0F50 _ .0a,....
+	   F5 AC DD
+ 00001008  82 99 C8 5F D5	        db 82H, 99H, 0C8H, 5FH, 0D5H, 0F1H, 92H, 99H    ; 0F58 _ ..._....
+	   F1 92 99
+ 00001010  15 C2 6E A2 2C	        db 15H, 0C2H, 6EH, 0A2H, 2CH, 0FDH, 0DFH, 82H   ; 0F60 _ ..n.,...
+	   FD DF 82
+ 00001018  C1 5A 1F CA 35	        db 0C1H, 5AH, 1FH, 0CAH, 35H, 0D5H, 05H, 30H    ; 0F68 _ .Z..5..0
+	   D5 05 30
+ 00001020  86 51 84 4F 86	        db 86H, 51H, 84H, 4FH, 86H, 81H, 4EH, 62H       ; 0F70 _ .Q.O..Nb
+	   81 4E 62
+ 00001028  93 AA 8E 7E 3E	        db 93H, 0AAH, 8EH, 7EH, 3EH, 81H, 0C5H, 0CH     ; 0F78 _ ...~>...
+	   81 C5 0C
+ 00001030  74 1D BA AF 28	        db 74H, 1DH, 0BAH, 0AFH, 28H, 36H, 0D9H, 43H    ; 0F80 _ t...(6.C
+	   36 D9 43
+ 00001038  E5 41 67 ED AD	        db 0E5H, 41H, 67H, 0EDH, 0ADH, 0B5H, 0E6H, 24H  ; 0F88 _ .Ag....$
+	   B5 E6 24
+ 00001040  5B 19 F8 7C 4B	        db 5BH, 19H, 0F8H, 7CH, 4BH, 59H, 48H, 13H      ; 0F90 _ [..|KYH.
+	   59 48 13
+ 00001048  BB 67 1D 0B 45	        db 0BBH, 67H, 1DH, 0BH, 45H, 09H, 0CEH, 8EH     ; 0F98 _ .g..E...
+	   09 CE 8E
+ 00001050  FA 7D A5 27 8C	        db 0FAH, 7DH, 0A5H, 27H, 8CH, 8AH, 0C2H, 0A3H   ; 0FA0 _ .}.'....
+	   8A C2 A3
+ 00001058  3E 8C 10 88 AF	        db 3EH, 8CH, 10H, 88H, 0AFH, 0C0H, 48H, 4EH     ; 0FA8 _ >.....HN
+	   C0 48 4E
+ 00001060  6E 11 81 C5 7F	        db 6EH, 11H, 81H, 0C5H, 7FH, 2DH, 0EDH, 16H     ; 0FB0 _ n....-..
+	   2D ED 16
+ 00001068  8F D2 A2 F5 9D	        db 8FH, 0D2H, 0A2H, 0F5H, 9DH, 55H, 6DH, 0C5H   ; 0FB8 _ .....Um.
+	   55 6D C5
+ 00001070  92 8E A0 BA FC	        db 92H, 8EH, 0A0H, 0BAH, 0FCH, 0C8H, 0D7H, 64H  ; 0FC0 _ .......d
+	   C8 D7 64
+ 00001078  C9 0A 69 3E 53	        db 0C9H, 0AH, 69H, 3EH, 53H, 99H, 0B6H, 38H     ; 0FC8 _ ..i>S..8
+	   99 B6 38
+ 00001080  05 CD DC 04 9A	        db 05H, 0CDH, 0DCH, 04H, 9AH, 35H, 0C9H, 0D1H   ; 0FD0 _ .....5..
+	   35 C9 D1
+ 00001088  FA 45 85 6A 4E	        db 0FAH, 45H, 85H, 6AH, 4EH, 0B3H, 5BH, 51H     ; 0FD8 _ .E.jN.[Q
+	   B3 5B 51
+ 00001090  68 C8 FA 81 E5	        db 68H, 0C8H, 0FAH, 81H, 0E5H, 0C1H, 40H, 0EBH  ; 0FE0 _ h.....@.
+	   C1 40 EB
+ 00001098  9C 62 95 6D 32	        db 9CH, 62H, 95H, 6DH, 32H, 0F6H, 0C0H, 45H     ; 0FE8 _ .b.m2..E
+	   F6 C0 45
+ 000010A0  D2 5E 10 02 FF	        db 0D2H, 5EH, 10H, 02H, 0FFH, 9AH, 0A6H, 0BCH   ; 0FF0 _ .^......
+	   9A A6 BC
+ 000010A8  5C E4 02 74 70	        db 5CH, 0E4H, 02H, 74H, 70H, 0E3H, 3AH, 3BH     ; 0FF8 _ \..tp.:;
+	   E3 3A 3B
+ 000010B0  A4 4F A0 08 1D	        db 0A4H, 4FH, 0A0H, 08H, 1DH, 0D2H, 6CH, 5AH    ; 1000 _ .O....lZ
+	   D2 6C 5A
+ 000010B8  C0 B4 2E 46 6C	        db 0C0H, 0B4H, 2EH, 46H, 6CH, 96H, 0C6H, 8CH    ; 1008 _ ...Fl...
+	   96 C6 8C
+ 000010C0  B9 69 05 50 56	        db 0B9H, 69H, 05H, 50H, 56H, 07H, 58H, 5BH      ; 1010 _ .i.PV.X[
+	   07 58 5B
+ 000010C8  A0 BE 23 8A F0	        db 0A0H, 0BEH, 23H, 8AH, 0F0H, 95H, 0DH, 0CH    ; 1018 _ ..#.....
+	   95 0D 0C
+ 000010D0  5E CC A2 A8 47	        db 5EH, 0CCH, 0A2H, 0A8H, 47H, 02H, 0F9H, 9DH   ; 1020 _ ^...G...
+	   02 F9 9D
+ 000010D8  0F 5B 3F E3 8E	        db 0FH, 5BH, 3FH, 0E3H, 8EH, 4CH, 0A3H, 4CH     ; 1028 _ .[?..L.L
+	   4C A3 4C
+ 000010E0  AE B7 63 9D D2	        db 0AEH, 0B7H, 63H, 9DH, 0D2H, 2AH, 0D3H, 30H   ; 1030 _ ..c..*.0
+	   2A D3 30
+ 000010E8  F8 64 2D FD ED	        db 0F8H, 64H, 2DH, 0FDH, 0EDH, 88H, 4FH, 1AH    ; 1038 _ .d-...O.
+	   88 4F 1A
+ 000010F0  0E 1E 8C 9F 3A	        db 0EH, 1EH, 8CH, 9FH, 3AH, 0ACH, 40H, 5BH      ; 1040 _ ....:.@[
+	   AC 40 5B
+ 000010F8  8A 37 49 BC B7	        db 8AH, 37H, 49H, 0BCH, 0B7H, 0CEH, 0C4H, 78H   ; 1048 _ .7I....x
+	   CE C4 78
+ 00001100  12 04 46 4D 6F	        db 12H, 04H, 46H, 4DH, 6FH, 60H, 8FH, 36H       ; 1050 _ ..FMo`.6
+	   60 8F 36
+ 00001108  32 71 3C 20 29	        db 32H, 71H, 3CH, 20H, 29H, 53H, 77H, 07H       ; 1058 _ 2q< )Sw.
+	   53 77 07
+ 00001110  53 D1 7D 2A A3	        db 53H, 0D1H, 7DH, 2AH, 0A3H, 4DH, 43H, 9EH     ; 1060 _ S.}*.MC.
+	   4D 43 9E
+ 00001118  4A 02 86 69 C6	        db 4AH, 02H, 86H, 69H, 0C6H, 20H, 06H, 16H      ; 1068 _ J..i. ..
+	   20 06 16
+ 00001120  63 DA 0D 6A 9D	        db 63H, 0DAH, 0DH, 6AH, 9DH, 0AH, 30H, 0CH      ; 1070 _ c..j..0.
+	   0A 30 0C
+ 00001128  82 0C 8D 92 6C	        db 82H, 0CH, 8DH, 92H, 6CH, 0A4H, 0AEH, 0A2H    ; 1078 _ ....l...
+	   A4 AE A2
+ 00001130  85 66 02 5B 86	        db 85H, 66H, 02H, 5BH, 86H, 1BH, 38H, 9DH       ; 1080 _ .f.[..8.
+	   1B 38 9D
+ 00001138  23 F2 2D 85 47	        db 23H, 0F2H, 2DH, 85H, 47H, 0FBH, 6AH, 33H     ; 1088 _ #.-.G.j3
+	   FB 6A 33
+ 00001140  47 B1 E8 FC 05	        db 47H, 0B1H, 0E8H, 0FCH, 05H, 78H, 0D7H, 0F7H  ; 1090 _ G....x..
+	   78 D7 F7
+ 00001148  88 40 FD 24 F4	        db 88H, 40H, 0FDH, 24H, 0F4H, 77H, 0A0H, 0DCH   ; 1098 _ .@.$.w..
+	   77 A0 DC
+ 00001150  9E AF B9 48 90	        db 9EH, 0AFH, 0B9H, 48H, 90H, 6CH, 0DFH, 0ABH   ; 10A0 _ ...H.l..
+	   6C DF AB
+ 00001158  D5 5E CD 0D 06	        db 0D5H, 5EH, 0CDH, 0DH, 06H, 62H, 0CBH, 0EEH   ; 10A8 _ .^...b..
+	   62 CB EE
+ 00001160  65 A3 12 6D 66	        db 65H, 0A3H, 12H, 6DH, 66H, 7CH, 0F8H, 98H     ; 10B0 _ e..mf|..
+	   7C F8 98
+ 00001168  8D 7E C8 CD 48	        db 8DH, 7EH, 0C8H, 0CDH, 48H, 0A7H, 0B4H, 0B5H  ; 10B8 _ .~..H...
+	   A7 B4 B5
+ 00001170  62 C1 4A 70 4B	        db 62H, 0C1H, 4AH, 70H, 4BH, 0BDH, 1CH, 9FH     ; 10C0 _ b.JpK...
+	   BD 1C 9F
+ 00001178  FF 02 19 E6 EA	        db 0FFH, 02H, 19H, 0E6H, 0EAH, 72H, 0BBH, 0B1H  ; 10C8 _ .....r..
+	   72 BB B1
+ 00001180  0A E7 70 29 A6	        db 0AH, 0E7H, 70H, 29H, 0A6H, 0B6H, 0F5H, 0CEH  ; 10D0 _ ..p)....
+	   B6 F5 CE
+ 00001188  CB 55 DF 14 97	        db 0CBH, 55H, 0DFH, 14H, 97H, 3FH, 94H, 20H     ; 10D8 _ .U...?. 
+	   3F 94 20
+ 00001190  B9 1F B3 78 98	        db 0B9H, 1FH, 0B3H, 78H, 98H, 20H, 75H, 0B6H    ; 10E0 _ ...x. u.
+	   20 75 B6
+ 00001198  4F 5E 0A 7E 76	        db 4FH, 5EH, 0AH, 7EH, 76H, 95H, 90H, 0B9H      ; 10E8 _ O^.~v...
+	   95 90 B9
+ 000011A0  11 EA 9F D2 B0	        db 11H, 0EAH, 9FH, 0D2H, 0B0H, 0C1H, 01H, 50H   ; 10F0 _ .......P
+	   C1 01 50
+ 000011A8  EB 61 30 17 0F	        db 0EBH, 61H, 30H, 17H, 0FH, 16H, 59H, 62H      ; 10F8 _ .a0...Yb
+	   16 59 62
+ 000011B0  36 4A 85 BA 13	        db 36H, 4AH, 85H, 0BAH, 13H, 5EH, 33H, 6BH      ; 1100 _ 6J...^3k
+	   5E 33 6B
+ 000011B8  5C CF DB B6 37	        db 5CH, 0CFH, 0DBH, 0B6H, 37H, 80H, 2DH, 1DH    ; 1108 _ \...7.-.
+	   80 2D 1D
+ 000011C0  BB AF FB 1D 7F	        db 0BBH, 0AFH, 0FBH, 1DH, 7FH, 0D1H, 0A1H, 0DAH ; 1110 _ ........
+	   D1 A1 DA
+ 000011C8  8F 2D 43 11 88	        db 8FH, 2DH, 43H, 11H, 88H, 69H, 0FEH, 22H      ; 1118 _ .-C..i."
+	   69 FE 22
+ 000011D0  B8 5B 8A 43 EA	        db 0B8H, 5BH, 8AH, 43H, 0EAH, 0A3H, 7AH, 01H    ; 1120 _ .[.C..z.
+	   A3 7A 01
+ 000011D8  3C F5 20 DC 59	        db 3CH, 0F5H, 20H, 0DCH, 59H, 1DH, 2CH, 0A3H    ; 1128 _ <. .Y.,.
+	   1D 2C A3
+ 000011E0  99 3A EB F4 9D	        db 99H, 3AH, 0EBH, 0F4H, 9DH, 30H, 6BH, 9FH     ; 1130 _ .:...0k.
+	   30 6B 9F
+ 000011E8  D1 F4 5A 47 9E	        db 0D1H, 0F4H, 5AH, 47H, 9EH, 70H, 0AEH, 04H    ; 1138 _ ..ZG.p..
+	   70 AE 04
+ 000011F0  B6 FE E7 6F 95	        db 0B6H, 0FEH, 0E7H, 6FH, 95H, 21H, 0F9H, 88H   ; 1140 _ ...o.!..
+	   21 F9 88
+ 000011F8  EF 47 DD 80 DE	        db 0EFH, 47H, 0DDH, 80H, 0DEH, 7FH, 24H, 0ECH   ; 1148 _ .G....$.
+	   7F 24 EC
+ 00001200  20 C9 E7 D1 8D	        db 20H, 0C9H, 0E7H, 0D1H, 8DH, 3BH, 10H, 0AEH   ; 1150 _  ....;..
+	   3B 10 AE
+ 00001208  6B AD C6 98 42	        db 6BH, 0ADH, 0C6H, 98H, 42H, 4CH, 0B4H, 66H    ; 1158 _ k...BL.f
+	   4C B4 66
+ 00001210  FF AD AC 26 0A	        db 0FFH, 0ADH, 0ACH, 26H, 0AH, 77H, 0CEH, 17H   ; 1160 _ ...&.w..
+	   77 CE 17
+ 00001218  0A 61 52 EC 91	        db 0AH, 61H, 52H, 0ECH, 91H, 9CH, 0A2H, 8EH     ; 1168 _ .aR.....
+	   9C A2 8E
+ 00001220  B5 9E DA 9A A2	        db 0B5H, 9EH, 0DAH, 9AH, 0A2H, 0B2H, 0EAH, 68H  ; 1170 _ .......h
+	   B2 EA 68
+ 00001228  0C FF 7C 0D D5	        db 0CH, 0FFH, 7CH, 0DH, 0D5H, 10H, 45H, 0F3H    ; 1178 _ ..|...E.
+	   10 45 F3
+ 00001230  47 C7 A1 0C 59	        db 47H, 0C7H, 0A1H, 0CH, 59H, 0CBH, 0F5H, 0AFH  ; 1180 _ G...Y...
+	   CB F5 AF
+ 00001238  C8 3D BD ED BA	        db 0C8H, 3DH, 0BDH, 0EDH, 0BAH, 0FEH, 0E3H, 35H ; 1188 _ .=.....5
+	   FE E3 35
+ 00001240  95 3D 04 23 80	        db 95H, 3DH, 04H, 23H, 80H, 0E8H, 0F7H, 0ADH    ; 1190 _ .=.#....
+	   E8 F7 AD
+ 00001248  A7 89 A2 F5 21	        db 0A7H, 89H, 0A2H, 0F5H, 21H, 12H, 0CEH, 08H   ; 1198 _ ....!...
+	   12 CE 08
+ 00001250  58 31 03 D8 42	        db 58H, 31H, 03H, 0D8H, 42H, 43H, 5DH, 65H      ; 11A0 _ X1..BC]e
+	   43 5D 65
+ 00001258  BC 00 F1 F8 81	        db 0BCH, 00H, 0F1H, 0F8H, 81H, 19H, 0B9H, 0AEH  ; 11A8 _ ........
+	   19 B9 AE
+ 00001260  37 6A 2F 2A E8	        db 37H, 6AH, 2FH, 2AH, 0E8H, 2EH, 53H, 0AFH     ; 11B0 _ 7j/*..S.
+	   2E 53 AF
+ 00001268  5F E8 37 36 B0	        db 5FH, 0E8H, 37H, 36H, 0B0H, 1DH, 0FFH, 26H    ; 11B8 _ _.76...&
+	   1D FF 26
+ 00001270  3B E3 04 9C 5F	        db 3BH, 0E3H, 04H, 9CH, 5FH, 0A4H, 1EH, 00H     ; 11C0 _ ;..._...
+	   A4 1E 00
+ 00001278  80 AD F4 BF DB	        db 80H, 0ADH, 0F4H, 0BFH, 0DBH, 0FAH, 0EH, 0BEH ; 11C8 _ ........
+	   FA 0E BE
+ 00001280  99 16 4E 3F FF	        db 99H, 16H, 4EH, 3FH, 0FFH, 15H, 0C0H, 4AH     ; 11D0 _ ..N?...J
+	   15 C0 4A
+ 00001288  91 49 94 CE A4	        db 91H, 49H, 94H, 0CEH, 0A4H, 86H, 7CH, 65H     ; 11D8 _ .I....|e
+	   86 7C 65
+ 00001290  82 70 23 16 32	        db 82H, 70H, 23H, 16H, 32H, 63H, 0E6H, 69H      ; 11E0 _ .p#.2c.i
+	   63 E6 69
+ 00001298  70 61 1B 08 EF	        db 70H, 61H, 1BH, 08H, 0EFH, 0BCH, 6FH, 61H     ; 11E8 _ pa....oa
+	   BC 6F 61
+ 000012A0  9A AB 62 AA 8F	        db 9AH, 0ABH, 62H, 0AAH, 8FH, 0D7H, 22H, 0D7H   ; 11F0 _ ..b...".
+	   D7 22 D7
+ 000012A8  24 06 CA 74 41	        db 24H, 06H, 0CAH, 74H, 41H, 83H, 0CAH, 0A6H    ; 11F8 _ $..tA...
+	   83 CA A6
+ 000012B0  30 92 FD 9F 96	        db 30H, 92H, 0FDH, 9FH, 96H, 91H, 0A5H, 29H     ; 1200 _ 0......)
+	   91 A5 29
+ 000012B8  73 55 3E 53 63	        db 73H, 55H, 3EH, 53H, 63H, 99H, 0DFH, 0D4H     ; 1208 _ sU>Sc...
+	   99 DF D4
+ 000012C0  0E 44 71 61 CF	        db 0EH, 44H, 71H, 61H, 0CFH, 85H, 0CCH, 0EH     ; 1210 _ .Dqa....
+	   85 CC 0E
+ 000012C8  9C 95 2B CB 9F	        db 9CH, 95H, 2BH, 0CBH, 9FH, 4AH, 65H, 89H      ; 1218 _ ..+..Je.
+	   4A 65 89
+ 000012D0  01 C1 A1 4C 6C	        db 01H, 0C1H, 0A1H, 4CH, 6CH, 32H, 5CH, 0B5H    ; 1220 _ ...Ll2\.
+	   32 5C B5
+ 000012D8  4C 61 D7 F6 0C	        db 4CH, 61H, 0D7H, 0F6H, 0CH, 0EDH, 0EH, 38H    ; 1228 _ La.....8
+	   ED 0E 38
+ 000012E0  B0 69 AC 51 25	        db 0B0H, 69H, 0ACH, 51H, 25H, 0E9H, 99H, 61H    ; 1230 _ .i.Q%..a
+	   E9 99 61
+ 000012E8  F6 12 AB CA 89	        db 0F6H, 12H, 0ABH, 0CAH, 89H, 0B5H, 3AH, 1BH   ; 1238 _ ......:.
+	   B5 3A 1B
+ 000012F0  D4 9E 74 FD 30	        db 0D4H, 9EH, 74H, 0FDH, 30H, 0E5H, 98H, 0B7H   ; 1240 _ ..t.0...
+	   E5 98 B7
+ 000012F8  6F 4B 90 33 5E	        db 6FH, 4BH, 90H, 33H, 5EH, 0A8H, 0BDH, 46H     ; 1248 _ oK.3^..F
+	   A8 BD 46
+ 00001300  B4 34 69 07 58	        db 0B4H, 34H, 69H, 07H, 58H, 40H, 4BH, 45H      ; 1250 _ .4i.X@KE
+	   40 4B 45
+ 00001308  27 45 F7 77 65	        db 27H, 45H, 0F7H, 77H, 65H, 0F4H, 4CH, 0FBH    ; 1258 _ 'E.we.L.
+	   F4 4C FB
+ 00001310  A9 1D 93 62 DB	        db 0A9H, 1DH, 93H, 62H, 0DBH, 0C8H, 78H, 0E7H   ; 1260 _ ...b..x.
+	   C8 78 E7
+ 00001318  8E 99 B3 22 B9	        db 8EH, 99H, 0B3H, 22H, 0B9H, 0CFH, 15H, 0ACH   ; 1268 _ ..."....
+	   CF 15 AC
+ 00001320  C4 BA BC 58 8E	        db 0C4H, 0BAH, 0BCH, 58H, 8EH, 0A0H, 47H, 0ECH  ; 1270 _ ...X..G.
+	   A0 47 EC
+ 00001328  B2 33 E9 AE 24	        db 0B2H, 33H, 0E9H, 0AEH, 24H, 0C8H, 0CBH, 0DFH ; 1278 _ .3..$...
+	   C8 CB DF
+ 00001330  04 48 94 A7 B0	        db 04H, 48H, 94H, 0A7H, 0B0H, 0BDH, 65H, 0BFH   ; 1280 _ .H....e.
+	   BD 65 BF
+ 00001338  02 45 9D 5A F7	        db 02H, 45H, 9DH, 5AH, 0F7H, 9AH, 97H, 59H      ; 1288 _ .E.Z...Y
+	   9A 97 59
+ 00001340  4E A5 CE C5 50	        db 4EH, 0A5H, 0CEH, 0C5H, 50H, 81H, 6BH, 4BH    ; 1290 _ N...P.kK
+	   81 6B 4B
+ 00001348  09 19 E7 16 19	        db 09H, 19H, 0E7H, 16H, 19H, 23H, 63H, 7DH      ; 1298 _ .....#c}
+	   23 63 7D
+ 00001350  A0 73 05 93 D1	        db 0A0H, 73H, 05H, 93H, 0D1H, 63H, 4CH, 0F3H    ; 12A0 _ .s...cL.
+	   63 4C F3
+ 00001358  B4 14 F9 CA 2C	        db 0B4H, 14H, 0F9H, 0CAH, 2CH, 61H, 0D6H, 0FDH  ; 12A8 _ ....,a..
+	   61 D6 FD
+ 00001360  78 08 55 61 75	        db 78H, 08H, 55H, 61H, 75H, 2BH, 0EFH, 89H      ; 12B0 _ x.Uau+..
+	   2B EF 89
+ 00001368  46 0C 66 A1 5B	        db 46H, 0CH, 66H, 0A1H, 5BH, 85H, 0F3H, 7EH     ; 12B8 _ F.f.[..~
+	   85 F3 7E
+ 00001370  8C B5 97 72 93	        db 8CH, 0B5H, 97H, 72H, 93H, 77H, 0C6H, 1BH     ; 12C0 _ ...r.w..
+	   77 C6 1B
+ 00001378  23 C7 B1 7F 40	        db 23H, 0C7H, 0B1H, 7FH, 40H, 0C6H, 6FH, 0B6H   ; 12C8 _ #...@.o.
+	   C6 6F B6
+ 00001380  1C B7 48 1A 17	        db 1CH, 0B7H, 48H, 1AH, 17H, 6DH, 97H, 0F0H     ; 12D0 _ ..H..m..
+	   6D 97 F0
+ 00001388  0A E8 8C 08 F3	        db 0AH, 0E8H, 8CH, 08H, 0F3H, 0EDH, 54H, 0A4H   ; 12D8 _ ......T.
+	   ED 54 A4
+ 00001390  F4 6B 09 1C 4B	        db 0F4H, 6BH, 09H, 1CH, 4BH, 22H, 76H, 0ACH     ; 12E0 _ .k..K"v.
+	   22 76 AC
+ 00001398  1C 78 15 52 69	        db 1CH, 78H, 15H, 52H, 69H, 26H, 5DH, 0CDH      ; 12E8 _ .x.Ri&].
+	   26 5D CD
+ 000013A0  67 14 20 A5 4A	        db 67H, 14H, 20H, 0A5H, 4AH, 0D9H, 0B8H, 0A9H   ; 12F0 _ g. .J...
+	   D9 B8 A9
+ 000013A8  97 D9 CE D4 7B	        db 97H, 0D9H, 0CEH, 0D4H, 7BH, 9DH, 37H, 68H    ; 12F8 _ ....{.7h
+	   9D 37 68
+ 000013B0  BA 73 FC A7 6B	        db 0BAH, 73H, 0FCH, 0A7H, 6BH, 54H, 0A2H, 0F1H  ; 1300 _ .s..kT..
+	   54 A2 F1
+ 000013B8  BF 82 67 60 0F	        db 0BFH, 82H, 67H, 60H, 0FH, 0FDH, 0BCH, 0E0H   ; 1308 _ ..g`....
+	   FD BC E0
+ 000013C0  4E 37 25 2F 9F	        db 4EH, 37H, 25H, 2FH, 9FH, 14H, 9AH, 06H       ; 1310 _ N7%/....
+	   14 9A 06
+ 000013C8  25 FF 2D 5E 61	        db 25H, 0FFH, 2DH, 5EH, 61H, 0F0H, 0ECH, 0FAH   ; 1318 _ %.-^a...
+	   F0 EC FA
+ 000013D0  D8 05 99 EC CF	        db 0D8H, 05H, 99H, 0ECH, 0CFH, 50H, 18H, 0F2H   ; 1320 _ .....P..
+	   50 18 F2
+ 000013D8  C8 46 A7 C0 98	        db 0C8H, 46H, 0A7H, 0C0H, 98H, 0D4H, 0DAH, 21H  ; 1328 _ .F.....!
+	   D4 DA 21
+ 000013E0  EB 6E 15 35 F2	        db 0EBH, 6EH, 15H, 35H, 0F2H, 97H, 8CH, 08H     ; 1330 _ .n.5....
+	   97 8C 08
+ 000013E8  40 3E 30 26 B5	        db 40H, 3EH, 30H, 26H, 0B5H, 4FH, 2DH, 8AH      ; 1338 _ @>0&.O-.
+	   4F 2D 8A
+ 000013F0  B6 44 EE FE 73	        db 0B6H, 44H, 0EEH, 0FEH, 73H, 95H, 1EH, 8AH    ; 1340 _ .D..s...
+	   95 1E 8A
+ 000013F8  1A 11 81 7B F0	        db 1AH, 11H, 81H, 7BH, 0F0H, 39H, 0C1H, 0CBH    ; 1348 _ ...{.9..
+	   39 C1 CB
+ 00001400  61 38 51 A3 2E	        db 61H, 38H, 51H, 0A3H, 2EH, 36H, 2CH, 1DH      ; 1350 _ a8Q..6,.
+	   36 2C 1D
+ 00001408  0E 58 8C 91 9C	        db 0EH, 58H, 8CH, 91H, 9CH, 1BH, 8EH, 0B5H      ; 1358 _ .X......
+	   1B 8E B5
+ 00001410  A1 73 B5 E4 80	        db 0A1H, 73H, 0B5H, 0E4H, 80H, 08H, 1AH, 4CH    ; 1360 _ .s.....L
+	   08 1A 4C
+ 00001418  51 7C 90 1E FD	        db 51H, 7CH, 90H, 1EH, 0FDH, 7EH, 80H, 04H      ; 1368 _ Q|...~..
+	   7E 80 04
+ 00001420  E5 CD D8 3A 02	        db 0E5H, 0CDH, 0D8H, 3AH, 02H, 13H, 0B2H, 16H   ; 1370 _ ...:....
+	   13 B2 16
+ 00001428  53 2C 51 02 18	        db 53H, 2CH, 51H, 02H, 18H, 0CBH, 04H, 22H      ; 1378 _ S,Q...."
+	   CB 04 22
+ 00001430  2D 5F 40 99 A1	        db 2DH, 5FH, 40H, 99H, 0A1H, 48H, 0B6H, 0E5H    ; 1380 _ -_@..H..
+	   48 B6 E5
+ 00001438  43 1D AB 70 C2	        db 43H, 1DH, 0ABH, 70H, 0C2H, 25H, 0CH, 0A1H    ; 1388 _ C..p.%..
+	   25 0C A1
+ 00001440  05 AC F1 16 56	        db 05H, 0ACH, 0F1H, 16H, 56H, 0EBH, 0BBH, 38H   ; 1390 _ ....V..8
+	   EB BB 38
+ 00001448  60 DC 01 9B 83	        db 60H, 0DCH, 01H, 9BH, 83H, 6DH, 09H, 0B1H     ; 1398 _ `....m..
+	   6D 09 B1
+ 00001450  52 45 F8 52 99	        db 52H, 45H, 0F8H, 52H, 99H, 79H, 4BH, 0E5H     ; 13A0 _ RE.R.yK.
+	   79 4B E5
+ 00001458  EC E3 8E 2D 91	        db 0ECH, 0E3H, 8EH, 2DH, 91H, 51H, 64H, 0B9H    ; 13A8 _ ...-.Qd.
+	   51 64 B9
+ 00001460  86 8B 07 E0 C9	        db 86H, 8BH, 07H, 0E0H, 0C9H, 44H, 7CH, 0BBH    ; 13B0 _ .....D|.
+	   44 7C BB
+ 00001468  CA C1 B5 D2 8C	        db 0CAH, 0C1H, 0B5H, 0D2H, 8CH, 0EBH, 0D2H, 0B0H; 13B8 _ ........
+	   EB D2 B0
+ 00001470  45 5A CE 14 DC	        db 45H, 5AH, 0CEH, 14H, 0DCH, 50H, 0AFH, 22H    ; 13C0 _ EZ...P."
+	   50 AF 22
+ 00001478  6B BC FD EF 4A	        db 6BH, 0BCH, 0FDH, 0EFH, 4AH, 0B7H, 21H, 0EBH  ; 13C8 _ k...J.!.
+	   B7 21 EB
+ 00001480  EE C6 55 B5 96	        db 0EEH, 0C6H, 55H, 0B5H, 96H, 05H, 71H, 3EH    ; 13D0 _ ..U...q>
+	   05 71 3E
+ 00001488  2F 65 2A A7 5F	        db 2FH, 65H, 2AH, 0A7H, 5FH, 51H, 01H, 93H      ; 13D8 _ /e*._Q..
+	   51 01 93
+ 00001490  FA C1 28 DA 68	        db 0FAH, 0C1H, 28H, 0DAH, 68H, 0D8H, 6FH, 69H   ; 13E0 _ ..(.h.oi
+	   D8 6F 69
+ 00001498  72 BF B6 9C 02	        db 72H, 0BFH, 0B6H, 9CH, 02H, 40H, 0FEH, 0AH    ; 13E8 _ r....@..
+	   40 FE 0A
+ 000014A0  15 36 E0 A6 D4	        db 15H, 36H, 0E0H, 0A6H, 0D4H, 0C1H, 38H, 51H   ; 13F0 _ .6....8Q
+	   C1 38 51
+ 000014A8  06 63 21 BE 90	        db 06H, 63H, 21H, 0BEH, 90H, 88H, 8BH, 0B3H     ; 13F8 _ .c!.....
+	   88 8B B3
+ 000014B0  6B B9 A8 3E E4	        db 6BH, 0B9H, 0A8H, 3EH, 0E4H, 0ACH, 99H, 32H   ; 1400 _ k..>...2
+	   AC 99 32
+ 000014B8  D4 4D 92 30 A5	        db 0D4H, 4DH, 92H, 30H, 0A5H, 34H, 0CBH, 55H    ; 1408 _ .M.0.4.U
+	   34 CB 55
+ 000014C0  31 F0 05 B4 BA	        db 31H, 0F0H, 05H, 0B4H, 0BAH, 3EH, 23H, 0C4H   ; 1410 _ 1....>#.
+	   3E 23 C4
+ 000014C8  79 39 73 B3 55	        db 79H, 39H, 73H, 0B3H, 55H, 9DH, 0DDH, 0C0H    ; 1418 _ y9s.U...
+	   9D DD C0
+ 000014D0  AE 28 1C C5 E1	        db 0AEH, 28H, 1CH, 0C5H, 0E1H, 0B8H, 27H, 0A3H  ; 1420 _ .(....'.
+	   B8 27 A3
+ 000014D8  67 61 C5 56 33	        db 67H, 61H, 0C5H, 56H, 33H, 44H, 61H, 0EDH     ; 1428 _ ga.V3Da.
+	   44 61 ED
+ 000014E0  60 9D B5 88 BA	        db 60H, 9DH, 0B5H, 88H, 0BAH, 0CEH, 0E2H, 60H   ; 1430 _ `......`
+	   CE E2 60
+ 000014E8  8B 4B 8B 75 7F	        db 8BH, 4BH, 8BH, 75H, 7FH, 2AH, 0E8H, 83H      ; 1438 _ .K.u.*..
+	   2A E8 83
+ 000014F0  28 88 96 BC F7	        db 28H, 88H, 96H, 0BCH, 0F7H, 0BH, 0E0H, 0E6H   ; 1440 _ (.......
+	   0B E0 E6
+ 000014F8  55 9E 83 BA 60	        db 55H, 9EH, 83H, 0BAH, 60H, 1CH, 49H, 9BH      ; 1448 _ U...`.I.
+	   1C 49 9B
+ 00001500  11 3F 65 66 DB	        db 11H, 3FH, 65H, 66H, 0DBH, 6EH, 44H, 0F9H     ; 1450 _ .?ef.nD.
+	   6E 44 F9
+ 00001508  FB 68 85 3E 5A	        db 0FBH, 68H, 85H, 3EH, 5AH, 0F9H, 19H, 0E5H    ; 1458 _ .h.>Z...
+	   F9 19 E5
+ 00001510  54 20 73 D6 C5	        db 54H, 20H, 73H, 0D6H, 0C5H, 0A0H, 0BDH, 0B2H  ; 1460 _ T s.....
+	   A0 BD B2
+ 00001518  F8 3C 2F 49 96	        db 0F8H, 3CH, 2FH, 49H, 96H, 3BH, 0D6H, 8FH     ; 1468 _ .</I.;..
+	   3B D6 8F
+ 00001520  48 46 EF B4 E5	        db 48H, 46H, 0EFH, 0B4H, 0E5H, 88H, 54H, 7EH    ; 1470 _ HF....T~
+	   88 54 7E
+ 00001528  0A 17 ED A7 52	        db 0AH, 17H, 0EDH, 0A7H, 52H, 0FAH, 25H, 5BH    ; 1478 _ ....R.%[
+	   FA 25 5B
+ 00001530  A1 36 C6 BB E3	        db 0A1H, 36H, 0C6H, 0BBH, 0E3H, 0B1H, 7FH, 0B8H ; 1480 _ .6......
+	   B1 7F B8
+ 00001538  32 ED 8E ED D5	        db 32H, 0EDH, 8EH, 0EDH, 0D5H, 0E8H, 10H, 6DH   ; 1488 _ 2......m
+	   E8 10 6D
+ 00001540  38 83 86 34 07	        db 38H, 83H, 86H, 34H, 07H, 9AH, 0EBH, 56H      ; 1490 _ 8..4...V
+	   9A EB 56
+ 00001548  ED D6 C8 27 48	        db 0EDH, 0D6H, 0C8H, 27H, 48H, 0EFH, 83H, 02H   ; 1498 _ ...'H...
+	   EF 83 02
+ 00001550  49 B3 1A 6B 0B	        db 49H, 0B3H, 1AH, 6BH, 0BH, 87H, 19H, 26H      ; 14A0 _ I..k...&
+	   87 19 26
+ 00001558  6C A5 D0 DD 5B	        db 6CH, 0A5H, 0D0H, 0DDH, 5BH, 93H, 72H, 7FH    ; 14A8 _ l...[.r.
+	   93 72 7F
+ 00001560  C6 A3 B1 D2 63	        db 0C6H, 0A3H, 0B1H, 0D2H, 63H, 55H, 0DAH, 0D7H ; 14B0 _ ....cU..
+	   55 DA D7
+ 00001568  94 2E 29 58 A4	        db 94H, 2EH, 29H, 58H, 0A4H, 20H, 33H, 36H      ; 14B8 _ ..)X. 36
+	   20 33 36
+ 00001570  78 43 90 B8 5F	        db 78H, 43H, 90H, 0B8H, 5FH, 13H, 37H, 0BCH     ; 14C0 _ xC.._.7.
+	   13 37 BC
+ 00001578  EC EC CF 2F 52	        db 0ECH, 0ECH, 0CFH, 2FH, 52H, 0F0H, 4DH, 0C7H  ; 14C8 _ .../R.M.
+	   F0 4D C7
+ 00001580  DE 01 0F B7 09	        db 0DEH, 01H, 0FH, 0B7H, 09H, 0B8H, 3EH, 52H    ; 14D0 _ ......>R
+	   B8 3E 52
+ 00001588  78 4A E1 D8 9D	        db 78H, 4AH, 0E1H, 0D8H, 9DH, 65H, 1AH, 18H     ; 14D8 _ xJ...e..
+	   65 1A 18
+ 00001590  40 4E 89 90 A0	        db 40H, 4EH, 89H, 90H, 0A0H, 5BH, 86H, 48H      ; 14E0 _ @N...[.H
+	   5B 86 48
+ 00001598  3F 1F 2C 28 E9	        db 3FH, 1FH, 2CH, 28H, 0E9H, 88H, 24H, 1CH      ; 14E8 _ ?.,(..$.
+	   88 24 1C
+ 000015A0  E6 B2 41 01 FB	        db 0E6H, 0B2H, 41H, 01H, 0FBH, 6EH, 0D0H, 0FFH  ; 14F0 _ ..A..n..
+	   6E D0 FF
+ 000015A8  68 5A F1 A1 87	        db 68H, 5AH, 0F1H, 0A1H, 87H, 6AH, 0B0H, 0CFH   ; 14F8 _ hZ...j..
+	   6A B0 CF
+ 000015B0  C8 76 FB 15 7D	        db 0C8H, 76H, 0FBH, 15H, 7DH, 59H, 0A3H, 8BH    ; 1500 _ .v..}Y..
+	   59 A3 8B
+ 000015B8  87 A0 66 1B 5B	        db 87H, 0A0H, 66H, 1BH, 5BH, 55H, 0C5H, 65H     ; 1508 _ ..f.[U.e
+	   55 C5 65
+ 000015C0  39 E2 62 39 C7	        db 39H, 0E2H, 62H, 39H, 0C7H, 0C7H, 0A9H, 4EH   ; 1510 _ 9.b9...N
+	   C7 A9 4E
+ 000015C8  1B 67 D9 93 BE	        db 1BH, 67H, 0D9H, 93H, 0BEH, 0B7H, 74H, 30H    ; 1518 _ .g....t0
+	   B7 74 30
+ 000015D0  96 ED 24 A2 8B	        db 96H, 0EDH, 24H, 0A2H, 8BH, 0A8H, 0A8H, 38H   ; 1520 _ ..$....8
+	   A8 A8 38
+ 000015D8  EA 5F 51 9A D4	        db 0EAH, 5FH, 51H, 9AH, 0D4H, 0DBH, 5AH, 12H    ; 1528 _ ._Q...Z.
+	   DB 5A 12
+ 000015E0  D1 67 0E F3 E4	        db 0D1H, 67H, 0EH, 0F3H, 0E4H, 79H, 06H, 0CDH   ; 1530 _ .g...y..
+	   79 06 CD
+ 000015E8  5F 3D 37 0F 4D	        db 5FH, 3DH, 37H, 0FH, 4DH, 0F7H, 0CEH, 1FH     ; 1538 _ _=7.M...
+	   F7 CE 1F
+ 000015F0  FB F3 80 5C 31	        db 0FBH, 0F3H, 80H, 5CH, 31H, 06H, 0C7H, 0A6H   ; 1540 _ ...\1...
+	   06 C7 A6
+ 000015F8  69 6A CD 0E 8F	        db 69H, 6AH, 0CDH, 0EH, 8FH, 5CH, 88H, 73H      ; 1548 _ ij...\.s
+	   5C 88 73
+ 00001600  69 FE 77 1B 5A	        db 69H, 0FEH, 77H, 1BH, 5AH, 0D2H, 87H, 0D4H    ; 1550 _ i.w.Z...
+	   D2 87 D4
+ 00001608  D1 EE 27 C0 8F	        db 0D1H, 0EEH, 27H, 0C0H, 8FH, 0BDH, 31H, 3FH   ; 1558 _ ..'...1?
+	   BD 31 3F
+ 00001610  14 F7 75 E2 41	        db 14H, 0F7H, 75H, 0E2H, 41H, 74H, 0D0H, 92H    ; 1560 _ ..u.At..
+	   74 D0 92
+ 00001618  10 FF 70 5B 60	        db 10H, 0FFH, 70H, 5BH, 60H, 0E1H, 7AH, 17H     ; 1568 _ ..p[`.z.
+	   E1 7A 17
+ 00001620  FB A5 CF 6F 22	        db 0FBH, 0A5H, 0CFH, 6FH, 22H, 93H, 13H, 67H    ; 1570 _ ...o"..g
+	   93 13 67
+ 00001628  B2 09 31 2D 8C	        db 0B2H, 09H, 31H, 2DH, 8CH, 08H, 1AH, 60H      ; 1578 _ ..1-...`
+	   08 1A 60
+ 00001630  A7 86 33 29 AB	        db 0A7H, 86H, 33H, 29H, 0ABH, 84H, 75H, 0F8H    ; 1580 _ ..3)..u.
+	   84 75 F8
+ 00001638  83 2B 86 00 04	        db 83H, 2BH, 86H, 00H, 04H, 63H, 0EFH, 87H      ; 1588 _ .+...c..
+	   63 EF 87
+ 00001640  36 A4 9D F6 22	        db 36H, 0A4H, 9DH, 0F6H, 22H, 80H, 0A8H, 6AH    ; 1590 _ 6..."..j
+	   80 A8 6A
+ 00001648  75 EC D1 09 45	        db 75H, 0ECH, 0D1H, 09H, 45H, 0B0H, 99H, 80H    ; 1598 _ u...E...
+	   B0 99 80
+ 00001650  DE B2 F8 59 A8	        db 0DEH, 0B2H, 0F8H, 59H, 0A8H, 56H, 34H, 34H   ; 15A0 _ ...Y.V44
+	   56 34 34
+ 00001658  AE 6D F6 91 ED	        db 0AEH, 6DH, 0F6H, 91H, 0EDH, 30H, 1DH, 0AFH   ; 15A8 _ .m...0..
+	   30 1D AF
+ 00001660  3A 65 D5 1B 68	        db 3AH, 65H, 0D5H, 1BH, 68H, 94H, 0D7H, 63H     ; 15B0 _ :e..h..c
+	   94 D7 63
+ 00001668  FA 66 51 AE CC	        db 0FAH, 66H, 51H, 0AEH, 0CCH, 0E9H, 0A0H, 3FH  ; 15B8 _ .fQ....?
+	   E9 A0 3F
+ 00001670  6E 29 78 35 81	        db 6EH, 29H, 78H, 35H, 81H, 28H, 0AAH, 0FFH     ; 15C0 _ n)x5.(..
+	   28 AA FF
+ 00001678  ED 89 7E A0 CA	        db 0EDH, 89H, 7EH, 0A0H, 0CAH, 90H, 88H, 0F3H   ; 15C8 _ ..~.....
+	   90 88 F3
+ 00001680  9E 1A 11 09 00	        db 9EH, 1AH, 11H, 09H, 00H, 0F1H, 08H, 0F9H     ; 15D0 _ ........
+	   F1 08 F9
+ 00001688  4D 44 76 84 F8	        db 4DH, 44H, 76H, 84H, 0F8H, 0E1H, 33H, 0FEH    ; 15D8 _ MDv...3.
+	   E1 33 FE
+ 00001690  89 8C 22 5B 10	        db 89H, 8CH, 22H, 5BH, 10H, 0F7H, 82H, 19H      ; 15E0 _ .."[....
+	   F7 82 19
+ 00001698  3E EE 51 0C EE	        db 3EH, 0EEH, 51H, 0CH, 0EEH, 68H, 6CH, 0CCH    ; 15E8 _ >.Q..hl.
+	   68 6C CC
+ 000016A0  34 BF 29 56 9F	        db 34H, 0BFH, 29H, 56H, 9FH, 4FH, 0EAH, 0CDH    ; 15F0 _ 4.)V.O..
+	   4F EA CD
+ 000016A8  CA 3E 3C 20 0A	        db 0CAH, 3EH, 3CH, 20H, 0AH, 0E4H, 52H, 0E3H    ; 15F8 _ .>< ..R.
+	   E4 52 E3
+ 000016B0  80 F3 C6 3F 2D	        db 80H, 0F3H, 0C6H, 3FH, 2DH, 0DAH, 0E1H, 35H   ; 1600 _ ...?-..5
+	   DA E1 35
+ 000016B8  DB A9 22 85 AE	        db 0DBH, 0A9H, 22H, 85H, 0AEH, 66H, 0DBH, 0B1H  ; 1608 _ .."..f..
+	   66 DB B1
+ 000016C0  A7 02 C0 07 9B	        db 0A7H, 02H, 0C0H, 07H, 9BH, 0CAH, 95H, 0E4H   ; 1610 _ ........
+	   CA 95 E4
+ 000016C8  89 1D 8B 8D FC	        db 89H, 1DH, 8BH, 8DH, 0FCH, 0DDH, 48H, 18H     ; 1618 _ ......H.
+	   DD 48 18
+ 000016D0  26 7D 5E 2B 7D	        db 26H, 7DH, 5EH, 2BH, 7DH, 0F0H, 25H, 1FH      ; 1620 _ &}^+}.%.
+	   F0 25 1F
+ 000016D8  78 63 9E 9B A7	        db 78H, 63H, 9EH, 9BH, 0A7H, 0DDH, 0C9H, 8DH    ; 1628 _ xc......
+	   DD C9 8D
+ 000016E0  9D 1A 22 44 CB	        db 9DH, 1AH, 22H, 44H, 0CBH, 59H, 3AH, 19H      ; 1630 _ .."D.Y:.
+	   59 3A 19
+ 000016E8  55 CA 7A BB AB	        db 55H, 0CAH, 7AH, 0BBH, 0ABH, 25H, 23H, 43H    ; 1638 _ U.z..%#C
+	   25 23 43
+ 000016F0  4E 4B CE 15 DE	        db 4EH, 4BH, 0CEH, 15H, 0DEH, 0B4H, 0D2H, 6EH   ; 1640 _ NK.....n
+	   B4 D2 6E
+ 000016F8  9F 1A 26 42 14	        db 9FH, 1AH, 26H, 42H, 14H, 0DCH, 0CAH, 8DH     ; 1648 _ ..&B....
+	   DC CA 8D
+ 00001700  8E BC 49 EB C0	        db 8EH, 0BCH, 49H, 0EBH, 0C0H, 0AEH, 66H, 0F5H  ; 1650 _ ..I...f.
+	   AE 66 F5
+ 00001708  31 D4 56 8A 27	        db 31H, 0D4H, 56H, 8AH, 27H, 03H, 6BH, 21H      ; 1658 _ 1.V.'.k!
+	   03 6B 21
+ 00001710  31 A3 FC C8 4E	        db 31H, 0A3H, 0FCH, 0C8H, 4EH, 50H, 5CH, 0E5H   ; 1660 _ 1...NP\.
+	   50 5C E5
+ 00001718  26 BF 3E 00 83	        db 26H, 0BFH, 3EH, 00H, 83H, 8DH, 6BH, 0BBH     ; 1668 _ &.>...k.
+	   8D 6B BB
+ 00001720  C1 48 04 7B 89	        db 0C1H, 48H, 04H, 7BH, 89H, 27H, 0B8H, 41H     ; 1670 _ .H.{.'.A
+	   27 B8 41
+ 00001728  01 96 7C 0A FF	        db 01H, 96H, 7CH, 0AH, 0FFH, 9CH, 65H, 8DH      ; 1678 _ ..|...e.
+	   9C 65 8D
+ 00001730  3E 67 E2 B6 7B	        db 3EH, 67H, 0E2H, 0B6H, 7BH, 0C7H, 54H, 0CAH   ; 1680 _ >g..{.T.
+	   C7 54 CA
+ 00001738  7E FD 60 14 2D	        db 7EH, 0FDH, 60H, 14H, 2DH, 8FH, 0CBH, 3FH     ; 1688 _ ~.`.-..?
+	   8F CB 3F
+ 00001740  FC 91 72 52 5F	        db 0FCH, 91H, 72H, 52H, 5FH, 45H, 16H, 2AH      ; 1690 _ ..rR_E.*
+	   45 16 2A
+ 00001748  E5 27 E6 78 9F	        db 0E5H, 27H, 0E6H, 78H, 9FH, 16H, 4FH, 94H     ; 1698 _ .'.x..O.
+	   16 4F 94
+ 00001750  16 F0 A6 1C 25	        db 16H, 0F0H, 0A6H, 1CH, 25H, 0EAH, 54H, 0A8H   ; 16A0 _ ....%.T.
+	   EA 54 A8
+ 00001758  BE 8A B9 8D 41	        db 0BEH, 8AH, 0B9H, 8DH, 41H, 26H, 0C6H, 0F2H   ; 16A8 _ ....A&..
+	   26 C6 F2
+ 00001760  CB 7D 11 30 09	        db 0CBH, 7DH, 11H, 30H, 09H, 43H, 5CH, 0CFH     ; 16B0 _ .}.0.C\.
+	   43 5C CF
+ 00001768  25 1A 71 93 B8	        db 25H, 1AH, 71H, 93H, 0B8H, 71H, 0F6H, 0F9H    ; 16B8 _ %.q..q..
+	   71 F6 F9
+ 00001770  16 21 1D B0 89	        db 16H, 21H, 1DH, 0B0H, 89H, 4BH, 3FH, 33H      ; 16C0 _ .!...K?3
+	   4B 3F 33
+ 00001778  65 D1 85 B2 36	        db 65H, 0D1H, 85H, 0B2H, 36H, 9BH, 82H, 86H     ; 16C8 _ e...6...
+	   9B 82 86
+ 00001780  1A B1 64 F7 46	        db 1AH, 0B1H, 64H, 0F7H, 46H, 21H, 17H, 76H     ; 16D0 _ ..d.F!.v
+	   21 17 76
+ 00001788  4D 93 F6 CE 99	        db 4DH, 93H, 0F6H, 0CEH, 99H, 83H, 0D2H, 0C6H   ; 16D8 _ M.......
+	   83 D2 C6
+ 00001790  61 5F 09 FE B4	        db 61H, 5FH, 09H, 0FEH, 0B4H, 18H, 60H, 5EH     ; 16E0 _ a_....`^
+	   18 60 5E
+ 00001798  F5 EC 48 50 61	        db 0F5H, 0ECH, 48H, 50H, 61H, 32H, 35H, 51H     ; 16E8 _ ..HPa25Q
+	   32 35 51
+ 000017A0  DC 36 6E 6E AD	        db 0DCH, 36H, 6EH, 6EH, 0ADH, 0DH, 13H, 63H     ; 16F0 _ .6nn...c
+	   0D 13 63
+ 000017A8  D6 9B C6 A9 0C	        db 0D6H, 9BH, 0C6H, 0A9H, 0CH, 0EAH, 90H, 1EH   ; 16F8 _ ........
+	   EA 90 1E
+ 000017B0  3B 07 35 7C 6D	        db 3BH, 07H, 35H, 7CH, 6DH, 5EH, 0D9H, 28H      ; 1700 _ ;.5|m^.(
+	   5E D9 28
+ 000017B8  0D 0E 34 AA 70	        db 0DH, 0EH, 34H, 0AAH, 70H, 0EEH, 3DH, 0CBH    ; 1708 _ ..4.p.=.
+	   EE 3D CB
+ 000017C0  F3 0F 2E 35 45	        db 0F3H, 0FH, 2EH, 35H, 45H, 0C0H, 0C9H, 6AH    ; 1710 _ ...5E..j
+	   C0 C9 6A
+ 000017C8  9C EF B4 2D BD	        db 9CH, 0EFH, 0B4H, 2DH, 0BDH, 2AH, 0FAH, 77H   ; 1718 _ ...-.*.w
+	   2A FA 77
+ 000017D0  70 DD 8F 33 FF	        db 70H, 0DDH, 8FH, 33H, 0FFH, 4EH, 53H, 50H     ; 1720 _ p..3.NSP
+	   4E 53 50
+ 000017D8  D6 EA 4A FC 0F	        db 0D6H, 0EAH, 4AH, 0FCH, 0FH, 0E9H, 0D5H, 7FH  ; 1728 _ ..J.....
+	   E9 D5 7F
+ 000017E0  64 A0 27 D4 00	        db 64H, 0A0H, 27H, 0D4H, 00H, 0EAH, 0EFH, 0AEH  ; 1730 _ d.'.....
+	   EA EF AE
+ 000017E8  68 44 FE B2 75	        db 68H, 44H, 0FEH, 0B2H, 75H, 5DH, 86H, 0E0H    ; 1738 _ hD..u]..
+	   5D 86 E0
+ 000017F0  EF A3 A3 FB 26	        db 0EFH, 0A3H, 0A3H, 0FBH, 26H, 34H, 6DH, 42H   ; 1740 _ ....&4mB
+	   34 6D 42
+ 000017F8  71 AD B9 C3 71	        db 71H, 0ADH, 0B9H, 0C3H, 71H, 87H, 0BBH, 75H   ; 1748 _ q...q..u
+	   87 BB 75
+ 00001800  90 7D 1F 64 1E	        db 90H, 7DH, 1FH, 64H, 1EH, 0C6H, 0D1H, 0A4H    ; 1750 _ .}.d....
+	   C6 D1 A4
+ 00001808  8C 07 B1 50 17	        db 8CH, 07H, 0B1H, 50H, 17H, 0AH, 0D1H, 0DFH    ; 1758 _ ...P....
+	   0A D1 DF
+ 00001810  00 03 F0 CB 03	        db 00H, 03H, 0F0H, 0CBH, 03H, 1EH, 93H, 84H     ; 1760 _ ........
+	   1E 93 84
+ 00001818  BB 5F 78 B3 72	        db 0BBH, 5FH, 78H, 0B3H, 72H, 8CH, 0FEH, 0B2H   ; 1768 _ ._x.r...
+	   8C FE B2
+ 00001820  E0 FF D8 FB B2	        db 0E0H, 0FFH, 0D8H, 0FBH, 0B2H, 69H, 80H, 66H  ; 1770 _ .....i.f
+	   69 80 66
+ 00001828  6C E2 89 93 38	        db 6CH, 0E2H, 89H, 93H, 38H, 55H, 8AH, 0A4H     ; 1778 _ l...8U..
+	   55 8A A4
+ 00001830  AD B4 FE F4 D4	        db 0ADH, 0B4H, 0FEH, 0F4H, 0D4H, 4AH, 79H, 53H  ; 1780 _ .....JyS
+	   4A 79 53
+ 00001838  68 67 64 C7 26	        db 68H, 67H, 64H, 0C7H, 26H, 7EH, 0CAH, 95H     ; 1788 _ hgd.&~..
+	   7E CA 95
+ 00001840  5D 17 26 48 B5	        db 5DH, 17H, 26H, 48H, 0B5H, 62H, 18H, 0FAH     ; 1790 _ ].&H.b..
+	   62 18 FA
+ 00001848  3C D6 4F 3D B3	        db 3CH, 0D6H, 4FH, 3DH, 0B3H, 0D0H, 0D1H, 18H   ; 1798 _ <.O=....
+	   D0 D1 18
+ 00001850  F6 51 0F 46 70	        db 0F6H, 51H, 0FH, 46H, 70H, 0FDH, 0B0H, 0B6H   ; 17A0 _ .Q.Fp...
+	   FD B0 B6
+ 00001858  30 B5 95 EB C3	        db 30H, 0B5H, 95H, 0EBH, 0C3H, 8BH, 0B3H, 36H   ; 17A8 _ 0......6
+	   8B B3 36
+ 00001860  DD C1 2E 71 02	        db 0DDH, 0C1H, 2EH, 71H, 02H, 82H, 35H, 0F1H    ; 17B0 _ ...q..5.
+	   82 35 F1
+ 00001868  51 7E 4B 1C D6	        db 51H, 7EH, 4BH, 1CH, 0D6H, 6BH, 0B6H, 0F3H    ; 17B8 _ Q~K..k..
+	   6B B6 F3
+ 00001870  15 46 13 1D 76	        db 15H, 46H, 13H, 1DH, 76H, 83H, 0BH, 0CEH      ; 17C0 _ .F..v...
+	   83 0B CE
+ 00001878  44 59 A3 92 66	        db 44H, 59H, 0A3H, 92H, 66H, 64H, 0D2H, 35H     ; 17C8 _ DY..fd.5
+	   64 D2 35
+ 00001880  DE AE B7 1D 0C	        db 0DEH, 0AEH, 0B7H, 1DH, 0CH, 36H, 3CH, 0DDH   ; 17D0 _ .....6<.
+	   36 3C DD
+ 00001888  E3 0B 5D AF 91	        db 0E3H, 0BH, 5DH, 0AFH, 91H, 3EH, 3AH, 5AH     ; 17D8 _ ..]..>:Z
+	   3E 3A 5A
+ 00001890  CD 34 0C 9F D4	        db 0CDH, 34H, 0CH, 9FH, 0D4H, 0D9H, 20H, 0F5H   ; 17E0 _ .4.... .
+	   D9 20 F5
+ 00001898  C5 8E A4 DD 12	        db 0C5H, 8EH, 0A4H, 0DDH, 12H, 0E6H, 3AH, 4DH   ; 17E8 _ ......:M
+	   E6 3A 4D
+ 000018A0  A4 98 56 29 3D	        db 0A4H, 98H, 56H, 29H, 3DH, 15H, 40H, 92H      ; 17F0 _ ..V)=.@.
+	   15 40 92
+ 000018A8  78 9B 38 D6 B0	        db 78H, 9BH, 38H, 0D6H, 0B0H, 0CDH, 0CAH, 0C5H  ; 17F8 _ x.8.....
+	   CD CA C5
+ 000018B0  90 FD BB 2F 4A	        db 90H, 0FDH, 0BBH, 2FH, 4AH, 0A7H, 75H, 9FH    ; 1800 _ .../J.u.
+	   A7 75 9F
+ 000018B8  AC AB DF 74 CD	        db 0ACH, 0ABH, 0DFH, 74H, 0CDH, 78H, 98H, 0E7H  ; 1808 _ ...t.x..
+	   78 98 E7
+ 000018C0  21 B4 1D 74 18	        db 21H, 0B4H, 1DH, 74H, 18H, 0D8H, 0B2H, 0F4H   ; 1810 _ !..t....
+	   D8 B2 F4
+ 000018C8  D1 4A 53 A0 95	        db 0D1H, 4AH, 53H, 0A0H, 95H, 48H, 0DBH, 21H    ; 1818 _ .JS..H.!
+	   48 DB 21
+ 000018D0  7D 6D 70 06 E5	        db 7DH, 6DH, 70H, 06H, 0E5H, 9AH, 0E4H, 0D4H    ; 1820 _ }mp.....
+	   9A E4 D4
+ 000018D8  9F A1 CE 55 2C	        db 9FH, 0A1H, 0CEH, 55H, 2CH, 0F7H, 0EEH, 0B2H  ; 1828 _ ...U,...
+	   F7 EE B2
+ 000018E0  BA DE 3B 60 89	        db 0BAH, 0DEH, 3BH, 60H, 89H, 98H, 0E6H, 0F3H   ; 1830 _ ..;`....
+	   98 E6 F3
+ 000018E8  07 16 F8 A2 58	        db 07H, 16H, 0F8H, 0A2H, 58H, 0FEH, 0ECH, 0A7H  ; 1838 _ ....X...
+	   FE EC A7
+ 000018F0  A7 01 84 32 25	        db 0A7H, 01H, 84H, 32H, 25H, 61H, 05H, 34H      ; 1840 _ ...2%a.4
+	   61 05 34
+ 000018F8  5F 0B 5F 27 10	        db 5FH, 0BH, 5FH, 27H, 10H, 61H, 09H, 73H       ; 1848 _ _._'.a.s
+	   61 09 73
+ 00001900  48 75 B1 D1 5B	        db 48H, 75H, 0B1H, 0D1H, 5BH, 0F9H, 85H, 62H    ; 1850 _ Hu..[..b
+	   F9 85 62
+ 00001908  12 7C 84 C6 4D	        db 12H, 7CH, 84H, 0C6H, 4DH, 0CCH, 0B2H, 0B1H   ; 1858 _ .|..M...
+	   CC B2 B1
+ 00001910  46 4C 9A E3 43	        db 46H, 4CH, 9AH, 0E3H, 43H, 0BAH, 6CH, 66H     ; 1860 _ FL..C.lf
+	   BA 6C 66
+ 00001918  DD FE 67 BF 0D	        db 0DDH, 0FEH, 67H, 0BFH, 0DH, 92H, 6AH, 6EH    ; 1868 _ ..g...jn
+	   92 6A 6E
+ 00001920  A7 27 2D E1 FC	        db 0A7H, 27H, 2DH, 0E1H, 0FCH, 0F4H, 3FH, 04H   ; 1870 _ .'-...?.
+	   F4 3F 04
+ 00001928  67 9D 1D 38 88	        db 67H, 9DH, 1DH, 38H, 88H, 0FDH, 7CH, 0EEH     ; 1878 _ g..8..|.
+	   FD 7C EE
+ 00001930  F4 D1 FD FA F0	        db 0F4H, 0D1H, 0FDH, 0FAH, 0F0H, 32H, 0C1H, 3FH ; 1880 _ .....2.?
+	   32 C1 3F
+ 00001938  77 37 D2 56 FA	        db 77H, 37H, 0D2H, 56H, 0FAH, 2BH, 0B0H, 0F1H   ; 1888 _ w7.V.+..
+	   2B B0 F1
+ 00001940  2A 80 36 0F 5A	        db 2AH, 80H, 36H, 0FH, 5AH, 0CFH, 56H, 5DH      ; 1890 _ *.6.Z.V]
+	   CF 56 5D
+ 00001948  77 7F 6F 32 C3	        db 77H, 7FH, 6FH, 32H, 0C3H, 55H, 0ECH, 15H     ; 1898 _ w.o2.U..
+	   55 EC 15
+ 00001950  B8 88 BA 2D 8F	        db 0B8H, 88H, 0BAH, 2DH, 8FH, 0E3H, 28H, 8EH    ; 18A0 _ ...-..(.
+	   E3 28 8E
+ 00001958  2B 93 15 84 08	        db 2BH, 93H, 15H, 84H, 08H, 99H, 0BCH, 34H      ; 18A8 _ +......4
+	   99 BC 34
+ 00001960  20 E1 7A 38 B7	        db 20H, 0E1H, 7AH, 38H, 0B7H, 5CH, 80H, 38H     ; 18B0 _  .z8.\.8
+	   5C 80 38
+ 00001968  D3 45 BD EC 83	        db 0D3H, 45H, 0BDH, 0ECH, 83H, 30H, 92H, 09H    ; 18B8 _ .E...0..
+	   30 92 09
+ 00001970  3E 7C 07 28 E3	        db 3EH, 7CH, 07H, 28H, 0E3H, 47H, 2FH, 0CAH     ; 18C0 _ >|.(.G/.
+	   47 2F CA
+ 00001978  69 28 AA 98 17	        db 69H, 28H, 0AAH, 98H, 17H, 70H, 59H, 55H      ; 18C8 _ i(...pYU
+	   70 59 55
+ 00001980  5C DC 06 97 FA	        db 5CH, 0DCH, 06H, 97H, 0FAH, 53H, 48H, 0D8H    ; 18D0 _ \....SH.
+	   53 48 D8
+ 00001988  86 D0 B3 64 1A	        db 86H, 0D0H, 0B3H, 64H, 1AH, 5EH, 17H, 2CH     ; 18D8 _ ...d.^.,
+	   5E 17 2C
+ 00001990  E1 58 C6 42 AC	        db 0E1H, 58H, 0C6H, 42H, 0ACH, 0A0H, 48H, 19H   ; 18E0 _ .X.B..H.
+	   A0 48 19
+ 00001998  AE 9C DD EE 89	        db 0AEH, 9CH, 0DDH, 0EEH, 89H, 0CEH, 90H, 0FDH  ; 18E8 _ ........
+	   CE 90 FD
+ 000019A0  C9 43 E1 CB 79	        db 0C9H, 43H, 0E1H, 0CBH, 79H, 0D7H, 55H, 57H   ; 18F0 _ .C..y.UW
+	   D7 55 57
+ 000019A8  EC 74 C1 6D FD	        db 0ECH, 74H, 0C1H, 6DH, 0FDH, 0C5H, 0BDH, 0BBH ; 18F8 _ .t.m....
+	   C5 BD BB
+ 000019B0  60 87 8C D8 D6	        db 60H, 87H, 8CH, 0D8H, 0D6H, 0A9H, 52H, 0C0H   ; 1900 _ `.....R.
+	   A9 52 C0
+ 000019B8  0E 70 2D 25 59	        db 0EH, 70H, 2DH, 25H, 59H, 59H, 4AH, 08H       ; 1908 _ .p-%YYJ.
+	   59 4A 08
+ 000019C0  63 34 DC 78 2E	        db 63H, 34H, 0DCH, 78H, 2EH, 40H, 0C1H, 69H     ; 1910 _ c4.x.@.i
+	   40 C1 69
+ 000019C8  CF 55 50 EE 8D	        db 0CFH, 55H, 50H, 0EEH, 8DH, 9CH, 90H, 5EH     ; 1918 _ .UP....^
+	   9C 90 5E
+ 000019D0  FD 8D 72 20 53	        db 0FDH, 8DH, 72H, 20H, 53H, 0BDH, 0C0H, 46H    ; 1920 _ ..r S..F
+	   BD C0 46
+ 000019D8  99 B6 82 E7 32	        db 99H, 0B6H, 82H, 0E7H, 32H, 46H, 30H, 55H     ; 1928 _ ....2F0U
+	   46 30 55
+ 000019E0  90 EF B4 71 2C	        db 90H, 0EFH, 0B4H, 71H, 2CH, 0E8H, 0A9H, 0EH   ; 1930 _ ...q,...
+	   E8 A9 0E
+ 000019E8  F1 30 B9 DB 8B	        db 0F1H, 30H, 0B9H, 0DBH, 8BH, 6BH, 0D0H, 0FAH  ; 1938 _ .0...k..
+	   6B D0 FA
+ 000019F0  40 AE 0C BE 10	        db 40H, 0AEH, 0CH, 0BEH, 10H, 44H, 0D1H, 8BH    ; 1940 _ @....D..
+	   44 D1 8B
+ 000019F8  AC AD D2 76 7F	        db 0ACH, 0ADH, 0D2H, 76H, 7FH, 0ABH, 0ACH, 28H  ; 1948 _ ...v...(
+	   AB AC 28
+ 00001A00  B7 9C 09 C1 F3	        db 0B7H, 9CH, 09H, 0C1H, 0F3H, 85H, 0B3H, 07H   ; 1950 _ ........
+	   85 B3 07
+ 00001A08  26 2C 44 E7 40	        db 26H, 2CH, 44H, 0E7H, 40H, 0D6H, 8AH, 0CCH    ; 1958 _ &,D.@...
+	   D6 8A CC
+ 00001A10  C7 56 6F EB A9	        db 0C7H, 56H, 6FH, 0EBH, 0A9H, 1AH, 0A8H, 1EH   ; 1960 _ .Vo.....
+	   1A A8 1E
+ 00001A18  14 D3 B9 73 08	        db 14H, 0D3H, 0B9H, 73H, 08H, 5DH, 0E8H, 1DH    ; 1968 _ ...s.]..
+	   5D E8 1D
+ 00001A20  5A 0A 91 48 DB	        db 5AH, 0AH, 91H, 48H, 0DBH, 22H, 3BH, 89H      ; 1970 _ Z..H.";.
+	   22 3B 89
+ 00001A28  44 DF A0 C5 4E	        db 44H, 0DFH, 0A0H, 0C5H, 4EH, 32H, 0C4H, 0BBH  ; 1978 _ D...N2..
+	   32 C4 BB
+ 00001A30  40 F2 D2 72 99	        db 40H, 0F2H, 0D2H, 72H, 99H, 1DH, 94H, 75H     ; 1980 _ @..r...u
+	   1D 94 75
+ 00001A38  82 DE 8B 6D 2B	        db 82H, 0DEH, 8BH, 6DH, 2BH, 50H, 0A7H, 0A1H    ; 1988 _ ...m+P..
+	   50 A7 A1
+ 00001A40  D1 68 BF D9 50	        db 0D1H, 68H, 0BFH, 0D9H, 50H, 0D7H, 0BAH, 58H  ; 1990 _ .h..P..X
+	   D7 BA 58
+ 00001A48  B2 8C 02 56 59	        db 0B2H, 8CH, 02H, 56H, 59H, 0F3H, 34H, 81H     ; 1998 _ ...VY.4.
+	   F3 34 81
+ 00001A50  D8 69 D4 B5 C2	        db 0D8H, 69H, 0D4H, 0B5H, 0C2H, 8CH, 1AH, 94H   ; 19A0 _ .i......
+	   8C 1A 94
+ 00001A58  6E 2A 8B 41 80	        db 6EH, 2AH, 8BH, 41H, 80H, 27H, 05H, 04H       ; 19A8 _ n*.A.'..
+	   27 05 04
+ 00001A60  87 D7 07 7F 8F	        db 87H, 0D7H, 07H, 7FH, 8FH, 35H, 94H, 51H      ; 19B0 _ .....5.Q
+	   35 94 51
+ 00001A68  65 D6 60 3C 9A	        db 65H, 0D6H, 60H, 3CH, 9AH, 0D7H, 97H, 0BEH    ; 19B8 _ e.`<....
+	   D7 97 BE
+ 00001A70  34 34 0C 95 6D	        db 34H, 34H, 0CH, 95H, 6DH, 0A0H, 0D9H, 0AEH    ; 19C0 _ 44..m...
+	   A0 D9 AE
+ 00001A78  8D DC 37 25 69	        db 8DH, 0DCH, 37H, 25H, 69H, 59H, 0DBH, 7CH     ; 19C8 _ ..7%iY.|
+	   59 DB 7C
+				
+ 00001A80			reduced_memcpy LABEL NEAR
+ 00001A80  51			        push    rcx                                     ; 19D0 _ 51
+ 00001A81  48/ C1 E9 03		        shr     rcx, 3                                  ; 19D1 _ 48: C1. E9, 03
+ 00001A85  F3/ 48/ A5		        rep movsq                                       ; 19D5 _ F2 48: A5
+ 00001A88  59			        pop     rcx                                     ; 19D8 _ 59
+ 00001A89  83 E1 07		        and     ecx, 07H                                ; 19D9 _ 83. E1, 07
+ 00001A8C  F3/ A4		        rep movsb                                       ; 19DC _ F2: A4
+ 00001A8E  C3			        ret                                             ; 19DE _ C3
+				
+ 00001A8F			align_structure_enter LABEL NEAR
+ 00001A8F  50			        push    rax                                     ; 19DF _ 50
+ 00001A90  48/ 8D 45 74		        lea     rax, [rbp+74H]                          ; 19E0 _ 48: 8D. 45, 74
+ 00001A94  A9 0000003F		        test    eax, 3FH                                ; 19E4 _ A9, 0000003F
+ 00001A99  58			        pop     rax                                     ; 19E9 _ 58
+ 00001A9A  75 05		        jnz     Lase1                                   ; 19EA _ 75, 05
+ 00001A9C  48/ 8D 7D 48		        lea     rdi, [rbp+48H]                          ; 19EC _ 48: 8D. 7D, 48
+ 00001AA0  C3			        ret                                             ; 19F0 _ C3
+				
+ 00001AA1			Lase1   LABEL NEAR
+ 00001AA1  57			        push    rdi                                     ; 19F1 _ 57
+ 00001AA2  56			        push    rsi                                     ; 19F2 _ 56
+ 00001AA3  51			        push    rcx                                     ; 19F3 _ 51
+ 00001AA4  48/ 8D 75 48		        lea     rsi, [rbp+48H]                          ; 19F4 _ 48: 8D. 75, 48
+ 00001AA8  B9 00000017		        mov     ecx, 23                                 ; 19F8 _ B9, 00000017
+ 00001AAD  F3/ 48/ A5		        rep movsq                                       ; 19FD _ F3 48: A5
+ 00001AB0  59			        pop     rcx                                     ; 1A00 _ 59
+ 00001AB1  5E			        pop     rsi                                     ; 1A01 _ 5E
+ 00001AB2  5F			        pop     rdi                                     ; 1A02 _ 5F
+ 00001AB3  C3			        ret                                             ; 1A03 _ C3
+				
+ 00001AB4			align_structure_leave LABEL NEAR
+ 00001AB4  57			        push    rdi                                     ; 1A04 _ 57
+ 00001AB5  48/ 8D 7D 48		        lea     rdi, [rbp+48H]                          ; 1A05 _ 48: 8D. 7D, 48
+ 00001AB9  48/ 85 FE		        test    rdi, rsi                                ; 1A09 _ 48: 85. F7
+ 00001ABC  74 0C		        jz      Lasl1                                   ; 1A0C _ 74, 0C
+ 00001ABE  51			        push    rcx                                     ; 1A0E _ 51
+ 00001ABF  56			        push    rsi                                     ; 1A0F _ 56
+ 00001AC0  B9 00000017		        mov     ecx, 23                                 ; 1A10 _ B9, 00000017
+ 00001AC5  F3/ 48/ A5		        rep movsq                                       ; 1A15 _ F3 48: A5
+ 00001AC8  5E			        pop     rsi                                     ; 1A18 _ 5E
+ 00001AC9  59			        pop     rcx                                     ; 1A19 _ 59
+				
+ 00001ACA			Lasl1   LABEL NEAR
+ 00001ACA  5F			        pop     rdi                                     ; 1A1A _ 5F
+ 00001ACB  C3			        ret                                             ; 1A1B _ C3
+				
+ 00001ACC			asm_shabal  PROC
+				            
+				  ; Make space for 10 xmm registers, 2 G.P. registers, 
+				  ; and align stack by 16
+ 00001ACC  48/ 81 EC		  sub     rsp, 184;   10*16 + 2*8 + 8
+	   000000B8
+				        
+				  ; Register rsi, rdi and xmm6 - xmm15 have callee-save status
+				  ; in Windows, but not in Unix:
+ 00001AD3  48/ 89 34 24		  mov     [rsp],     rsi
+ 00001AD7  48/ 89 7C 24		  mov     [rsp+8],   rdi
+	   08
+ 00001ADC  0F 29 74 24 10	  movaps  [rsp+10h], xmm6
+ 00001AE1  0F 29 7C 24 20	  movaps  [rsp+20h], xmm7
+ 00001AE6  44/ 0F 29 44 24	  movaps  [rsp+30h], xmm8
+	   30
+ 00001AEC  44/ 0F 29 4C 24	  movaps  [rsp+40h], xmm9
+	   40
+ 00001AF2  44/ 0F 29 54 24	  movaps  [rsp+50h], xmm10
+	   50
+ 00001AF8  44/ 0F 29 5C 24	  movaps  [rsp+60h], xmm11
+	   60
+ 00001AFE  44/ 0F 29 64 24	  movaps  [rsp+70h], xmm12
+	   70
+ 00001B04  44/ 0F 29 AC 24	  movaps  [rsp+80h], xmm13
+	   00000080
+ 00001B0D  44/ 0F 29 B4 24	  movaps  [rsp+90h], xmm14
+	   00000090
+ 00001B16  44/ 0F 29 BC 24	  movaps  [rsp+0A0h],xmm15
+	   000000A0
+				
+				  ; Windows parameters (rcx,rdx,r8,r9) -> Unix parameters (rdi,rsi,rdx,rcx)
+ 00001B1F  48/ 8B F9		  mov     rdi, rcx
+ 00001B22  48/ 8B F2		  mov     rsi, rdx
+ 00001B25  49/ 8B D0		  mov     rdx, r8
+ 00001B28  49/ 8B C9		  mov     rcx, r9    
+				
+				
+ 00001B2B  55			        push    rbp                                     ; 1A1C _ 55
+ 00001B2C  48/ 8B EF		        mov     rbp, rdi                                ; 1A1D _ 48: 89. FD
+ 00001B2F  48/ 8B C4		        mov     rax, rsp                                ; 1A20 _ 48: 89. E0
+ 00001B32  48/ 81 EC		        sub     rsp, 144                                ; 1A23 _ 48: 81. EC, 00000090
+	   00000090
+ 00001B39  48/ 83 E4 C0		        and     rsp, 0FFFFFFFFFFFFFFC0H                 ; 1A2A _ 48: 83. E4, C0
+ 00001B3D  48/ 83 EC 30		        sub     rsp, 48                                 ; 1A2E _ 48: 83. EC, 30
+ 00001B41  48/ 89 84 24		        mov     qword ptr [rsp+0B8H], rax               ; 1A32 _ 48: 89. 84 24, 000000B8
+	   000000B8
+ 00001B49  8B 4D 40		        mov     ecx, dword ptr [rbp+40H]                ; 1A3A _ 8B. 4D, 40
+ 00001B4C  B8 00000040		        mov     eax, 64                                 ; 1A3D _ B8, 00000040
+ 00001B51  2B C1		        sub     eax, ecx                                ; 1A42 _ 29. C8
+ 00001B53  48/ 3B D0		        cmp     rdx, rax                                ; 1A44 _ 48: 39. C2
+ 00001B56  73 13		        jnc     Ls1                                     ; 1A47 _ 73, 14
+ 00001B58  48/ 8D 3C 29		        lea     rdi, [rbp+rcx]                          ; 1A49 _ 48: 8D. 7C 0D, 00
+ 00001B5C  8B CA		        mov     ecx, edx                                ; 1A4E _ 89. D1
+ 00001B5E  E8 FFFFFF1D		        call    reduced_memcpy                          ; 1A50 _ E8, FFFFFF7B
+ 00001B63  48/ 2B FD		        sub     rdi, rbp                                ; 1A55 _ 48: 29. EF
+ 00001B66  89 7D 40		        mov     dword ptr [rbp+40H], edi                ; 1A58 _ 89. 7D, 40
+ 00001B69  EB 64		        jmp     Ls9                                     ; 1A5B _ EB, 65
+				
+ 00001B6B			Ls1     LABEL NEAR
+ 00001B6B  48/ 8B FC		        mov     rdi, rsp                                ; 1A5D _ 48: 89. E7
+ 00001B6E  E8 FFFFFF1C		        call    align_structure_enter                   ; 1A60 _ E8, FFFFFF7A
+ 00001B73  85 C9		        test    ecx, ecx                                ; 1A65 _ 85. C9
+ 00001B75  74 23		        jz      Ls2                                     ; 1A67 _ 74, 24
+ 00001B77  48/ 2B D0		        sub     rdx, rax                                ; 1A69 _ 48: 29. C2
+ 00001B7A  57			        push    rdi                                     ; 1A6C _ 57
+ 00001B7B  48/ 8D 3C 29		        lea     rdi, [rbp+rcx]                          ; 1A6D _ 48: 8D. 7C 0D, 00
+ 00001B7F  8B C8		        mov     ecx, eax                                ; 1A72 _ 89. C1
+ 00001B81  E8 FFFFFEFA		        call    reduced_memcpy                          ; 1A74 _ E8, FFFFFF57
+ 00001B86  5F			        pop     rdi                                     ; 1A79 _ 5F
+ 00001B87  52			        push    rdx                                     ; 1A7A _ 52
+ 00001B88  56			        push    rsi                                     ; 1A7B _ 56
+ 00001B89  57			        push    rdi                                     ; 1A7C _ 57
+ 00001B8A  BA 00000001		        mov     edx, 1                                  ; 1A7D _ BA, 00000001
+ 00001B8F  48/ 8B F5		        mov     rsi, rbp                                ; 1A82 _ 48: 89. EE
+ 00001B92  E8 FFFFE469		        call    shabal_inner                            ; 1A85 _ E8, FFFFE576
+ 00001B97  5F			        pop     rdi                                     ; 1A8A _ 5F
+ 00001B98  5E			        pop     rsi                                     ; 1A8B _ 5E
+ 00001B99  5A			        pop     rdx                                     ; 1A8C _ 5A
+				
+ 00001B9A			Ls2     LABEL NEAR
+ 00001B9A  48/ 8B C2		        mov     rax, rdx                                ; 1A8D _ 48: 89. D0
+ 00001B9D  48/ C1 E8 06		        shr     rax, 6                                  ; 1A90 _ 48: C1. E8, 06
+ 00001BA1  74 18		        jz      Ls3                                     ; 1A94 _ 74, 18
+ 00001BA3  83 E2 3F		        and     edx, 3FH                                ; 1A96 _ 83. E2, 3F
+ 00001BA6  52			        push    rdx                                     ; 1A99 _ 52
+ 00001BA7  48/ 8B D0		        mov     rdx, rax                                ; 1A9A _ 48: 89. C2
+ 00001BAA  48/ C1 E0 06		        shl     rax, 6                                  ; 1A9D _ 48: C1. E0, 06
+ 00001BAE  48/ 03 C6		        add     rax, rsi                                ; 1AA1 _ 48: 01. F0
+ 00001BB1  50			        push    rax                                     ; 1AA4 _ 50
+ 00001BB2  57			        push    rdi                                     ; 1AA5 _ 57
+ 00001BB3  E8 FFFFE448		        call    shabal_inner                            ; 1AA6 _ E8, FFFFE555
+ 00001BB8  5F			        pop     rdi                                     ; 1AAB _ 5F
+ 00001BB9  5E			        pop     rsi                                     ; 1AAC _ 5E
+ 00001BBA  5A			        pop     rdx                                     ; 1AAD _ 5A
+				
+ 00001BBB			Ls3     LABEL NEAR
+ 00001BBB  57			        push    rdi                                     ; 1AAE _ 57
+ 00001BBC  48/ 8B FD		        mov     rdi, rbp                                ; 1AAF _ 48: 89. EF
+ 00001BBF  8B CA		        mov     ecx, edx                                ; 1AB2 _ 89. D1
+ 00001BC1  89 55 40		        mov     dword ptr [rbp+40H], edx                ; 1AB4 _ 89. 55, 40
+ 00001BC4  E8 FFFFFEB7		        call    reduced_memcpy                          ; 1AB7 _ E8, FFFFFF14
+ 00001BC9  5E			        pop     rsi                                     ; 1ABC _ 5E
+ 00001BCA  E8 FFFFFEE5		        call    align_structure_leave                   ; 1ABD _ E8, FFFFFF42
+				
+ 00001BCF			Ls9     LABEL NEAR
+ 00001BCF  48/ 8B 84 24		        mov     rax, qword ptr [rsp+0B8H]               ; 1AC2 _ 48: 8B. 84 24, 000000B8
+	   000000B8
+ 00001BD7  48/ 8B E0		        mov     rsp, rax                                ; 1ACA _ 48: 89. C4
+ 00001BDA  5D			        pop     rbp                                     ; 1ACD _ 5D
+				
+				
+				  ; Restore saved registers
+ 00001BDB  48/ 8B 34 24		  mov     rsi,   [rsp]
+ 00001BDF  48/ 8B 7C 24		  mov     rdi,   [rsp+8]
+	   08
+ 00001BE4  0F 28 74 24 10	  movaps  xmm6,  [rsp+10h]
+ 00001BE9  0F 28 7C 24 20	  movaps  xmm7,  [rsp+20h] 
+ 00001BEE  44/ 0F 28 44 24	  movaps  xmm8,  [rsp+30h] 
+	   30
+ 00001BF4  44/ 0F 28 4C 24	  movaps  xmm9,  [rsp+40h] 
+	   40
+ 00001BFA  44/ 0F 28 54 24	  movaps  xmm10, [rsp+50h] 
+	   50
+ 00001C00  44/ 0F 28 5C 24	  movaps  xmm11, [rsp+60h] 
+	   60
+ 00001C06  44/ 0F 28 64 24	  movaps  xmm12, [rsp+70h] 
+	   70
+ 00001C0C  44/ 0F 28 AC 24	  movaps  xmm13, [rsp+80h] 
+	   00000080
+ 00001C15  44/ 0F 28 B4 24	  movaps  xmm14, [rsp+90h] 
+	   00000090
+ 00001C1E  44/ 0F 28 BC 24	  movaps  xmm15, [rsp+0A0h]        
+	   000000A0
+				        
+				  ; restore stack pointer
+ 00001C27  48/ 81 C4		  add     rsp, 184
+	   000000B8
+				
+ 00001C2E  C3			        ret                                             ; 1ACE _ C3
+ 00001C2F			asm_shabal  ENDP
+				
+ 00001C2F			asm_shabal_close PROC
+				                 
+				  ; Make space for 10 xmm registers, 2 G.P. registers, 
+				  ; and align stack by 16
+ 00001C2F  48/ 81 EC		  sub     rsp, 184;   10*16 + 2*8 + 8
+	   000000B8
+				        
+				  ; Register rsi, rdi and xmm6 - xmm15 have callee-save status
+				  ; in Windows, but not in Unix:
+ 00001C36  48/ 89 34 24		  mov     [rsp],     rsi
+ 00001C3A  48/ 89 7C 24		  mov     [rsp+8],   rdi
+	   08
+ 00001C3F  0F 29 74 24 10	  movaps  [rsp+10h], xmm6
+ 00001C44  0F 29 7C 24 20	  movaps  [rsp+20h], xmm7
+ 00001C49  44/ 0F 29 44 24	  movaps  [rsp+30h], xmm8
+	   30
+ 00001C4F  44/ 0F 29 4C 24	  movaps  [rsp+40h], xmm9
+	   40
+ 00001C55  44/ 0F 29 54 24	  movaps  [rsp+50h], xmm10
+	   50
+ 00001C5B  44/ 0F 29 5C 24	  movaps  [rsp+60h], xmm11
+	   60
+ 00001C61  44/ 0F 29 64 24	  movaps  [rsp+70h], xmm12
+	   70
+ 00001C67  44/ 0F 29 AC 24	  movaps  [rsp+80h], xmm13
+	   00000080
+ 00001C70  44/ 0F 29 B4 24	  movaps  [rsp+90h], xmm14
+	   00000090
+ 00001C79  44/ 0F 29 BC 24	  movaps  [rsp+0A0h],xmm15
+	   000000A0
+				
+				  ; Windows parameters (rcx,rdx,r8,r9) -> Unix parameters (rdi,rsi,rdx,rcx)
+ 00001C82  48/ 8B F9		  mov     rdi, rcx
+ 00001C85  48/ 8B F2		  mov     rsi, rdx
+ 00001C88  49/ 8B D0		  mov     rdx, r8
+ 00001C8B  49/ 8B C9		  mov     rcx, r9    
+				
+				
+ 00001C8E  53			        push    rbx                                     ; 1ACF _ 53
+ 00001C8F  55			        push    rbp                                     ; 1AD0 _ 55
+ 00001C90  48/ 8B EF		        mov     rbp, rdi                                ; 1AD1 _ 48: 89. FD
+ 00001C93  51			        push    rcx                                     ; 1AD4 _ 51
+ 00001C94  52			        push    rdx                                     ; 1AD5 _ 52
+ 00001C95  56			        push    rsi                                     ; 1AD6 _ 56
+ 00001C96  5A			        pop     rdx                                     ; 1AD7 _ 5A
+ 00001C97  59			        pop     rcx                                     ; 1AD8 _ 59
+ 00001C98  5E			        pop     rsi                                     ; 1AD9 _ 5E
+ 00001C99  48/ 8B C4		        mov     rax, rsp                                ; 1ADA _ 48: 89. E0
+ 00001C9C  48/ 81 EC		        sub     rsp, 144                                ; 1ADD _ 48: 81. EC, 00000090
+	   00000090
+ 00001CA3  48/ 83 E4 C0		        and     rsp, 0FFFFFFFFFFFFFFC0H                 ; 1AE4 _ 48: 83. E4, C0
+ 00001CA7  48/ 83 EC 30		        sub     rsp, 48                                 ; 1AE8 _ 48: 83. EC, 30
+ 00001CAB  48/ 89 84 24		        mov     qword ptr [rsp+0B8H], rax               ; 1AEC _ 48: 89. 84 24, 000000B8
+	   000000B8
+ 00001CB3  B8 00000080		        mov     eax, 128                                ; 1AF4 _ B8, 00000080
+ 00001CB8  D3 E8		        shr     eax, cl                                 ; 1AF9 _ D3. E8
+ 00001CBA  0B D0		        or      edx, eax                                ; 1AFB _ 09. C2
+ 00001CBC  F7 D8		        neg     eax                                     ; 1AFD _ F7. D8
+ 00001CBE  23 C2		        and     eax, edx                                ; 1AFF _ 21. D0
+ 00001CC0  48/ 8B FD		        mov     rdi, rbp                                ; 1B01 _ 48: 89. EF
+ 00001CC3  8B 4D 40		        mov     ecx, dword ptr [rbp+40H]                ; 1B04 _ 8B. 4D, 40
+ 00001CC6  48/ 03 F9		        add     rdi, rcx                                ; 1B07 _ 48: 01. CF
+ 00001CC9  AA			        stosb                                           ; 1B0A _ AA
+ 00001CCA  F7 D9		        neg     ecx                                     ; 1B0B _ F7. D9
+ 00001CCC  33 C0		        xor     eax, eax                                ; 1B0D _ 31. C0
+ 00001CCE  83 C1 46		        add     ecx, 70                                 ; 1B0F _ 83. C1, 46
+ 00001CD1  C1 E9 03		        shr     ecx, 3                                  ; 1B12 _ C1. E9, 03
+ 00001CD4  F3/ 48/ AB		        rep stosq                                       ; 1B15 _ F2 48: AB
+ 00001CD7  48/ 8B FC		        mov     rdi, rsp                                ; 1B18 _ 48: 89. E7
+ 00001CDA  E8 FFFFFDB0		        call    align_structure_enter                   ; 1B1B _ E8, FFFFFEBF
+ 00001CDF  56			        push    rsi                                     ; 1B20 _ 56
+ 00001CE0  BB 00000004		        mov     ebx, 4                                  ; 1B21 _ BB, 00000004
+				
+ 00001CE5			Lc1     LABEL NEAR
+ 00001CE5  BA 00000001		        mov     edx, 1                                  ; 1B26 _ BA, 00000001
+ 00001CEA  48/ 8B F5		        mov     rsi, rbp                                ; 1B2B _ 48: 89. EE
+ 00001CED  57			        push    rdi                                     ; 1B2E _ 57
+ 00001CEE  E8 FFFFE30D		        call    shabal_inner                            ; 1B2F _ E8, FFFFE4CC
+ 00001CF3  5F			        pop     rdi                                     ; 1B34 _ 5F
+ 00001CF4  48/ FF 8F		        dec     qword ptr [rdi+0B0H]                    ; 1B35 _ 48: FF. 8F, 000000B0
+	   000000B0
+ 00001CFB  FF CB		        dec     ebx                                     ; 1B3C _ FF. CB
+ 00001CFD  75 E6		        jnz     Lc1                                     ; 1B3E _ 75, E6
+ 00001CFF  8B 85 00000100	        mov     eax, dword ptr [rbp+100H]               ; 1B40 _ 8B. 85, 00000100
+ 00001D05  8B C8		        mov     ecx, eax                                ; 1B46 _ 89. C1
+ 00001D07  C1 E8 03		        shr     eax, 3                                  ; 1B48 _ C1. E8, 03
+ 00001D0A  C1 E9 05		        shr     ecx, 5                                  ; 1B4B _ C1. E9, 05
+ 00001D0D  48/ 8D B7		        lea     rsi, [rdi+0B0H]                         ; 1B4E _ 48: 8D. B7, 000000B0
+	   000000B0
+ 00001D14  5F			        pop     rdi                                     ; 1B55 _ 5F
+ 00001D15  48/ 2B F0		        sub     rsi, rax                                ; 1B56 _ 48: 29. C6
+ 00001D18  F3/ A5		        rep movsd                                       ; 1B59 _ F3: A5
+ 00001D1A  48/ 8B 84 24		        mov     rax, qword ptr [rsp+0B8H]               ; 1B5B _ 48: 8B. 84 24, 000000B8
+	   000000B8
+ 00001D22  48/ 8B E0		        mov     rsp, rax                                ; 1B63 _ 48: 89. C4
+ 00001D25  5D			        pop     rbp                                     ; 1B66 _ 5D
+ 00001D26  5B			        pop     rbx                                     ; 1B67 _ 5B
+				
+				
+				  ; Restore saved registers
+ 00001D27  48/ 8B 34 24		  mov     rsi,   [rsp]
+ 00001D2B  48/ 8B 7C 24		  mov     rdi,   [rsp+8]
+	   08
+ 00001D30  0F 28 74 24 10	  movaps  xmm6,  [rsp+10h]
+ 00001D35  0F 28 7C 24 20	  movaps  xmm7,  [rsp+20h] 
+ 00001D3A  44/ 0F 28 44 24	  movaps  xmm8,  [rsp+30h] 
+	   30
+ 00001D40  44/ 0F 28 4C 24	  movaps  xmm9,  [rsp+40h] 
+	   40
+ 00001D46  44/ 0F 28 54 24	  movaps  xmm10, [rsp+50h] 
+	   50
+ 00001D4C  44/ 0F 28 5C 24	  movaps  xmm11, [rsp+60h] 
+	   60
+ 00001D52  44/ 0F 28 64 24	  movaps  xmm12, [rsp+70h] 
+	   70
+ 00001D58  44/ 0F 28 AC 24	  movaps  xmm13, [rsp+80h] 
+	   00000080
+ 00001D61  44/ 0F 28 B4 24	  movaps  xmm14, [rsp+90h] 
+	   00000090
+ 00001D6A  44/ 0F 28 BC 24	  movaps  xmm15, [rsp+0A0h]        
+	   000000A0
+				        
+				  ; restore stack pointer
+ 00001D73  48/ 81 C4		  add     rsp, 184
+	   000000B8
+				
+ 00001D7A  C3			        ret                                             ; 1B68 _ C3
+ 00001D7B			asm_shabal_close ENDP
+				
+ 00001D7B			_text   ENDS
+				
+				END
+Microsoft (R) Macro Assembler (x64) Version 12.00.40629.0   05/06/16 18:23:56
+shabal.asm						     Symbols 2 - 1
+
+
+
+
+Procedures, parameters, and locals:
+
+                N a m e                 Type     Value    Attr
+
+asm_shabal_close . . . . . . . .	P 	 00001C2F _TEXT	Length= 0000014C Public
+asm_shabal_init  . . . . . . . .	P 	 00000E8D _TEXT	Length= 000000F2 Public
+asm_shabal . . . . . . . . . . .	P 	 00001ACC _TEXT	Length= 00000163 Public
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+Lase1  . . . . . . . . . . . . .	L 	 00001AA1 _TEXT	
+Lasl1  . . . . . . . . . . . . .	L 	 00001ACA _TEXT	
+Lc1  . . . . . . . . . . . . . .	L 	 00001CE5 _TEXT	
+Li1  . . . . . . . . . . . . . .	L 	 00000EF3 _TEXT	
+Lm0  . . . . . . . . . . . . . .	L 	 00000028 _TEXT	
+Ls1  . . . . . . . . . . . . . .	L 	 00001B6B _TEXT	
+Ls2  . . . . . . . . . . . . . .	L 	 00001B9A _TEXT	
+Ls3  . . . . . . . . . . . . . .	L 	 00001BBB _TEXT	
+Ls9  . . . . . . . . . . . . . .	L 	 00001BCF _TEXT	
+align_structure_enter  . . . . .	L 	 00001A8F _TEXT	
+align_structure_leave  . . . . .	L 	 00001AB4 _TEXT	
+iv . . . . . . . . . . . . . . .	Byte	 00000F80 _TEXT	
+reduced_memcpy . . . . . . . . .	L 	 00001A80 _TEXT	
+shabal_inner . . . . . . . . . .	L 	 00000000 _TEXT	
+
+	   0 Warnings
+	   0 Errors

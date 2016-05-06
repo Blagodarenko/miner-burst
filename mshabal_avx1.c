@@ -17,7 +17,7 @@
  */
 
 #include <stddef.h>
-#include <string.h>
+//#include <string.h>
 #include <immintrin.h>
 
 #include "mshabal.h"
@@ -41,13 +41,13 @@ extern "C" {
 static void  avx1_mshabal_compress(mshabal_context *sc,
     const unsigned char *buf0, const unsigned char *buf1,
     const unsigned char *buf2, const unsigned char *buf3,
-    size_t num)
+	unsigned num)
   {
     union {
       u32 words[64];
       __m128i data[16];
     } u;
-    size_t j;
+	unsigned j;
     __m128i A[12], B[16], C[16];
     __m128i one;
 
@@ -264,7 +264,7 @@ static void  avx1_mshabal_compress(mshabal_context *sc,
     avx1_mshabal_compress(sc, sc->buf0, sc->buf1, sc->buf2, sc->buf3, 1);
     sc->ptr = 0;
     sc->out_size = out_size;
-	
+	_mm256_zeroupper();
   }
 
  
@@ -290,37 +290,13 @@ static void  avx1_mshabal_compress(mshabal_context *sc,
   };
 
 
-  void  avx1_mshabal_init2(mshabal_context *cc, unsigned out_size)
-  {
-	  //for (unsigned u = 0; u < 176; u++)  cc->state[u] = 0;
-	 
-	  memset(cc->buf0, 0, sizeof cc->buf0);
-	  memset(cc->buf1, 0, sizeof cc->buf1);
-	  memset(cc->buf2, 0, sizeof cc->buf2);
-	  memset(cc->buf3, 0, sizeof cc->buf3);
-
-	  for (unsigned u = 0; u < 176; u = u+12+16+16)
-	  {
-		  memcpy(cc->state + u, A_init_256, sizeof(u32)* 12);
-		  memcpy(cc->state + u + 12, B_init_256, sizeof(u32)* 16);
-		  memcpy(cc->state + u + 12 + 16, C_init_256, sizeof(u32)* 16);
-	  }
- 
-
-	  cc->Wlow = 1;
-	  cc->Whigh = 0;
-	  cc->ptr = 0;
-	  //cc->Whigh = cc->Wlow = C32(0xFFFFFFFF);
-	  cc->out_size = out_size;
-  }
-  
 
 
   /* see shabal_small.h */
   void  avx1_mshabal(mshabal_context *sc, const void *data0, const void *data1,
-    const void *data2, const void *data3, size_t len)
+	  const void *data2, const void *data3, unsigned len)
   {
-    size_t ptr, num;
+    unsigned ptr, num;
 
     if (data0 == NULL) {
       if (data1 == NULL) {
@@ -349,7 +325,7 @@ static void  avx1_mshabal_compress(mshabal_context *sc,
 
     ptr = sc->ptr;
     if (ptr != 0) {
-      size_t clen;
+      unsigned clen;
 
       clen = (sizeof sc->buf0 - ptr);
       if (clen > len) {
@@ -382,13 +358,13 @@ static void  avx1_mshabal_compress(mshabal_context *sc,
       data2 = (const unsigned char *)data2 + (num << 6);
       data3 = (const unsigned char *)data3 + (num << 6);
     }
-    len &= (size_t)63;
+    len &= 63;
     memcpy(sc->buf0, data0, len);
     memcpy(sc->buf1, data1, len);
     memcpy(sc->buf2, data2, len);
     memcpy(sc->buf3, data3, len);
     sc->ptr = len;
-	
+	_mm256_zeroupper();
   }
 
   /* see shabal_small.h */
@@ -396,8 +372,8 @@ static void  avx1_mshabal_compress(mshabal_context *sc,
     unsigned ub0, unsigned ub1, unsigned ub2, unsigned ub3, unsigned n,
     void *dst0, void *dst1, void *dst2, void *dst3)
   {
-    size_t ptr, off;
-    unsigned z, out_size_w32;
+	unsigned ptr, off;
+	unsigned z, out_size_w32;
 
     z = 0x80 >> n;
     ptr = sc->ptr;
@@ -412,8 +388,7 @@ static void  avx1_mshabal_compress(mshabal_context *sc,
     memset(sc->buf3 + ptr, 0, (sizeof sc->buf3) - ptr);
     for (z = 0; z < 4; z++) {
       avx1_mshabal_compress(sc, sc->buf0, sc->buf1, sc->buf2, sc->buf3, 1);
-      if (sc->Wlow-- == 0)
-        sc->Whigh--;
+      if (sc->Wlow-- == 0)    sc->Whigh--;
     }
     out_size_w32 = sc->out_size >> 5;
     off = 4 * (28 + (16 - out_size_w32));

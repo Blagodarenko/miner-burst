@@ -447,7 +447,7 @@ void sph_shabal256(void *cc, const unsigned char *data, size_t len)
 	 * current block. Note that it is anyway suboptimal to call
 	 * this method many times for small chunks of data.
 	 */
-	if (len < (sizeof sc->buf) - ptr) 
+	if (len + ptr < (sizeof sc->buf)) 
 	{
 		memcpy(buf + ptr, data, len);
 		ptr += len;

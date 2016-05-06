@@ -41,13 +41,13 @@
     sse4_mshabal_compress(mshabal_context *sc,
     const unsigned char *buf0, const unsigned char *buf1,
     const unsigned char *buf2, const unsigned char *buf3,
-    size_t num)
+	unsigned num)
   {
     union {
       u32 words[64];
       __m128i data[16];
     } u;
-    size_t j;
+	unsigned j;
     __m128i A[12], B[16], C[16];
     __m128i one;
 
@@ -270,9 +270,9 @@
   /* see shabal_small.h */
   void
     sse4_mshabal(mshabal_context *sc, const void *data0, const void *data1,
-    const void *data2, const void *data3, size_t len)
+	const void *data2, const void *data3, unsigned len)
   {
-    size_t ptr, num;
+	unsigned ptr, num;
 
     if (data0 == NULL) {
       if (data1 == NULL) {
@@ -301,7 +301,7 @@
 
     ptr = sc->ptr;
     if (ptr != 0) {
-      size_t clen;
+		unsigned clen;
 
       clen = (sizeof sc->buf0 - ptr);
       if (clen > len) {
@@ -335,7 +335,7 @@
       data2 = (const unsigned char *)data2 + (num << 6);
       data3 = (const unsigned char *)data3 + (num << 6);
     }
-    len &= (size_t)63;
+    len &= 63;
     memcpy(sc->buf0, data0, len);
     memcpy(sc->buf1, data1, len);
     memcpy(sc->buf2, data2, len);
@@ -349,7 +349,7 @@
     unsigned ub0, unsigned ub1, unsigned ub2, unsigned ub3, unsigned n,
     void *dst0, void *dst1, void *dst2, void *dst3)
   {
-    size_t ptr, off;
+	unsigned ptr, off;
     unsigned z, out_size_w32;
 
     z = 0x80 >> n;

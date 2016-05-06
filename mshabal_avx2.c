@@ -269,9 +269,9 @@
   /* see shabal_small.h */
   void
     avx2_mshabal(mshabal_context *sc, const void *data0, const void *data1,
-    const void *data2, const void *data3, size_t len)
+	const void *data2, const void *data3, unsigned len)
   {
-    size_t ptr, num;
+	unsigned ptr, num;
 
     if (data0 == NULL) {
       if (data1 == NULL) {
@@ -300,7 +300,7 @@
 
     ptr = sc->ptr;
     if (ptr != 0) {
-      size_t clen;
+		unsigned clen;
 
       clen = (sizeof sc->buf0 - ptr);
       if (clen > len) {

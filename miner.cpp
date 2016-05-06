@@ -1,27 +1,23 @@
-﻿#pragma warning( disable : 4715 4996)
-#define _CRT_SECURE_NO_WARNINGS
-#pragma warning( disable : 4290 )
+﻿#define _CRT_SECURE_NO_WARNINGS
+#define RAPIDJSON_NO_SIZETYPEDEFINE
 
-//#pragma intrinsic( memset, memcpy, strlen, strcat, strcpy )
-
-#include <stdint.h>
 #include <string.h>
 #include <sstream>
-#include <iostream>
+#include <fstream>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <time.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <algorithm>
-#include <lmerr.h>
 #include <map>
-#include <fstream>
-#include <io.h>
 #include <vector>
 #include <thread>
+//#include <iostream>
+//#include <sys/types.h>
+//#include <sys/stat.h>
+//#include <stdint.h>
+//#include <fcntl.h>
+//#include <algorithm>
+//#include <lmerr.h>
+//#include <io.h>
 
 
 #pragma comment(lib,"Ws2_32.lib")
@@ -32,14 +28,13 @@
 #include "sph_shabal.h"
 #include "mshabal.h"
 #include "mshabal256.h"
+#include "shabal_asm.h"
 #include "InstructionSet.h"
 
 #include "rapidjson/document.h"		// rapidjson's DOM-style API
 #include "rapidjson/prettywriter.h"	// for stringify JSON
-#include "rapidjson/filestream.h"	// wrapper of C stream for prettywriter as output
+//#include "rapidjson/filestream.h"	// wrapper of C stream for prettywriter as output
 using namespace rapidjson;
-
-
 
 /*
 #define GPU_ON_C 1
@@ -69,9 +64,9 @@ HANDLE hHeap;
 
 bool exit_flag = false;
 #ifdef __AVX__
-	char *version = "v1.160420_AVX";
+	char *version = "v1.160506_AVX";
 #else
-	char *version = "v1.160420";
+	char *version = "v1.160506";
 #endif 
 
 unsigned long long startnonce = 0;
@@ -86,26 +81,24 @@ char signature[33];
 char str_signature[65];
 char oldSignature[33];
  
-char nodeaddr[100] = "localhost";	// адрес пула
-size_t nodeport = 8125;				// порт пула
+char nodeaddr[INET_ADDRSTRLEN] = "localhost";	// адрес пула
+char nodeport[INET_ADDRSTRLEN] = "8125";		// порт пула
 
-char updateraddr[100] = "localhost";// адрес пула
-size_t updaterport = 8125;			// порт пула
+char updateraddr[INET_ADDRSTRLEN] = "localhost";// адрес пула
+char updaterport[INET_ADDRSTRLEN] = "8125";		// порт пула
 
-char infoaddr[100] = "localhost";	// адрес пула
-size_t infoport = 8125;				// порт пула
+char infoaddr[INET_ADDRSTRLEN] = "localhost";	// адрес пула
+char infoport[INET_ADDRSTRLEN] = "8125";		// порт пула
 
-size_t proxyport = 8126;			// порт пула
+char proxyport[INET_ADDRSTRLEN] = "8125";		// порт пула
 
-char *p_minerPath;					// путь к папке майнера
+char *p_minerPath = nullptr;		// путь к папке майнера
 size_t miner_mode = 0;				// режим майнера. 0=соло, 1=пул
 size_t cache_size = 100000;			// размер кэша чтения плотов
 std::vector<std::string> paths_dir; // пути
 bool show_msg = false;				// Показать общение с сервером в отправщике
 bool show_updates = false;			// Показать общение с сервером в апдейтере
-FILE * fp_Log;						// указатель на лог-файл
-FILE * fp_Stat;						// указатель на стат-файл
-FILE * fp_Time;						// указатель на стат-файл
+FILE * fp_Log = nullptr;			// указатель на лог-файл
 size_t send_interval = 100;			// время ожидания между отправками
 size_t update_interval = 1000;		// время ожидания между апдейтами
 short win_size_x = 80;
@@ -121,7 +114,7 @@ bool show_winner = true;			// показывать победителя
 
 
 
-unsigned long long my_target_deadline = MAXDWORD;// 4294967295;
+unsigned long long my_target_deadline = MAXDWORD;	// 4294967295;
 SYSTEMTIME cur_time;				// Текущее время
 unsigned long long total_size = 0;	// Общий объем плотов
 
@@ -130,8 +123,6 @@ char *json = nullptr;
 WINDOW * win_main;
 //PANEL  *panel_main;
 
-//std::vector<size_t> worker_progress_bytes;
-//std::vector<bool> worker_progress_alive;
 std::vector<std::thread> worker;
 
 struct t_worker_progress{
@@ -197,16 +188,16 @@ t_gpu gpu_devices;
 
 unsigned long long height = 0;
 unsigned long long baseTarget = 0;
-unsigned long long targetDeadlineInfo = 0; // Максимальный дедлайн пула
+unsigned long long targetDeadlineInfo = 0;	// Максимальный дедлайн пула
 volatile int stopThreads = 0;
-char *pass;						// пароль
+char *pass = nullptr;						// пароль
  
 CRITICAL_SECTION sessionsLock;	// обновление sessions
 CRITICAL_SECTION bestsLock;		// обновление bests
 CRITICAL_SECTION sharesLock;	// обновление shares
 
 
-void ShowMemError(void);
+void ShowMemErrorExit(void);
 
 void Log_init(void)
 {
@@ -219,7 +210,6 @@ void Log_init(void)
 			wprintw(win_main, "CreateDirectory failed (%d)\n", GetLastError(), 0);
 			wattroff(win_main, COLOR_PAIR(12));
 			use_log = false;
-			//free(filename);
 			return;
 		}
 		GetLocalTime(&cur_time);
@@ -257,12 +247,9 @@ void Log_server(char * strLog)
 	size_t len_str = strlen(strLog);
 	if ((len_str> 0) && use_log && fp_Log)
 	{
-		char * Msg_log = (char *)calloc(len_str * 2 + 1, sizeof(char));
-		if (Msg_log == nullptr)
-		{
-			ShowMemError();
-			exit(-1);
-		}
+		char * Msg_log = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, len_str * 2 + 1);
+		if (Msg_log == nullptr)		ShowMemErrorExit();
+		
 		for (size_t i = 0, j = 0; i<len_str; i++, j++)
 		{
 			if(strLog[i] == '\r')
@@ -288,8 +275,8 @@ void Log_server(char * strLog)
 		}
 		
 		fprintf_s(fp_Log, "%s", Msg_log);
-		free(Msg_log);
 		fflush(fp_Log);
+		HeapFree(hHeap, 0, Msg_log);
 	}
 }
 
@@ -311,12 +298,13 @@ void Log_u(size_t u_num)
 	}
 }
 
-void ShowMemError(void)
+void ShowMemErrorExit(void)
 {
 	Log("\n!!! Error allocating memory");
 	wattron(win_main, COLOR_PAIR(12));
 	wprintw(win_main, "Error allocating memory\n", 0);
 	wattroff(win_main, COLOR_PAIR(12));
+	exit(-1);
 }
 
 
@@ -338,11 +326,8 @@ int load_config(char *filename)
 	_fseeki64(pFile, 0, SEEK_END);
 	__int64 size = _ftelli64(pFile);
 	_fseeki64(pFile, 0, SEEK_SET);
-	json = (char*)calloc(size + 1, sizeof(char));
-	if (json == nullptr) {
-		ShowMemError();
-		exit(-1);
-	}
+	json = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, size + 1);
+	if (json == nullptr) ShowMemErrorExit();
 	len = fread_s(json, size, 1, size - 1, pFile);
 	fclose(pFile);
 
@@ -382,125 +367,135 @@ int load_config(char *filename)
 		}
 
 		Log("\nServer: "); 
-		if(document.HasMember("Server") &&	document["Server"].IsString())
-			strcpy(nodeaddr, document["Server"].GetString());
+		if(document.HasMember("Server") &&	document["Server"].IsString())	strcpy(nodeaddr, document["Server"].GetString());
 		Log(nodeaddr);
 
-			Log("\nPort: "); 
-		if(document.HasMember("Port") && (document["Port"].IsUint()))		// In this case, IsUint()/IsInt64()/IsUInt64() also return true.
-			nodeport = (size_t)document["Port"].GetUint();
-		Log_u(nodeport);
+		Log("\nPort: "); 
+		if (document.HasMember("Port"))
+		{
+			if (document["Port"].IsString())	strcpy(nodeport, document["Port"].GetString());
+			else if (document["Port"].IsUint())	_itoa_s(document["Port"].GetUint(), nodeport, INET_ADDRSTRLEN-1, 10);
+			Log(nodeport);
+		}
 
 		if(document.HasMember("Paths") && document["Paths"].IsArray()){
-			const Value& Paths = document["Paths"];	// Using a reference for consecutive access is handy and faster.
-			for (SizeType i = 0; i < Paths.Size(); i++){	// rapidjson uses SizeType instead of size_t.
+			const Value& Paths = document["Paths"];			// Using a reference for consecutive access is handy and faster.
+			for (SizeType i = 0; i < Paths.Size(); i++)
+			{	
+				Log("\nPath: ");
 				paths_dir.push_back(Paths[i].GetString()); 
-				Log("\nPath: "); Log((char*)paths_dir[i].c_str()); 
+				Log((char*)paths_dir[i].c_str()); 
 			}
 		}
 		
-		if(document.HasMember("CacheSize") && (document["CacheSize"].IsUint64()))		// In this case, IsUint()/IsInt64()/IsUInt64() also return true.
-			cache_size = document["CacheSize"].GetUint64();
-
-		Log("\nCacheSize: "); Log_u(cache_size);
+		Log("\nCacheSize: ");
+		if(document.HasMember("CacheSize") && (document["CacheSize"].IsUint64())) cache_size = document["CacheSize"].GetUint64();
+		Log_u(cache_size);
 		
-		if(document.HasMember("UseHDDWakeUp") && (document["UseHDDWakeUp"].IsBool()))		
-			use_wakeup = document["UseHDDWakeUp"].GetBool();
-		Log("\nUseHDDWakeUp: "); Log_u(use_wakeup);
+		Log("\nUseHDDWakeUp: ");
+		if(document.HasMember("UseHDDWakeUp") && (document["UseHDDWakeUp"].IsBool())) use_wakeup = document["UseHDDWakeUp"].GetBool();
+		Log_u(use_wakeup);
 
-		if(document.HasMember("ShowMsg") && (document["ShowMsg"].IsBool()))		
-			show_msg = document["ShowMsg"].GetBool();
-		Log("\nShowMsg: "); Log_u(show_msg);
+		Log("\nShowMsg: ");
+		if(document.HasMember("ShowMsg") && (document["ShowMsg"].IsBool()))	show_msg = document["ShowMsg"].GetBool();
+		Log_u(show_msg);
 
-		if(document.HasMember("ShowUpdates") && (document["ShowUpdates"].IsBool()))		
-			show_updates = document["ShowUpdates"].GetBool();
-		Log("\nShowUpdates: "); Log_u(show_updates);
+		Log("\nShowUpdates: ");
+		if(document.HasMember("ShowUpdates") && (document["ShowUpdates"].IsBool()))	show_updates = document["ShowUpdates"].GetBool();
+		Log_u(show_updates);
 
 		Log("\nSendInterval: "); 
-		if(document.HasMember("SendInterval") && (document["SendInterval"].IsUint()))		// In this case, IsUint()/IsInt64()/IsUInt64() also return true.
-			send_interval = (size_t)document["SendInterval"].GetUint();
+		if(document.HasMember("SendInterval") && (document["SendInterval"].IsUint())) send_interval = (size_t)document["SendInterval"].GetUint();
 		Log_u(send_interval);
 
 		Log("\nUpdateInterval: "); 
-		if(document.HasMember("UpdateInterval") && (document["UpdateInterval"].IsUint()))		// In this case, IsUint()/IsInt64()/IsUInt64() also return true.
-			update_interval = (size_t)document["UpdateInterval"].GetUint();
+		if(document.HasMember("UpdateInterval") && (document["UpdateInterval"].IsUint())) update_interval = (size_t)document["UpdateInterval"].GetUint();
 		Log_u(update_interval);
 
-		if(document.HasMember("UseFastRcv") && (document["UseFastRcv"].IsBool()))		
-			use_fast_rcv = document["UseFastRcv"].GetBool();
-		Log("\nUseFastRcv: "); Log_u(use_fast_rcv);
+		Log("\nUseFastRcv: ");
+		if(document.HasMember("UseFastRcv") && (document["UseFastRcv"].IsBool())) use_fast_rcv = document["UseFastRcv"].GetBool();
+		Log_u(use_fast_rcv);
 
-		if(document.HasMember("Debug") && (document["Debug"].IsBool()))		
-			use_debug = document["Debug"].GetBool();
-		Log("\nDebug: "); Log_u(use_debug);
+		Log("\nDebug: ");
+		if(document.HasMember("Debug") && (document["Debug"].IsBool()))	use_debug = document["Debug"].GetBool();
+		Log_u(use_debug);
 				
-		if (document.HasMember("UpdaterAddr") && document["UpdaterAddr"].IsString())
-			strcpy(updateraddr, document["UpdaterAddr"].GetString());
-		Log("\nUpdater address: "); Log(updateraddr);
+		Log("\nUpdater address: ");
+		if (document.HasMember("UpdaterAddr") && document["UpdaterAddr"].IsString()) strcpy(updateraddr, document["UpdaterAddr"].GetString());
+		Log(updateraddr);
 
-		if (document.HasMember("UpdaterPort") && (document["UpdaterPort"].IsUint()))		
-			updaterport = (size_t)document["UpdaterPort"].GetUint();
-		Log("\nUpdater port: "); Log_u(updaterport);
+		Log("\nUpdater port: ");
+		if (document.HasMember("UpdaterPort"))
+		{
+			if (document["UpdaterPort"].IsString())	strcpy(updaterport, document["UpdaterPort"].GetString());
+			else if (document["UpdaterPort"].IsUint())	_itoa_s(document["UpdaterPort"].GetUint(), updaterport, INET_ADDRSTRLEN-1, 10);
+		}
+		Log(updaterport);
 
-		if (document.HasMember("InfoAddr") && document["InfoAddr"].IsString())
-			strcpy(infoaddr, document["InfoAddr"].GetString());
+		Log("\nInfo address: ");
+		if (document.HasMember("InfoAddr") && document["InfoAddr"].IsString())	strcpy(infoaddr, document["InfoAddr"].GetString());
 		else strcpy(infoaddr, updateraddr);
-		Log("\nInfo address: "); Log(infoaddr);
+		Log(infoaddr);
 
-		if (document.HasMember("InfoPort") && (document["InfoPort"].IsUint()))
-			infoport = (size_t)document["InfoPort"].GetUint();
-		else infoport = updaterport;
-		Log("\nInfo port: "); Log_u(infoport);
+		Log("\nInfo port: ");
+		if (document.HasMember("InfoPort"))
+		{
+			if (document["InfoPort"].IsString())	strcpy(infoport, document["InfoPort"].GetString());
+			else if (document["InfoPort"].IsUint())	_itoa_s(document["InfoPort"].GetUint(), infoport, INET_ADDRSTRLEN-1, 10);
+		}
+		else strcpy(infoport, updaterport);
+		Log(infoport);
 
-
-		if (document.HasMember("EnableProxy") && (document["EnableProxy"].IsBool()))
-		enable_proxy = document["EnableProxy"].GetBool();
-		Log("\nEnableProxy: "); Log_u(enable_proxy);
+		Log("\nEnableProxy: ");
+		if (document.HasMember("EnableProxy") && (document["EnableProxy"].IsBool())) enable_proxy = document["EnableProxy"].GetBool();
+		Log_u(enable_proxy);
 
 		Log("\nProxyPort: ");
-		if (document.HasMember("ProxyPort") && (document["ProxyPort"].IsUint()))		// In this case, IsUint()/IsInt64()/IsUInt64() also return true.
-			proxyport = (size_t)document["ProxyPort"].GetUint();
-		Log_u(proxyport);
+		if (document.HasMember("ProxyPort"))
+		{
+			if (document["ProxyPort"].IsString())	strcpy(proxyport, document["ProxyPort"].GetString());
+			else if (document["ProxyPort"].IsUint())	_itoa_s(document["ProxyPort"].GetUint(), proxyport, INET_ADDRSTRLEN-1, 10);
+		}
+		Log(proxyport);
 
-		if (document.HasMember("ShowWinner") && (document["ShowWinner"].IsBool()))
-			show_winner = document["ShowWinner"].GetBool();
-		Log("\nShowWinner: "); Log_u(show_winner);
+		Log("\nShowWinner: "); 
+		if (document.HasMember("ShowWinner") && (document["ShowWinner"].IsBool()))	show_winner = document["ShowWinner"].GetBool();
+		Log_u(show_winner);
 
-		if (document.HasMember("SendBestOnly") && (document["SendBestOnly"].IsBool()))
-			send_best_only = document["SendBestOnly"].GetBool();
-		Log("\nSendBestOnly: "); Log_u(send_best_only);
+		Log("\nSendBestOnly: ");
+		if (document.HasMember("SendBestOnly") && (document["SendBestOnly"].IsBool())) send_best_only = document["SendBestOnly"].GetBool();
+		Log_u(send_best_only);
 
-		if (document.HasMember("TargetDeadline") && (document["TargetDeadline"].IsInt64()))
-			my_target_deadline = document["TargetDeadline"].GetUint64();
-		Log("\nTargetDeadline: "); Log_llu(my_target_deadline);
+		Log("\nTargetDeadline: ");
+		if (document.HasMember("TargetDeadline") && (document["TargetDeadline"].IsInt64()))	my_target_deadline = document["TargetDeadline"].GetUint64();
+		Log_llu(my_target_deadline);
 
-		if (document.HasMember("UseBoost") && (document["UseBoost"].IsBool()))
-			use_boost = document["UseBoost"].GetBool();
-		Log("\nUseBoost: "); Log_u(use_boost);
+		Log("\nUseBoost: ");
+		if (document.HasMember("UseBoost") && (document["UseBoost"].IsBool())) use_boost = document["UseBoost"].GetBool();
+		Log_u(use_boost);
 
-		
-		if(document.HasMember("WinSizeX") && (document["WinSizeX"].IsUint()))		
-			win_size_x = (short)document["WinSizeX"].GetUint();
-		Log("\nWinSizeX: ");  Log_u(win_size_x);
+		Log("\nWinSizeX: ");
+		if(document.HasMember("WinSizeX") && (document["WinSizeX"].IsUint())) win_size_x = (short)document["WinSizeX"].GetUint();
+		Log_u(win_size_x);
 
-		if(document.HasMember("WinSizeY") && (document["WinSizeY"].IsUint()))		
-			win_size_y = (short)document["WinSizeY"].GetUint();
-		Log("\nWinSizeY: ");  Log_u(win_size_y);
+		Log("\nWinSizeY: ");
+		if(document.HasMember("WinSizeY") && (document["WinSizeY"].IsUint())) win_size_y = (short)document["WinSizeY"].GetUint();
+		Log_u(win_size_y);
 
 #ifdef GPU_ON_C
-		if (document.HasMember("GPU_Platform") && (document["GPU_Platform"].IsInt()))
-			gpu_devices.use_gpu_platform = (size_t)document["GPU_Platform"].GetUint();
-		Log("\nGPU_Platform: "); Log_llu(gpu_devices.use_gpu_platform);
+		Log("\nGPU_Platform: "); 
+		if (document.HasMember("GPU_Platform") && (document["GPU_Platform"].IsInt())) gpu_devices.use_gpu_platform = (size_t)document["GPU_Platform"].GetUint();
+		Log_llu(gpu_devices.use_gpu_platform);
 	
-		if (document.HasMember("GPU_Device") && (document["GPU_Device"].IsInt()))
-			gpu_devices.use_gpu_device = (size_t)document["GPU_Device"].GetUint();
-		Log("\nGPU_Device: "); Log_llu(gpu_devices.use_gpu_device);
+		Log("\nGPU_Device: "); 
+		if (document.HasMember("GPU_Device") && (document["GPU_Device"].IsInt())) gpu_devices.use_gpu_device = (size_t)document["GPU_Device"].GetUint();
+		Log_llu(gpu_devices.use_gpu_device);
 #endif	
 
 	}
 	 
 	Log("\n=== Config loaded ===");
-	free(json);
+	HeapFree(hHeap, 0, json);
 	return 1;
 }
 
@@ -531,7 +526,7 @@ int xdigit( char digit ){
        if( '0' <= digit && digit <= '9' ) val = digit -'0';
   else if( 'a' <= digit && digit <= 'f' ) val = digit -'a'+10;
   else if( 'A' <= digit && digit <= 'F' ) val = digit -'A'+10;
-  else                                    val = -1;
+  else val = -1;
   return val;
 }
  
@@ -573,12 +568,8 @@ void GetPass(char* p_strFolderPath)
   size_t lSize;
   unsigned char * buffer;
   size_t len_pass;
-  char * filename = (char*)calloc(MAX_PATH, sizeof(char));
-  if (filename == nullptr)
-  {
-	  ShowMemError();
-	  exit(-1);
-  }
+  char * filename = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, MAX_PATH);
+  if (filename == nullptr) ShowMemErrorExit();
   sprintf_s(filename, MAX_PATH, "%s%s", p_strFolderPath, "passphrases.txt");
   
 //  printf_s("\npass from: %s\n",filename);
@@ -590,28 +581,19 @@ void GetPass(char* p_strFolderPath)
 	  wattroff(win_main, COLOR_PAIR(12));
 	  exit (-1);
   }
-
+  HeapFree(hHeap, 0, filename);
   _fseeki64(pFile , 0 , SEEK_END);
   lSize = _ftelli64(pFile);
   _fseeki64(pFile, 0, SEEK_SET);
 
-  buffer = (unsigned char*)calloc(lSize + 1, sizeof(char));
-  if (buffer == nullptr) 
-  {
-	  ShowMemError();
-	  exit(-1);
-  }
+  buffer = (unsigned char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, lSize + 1);
+  if (buffer == nullptr) ShowMemErrorExit();
   
   len_pass = fread(buffer, 1, lSize, pFile);
-
   fclose(pFile);
-  free (filename);
-  pass = (char*)calloc(lSize * 3, sizeof(char));
-  if (pass == nullptr)
-  {
-	  ShowMemError();
-	  exit(-1);
-  }
+  
+  pass = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, lSize * 3);
+  if (pass == nullptr) ShowMemErrorExit();
   
 	for(size_t i=0, j=0; i<len_pass; i++, j++) 
 	{
@@ -627,7 +609,7 @@ void GetPass(char* p_strFolderPath)
 				else memcpy(&pass[j],&buffer[i],1);
   }
   //printf_s("\n%s\n",pass);
-  free (buffer);
+	HeapFree(hHeap, 0, buffer);
 }
 
 
@@ -670,7 +652,7 @@ size_t GetFiles(const std::string &str, std::vector <t_files> *p_files)
 							p_files->push_back({
 								*iter,
 								FindFileData.cFileName,
-								(((static_cast<ULONGLONG>(FindFileData.nFileSizeHigh) << sizeof(FindFileData.nFileSizeLow) * 8) | FindFileData.nFileSizeLow)),
+								(((static_cast<ULONGLONG>(FindFileData.nFileSizeHigh) << (sizeof(FindFileData.nFileSizeLow) * 8)) | FindFileData.nFileSizeLow)),
 								0 });
 							i++;
 						}
@@ -683,26 +665,6 @@ size_t GetFiles(const std::string &str, std::vector <t_files> *p_files)
 	return i;
 }
 
-/*
-size_t Get_index_acc(unsigned long long key)
-{
-	EnterCriticalSection(&bestsLock);
-	size_t cnt = bests.size();
-	for (size_t a = 0; a < cnt; a++)
-	{
-		if (bests[a].account_id == key)
-		{
-			LeaveCriticalSection(&bestsLock);
-			//Log("\nbests[a].targetDeadline = "); Log_llu(bests[a].targetDeadline);
-			return a;
-		}
-	}
-	bests.emplace_back(key, 0, 0, 0, targetDeadlineInfo);
-	size_t acc_index = bests.size() - 1;
-	LeaveCriticalSection(&bestsLock);
-	return acc_index;
-}
-*/
 
 size_t Get_index_acc(unsigned long long key)
 {
@@ -839,32 +801,24 @@ void *generator_i(void *x_void_ptr)
 void proxy_i(void)
 {
 	int iResult;
-	unsigned buffer_size = 1000;
-	char* buffer = (char*)calloc(buffer_size, sizeof(char));
-	if (buffer == nullptr) {
-		ShowMemError();
-		exit(-1);
-	}
-	char* tmp_buffer = (char*)calloc(buffer_size, sizeof(char));
-	if (tmp_buffer == nullptr) {
-		ShowMemError();
-		exit(-1);
-	}
+	size_t buffer_size = 1000;
+	char* buffer = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, buffer_size);
+	if (buffer == nullptr) ShowMemErrorExit();
+	char* tmp_buffer = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, buffer_size);
+	if (tmp_buffer == nullptr) ShowMemErrorExit();
 	char tbuffer[9];
 	SOCKET ServerSocket = INVALID_SOCKET;
 	SOCKET ClientSocket = INVALID_SOCKET;
 	struct addrinfo *result = nullptr;
 	struct addrinfo hints;
 
-	ZeroMemory(&hints, sizeof(hints));
-	hints.ai_family = AF_INET; //AF_UNSPEC;  // использовать IPv4 или IPv6, нам неважно
+	RtlSecureZeroMemory(&hints, sizeof(hints));
+	hints.ai_family = AF_INET; 
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 	hints.ai_flags = AI_PASSIVE;
 
-	char pport[6];
-	_itoa((int)proxyport, pport, 10);
-	iResult = getaddrinfo(nullptr, pport, &hints, &result);
+	iResult = getaddrinfo(nullptr, proxyport, &hints, &result);
 	if (iResult != 0) {
 		wattron(win_main, COLOR_PAIR(12));
 		wprintw(win_main, "PROXY: getaddrinfo failed with error: %d\n", iResult, 0);
@@ -912,6 +866,10 @@ void proxy_i(void)
 		struct sockaddr_in client_socket_address;
 		int iAddrSize = sizeof(struct sockaddr_in);
 		ClientSocket = accept(ServerSocket, (struct sockaddr *)&client_socket_address, (socklen_t*)&iAddrSize);
+		
+		char client_address_str[INET_ADDRSTRLEN];
+		inet_ntop(hints.ai_family, &(client_socket_address.sin_addr), client_address_str, INET_ADDRSTRLEN);
+
 		if (ClientSocket == INVALID_SOCKET)
 		{
 			if (WSAGetLastError() != WSAEWOULDBLOCK)
@@ -924,10 +882,10 @@ void proxy_i(void)
 		}
 		else
 		{
-			memset(buffer, 0, buffer_size);
+			RtlSecureZeroMemory(buffer, buffer_size);
 			do{
-				memset(tmp_buffer, 0, buffer_size);
-				iResult = recv(ClientSocket, tmp_buffer, buffer_size - 1, 0);
+				RtlSecureZeroMemory(tmp_buffer, buffer_size);
+				iResult = recv(ClientSocket, tmp_buffer, (int)(buffer_size - 1), 0);
 				strcat(buffer, tmp_buffer);
 			} while ((iResult > 0) && !use_fast_rcv);
 
@@ -976,18 +934,17 @@ void proxy_i(void)
 								satellite_size.insert(std::pair <u_long, unsigned long long>(client_socket_address.sin_addr.S_un.S_addr, get_totalsize));
 							}
 							EnterCriticalSection(&sharesLock);
-							shares.push_back({ inet_ntoa(client_socket_address.sin_addr), get_accountId, get_deadline, get_nonce });
+							shares.push_back({ client_address_str, get_accountId, get_deadline, get_nonce });
 							LeaveCriticalSection(&sharesLock);
-							{
-								_strtime(tbuffer);
-								wattron(win_main, COLOR_PAIR(2));
-								wprintw(win_main, "%s [%20llu]\treceived DL: %11llu {%s}\n", tbuffer, get_accountId, get_deadline / baseTarget, inet_ntoa(client_socket_address.sin_addr), 0);
-								wattroff(win_main, COLOR_PAIR(2));
-							}
-							Log("Proxy: received DL "); Log_llu(get_deadline); Log(" from "); Log(inet_ntoa(client_socket_address.sin_addr));
+
+							_strtime(tbuffer);
+							wattron(win_main, COLOR_PAIR(2));
+							wprintw(win_main, "%s [%20llu]\treceived DL: %11llu {%s}\n", tbuffer, get_accountId, get_deadline / baseTarget, client_address_str, 0);
+							wattroff(win_main, COLOR_PAIR(2));
+							Log("Proxy: received DL "); Log_llu(get_deadline); Log(" from "); Log(client_address_str);
 
 							//Подтверждаем
-							memset(buffer, 0, buffer_size);
+							RtlSecureZeroMemory(buffer, buffer_size);
 							size_t acc = Get_index_acc(get_accountId);
 							int bytes = sprintf_s(buffer, buffer_size, "HTTP/1.0 200 OK\r\nConnection: close\r\n\r\n{\"result\": \"proxy\",\"accountId\": %llu,\"deadline\": %llu,\"targetDeadline\": %llu}", get_accountId, get_deadline / baseTarget, bests[acc].targetDeadline);
 							iResult = send(ClientSocket, buffer, bytes, 0);
@@ -1004,10 +961,10 @@ void proxy_i(void)
 								{
 									_strtime(tbuffer);
 									wattron(win_main, COLOR_PAIR(9));
-									wprintw(win_main, "%s [%20llu]\tsent confirmation to %s\n", tbuffer, get_accountId, inet_ntoa(client_socket_address.sin_addr), 0);
+									wprintw(win_main, "%s [%20llu]\tsent confirmation to %s\n", tbuffer, get_accountId, client_address_str, 0);
 									wattroff(win_main, COLOR_PAIR(9));
 								}
-								Log("\nProxy: sent confirmation to "); Log(inet_ntoa(client_socket_address.sin_addr));
+								Log("\nProxy: sent confirmation to "); Log(client_address_str);
 							}
 						}
 					}
@@ -1016,7 +973,7 @@ void proxy_i(void)
 				{
 					if (strstr(buffer, "getMiningInfo") != nullptr)
 					{
-						memset(buffer, 0, buffer_size);
+						RtlSecureZeroMemory(buffer, buffer_size);
 						int bytes = sprintf_s(buffer, buffer_size, "HTTP/1.0 200 OK\r\nConnection: close\r\n\r\n{\"baseTarget\":\"%llu\",\"height\":\"%llu\",\"generationSignature\":\"%s\",\"targetDeadline\":%llu}", baseTarget, height, str_signature, targetDeadlineInfo);
 						iResult = send(ClientSocket, buffer, bytes, 0);
 						if (iResult == SOCKET_ERROR)
@@ -1028,7 +985,7 @@ void proxy_i(void)
 						}
 						else
 						{
-							Log("\nProxy: sent update to "); Log(inet_ntoa(client_socket_address.sin_addr));
+							Log("\nProxy: sent update to "); Log(client_address_str);
 						}
 					}
 					else
@@ -1052,8 +1009,8 @@ void proxy_i(void)
 		std::this_thread::yield();
 		std::this_thread::sleep_for(std::chrono::milliseconds(200));
 	}
-	free(buffer);
-	free(tmp_buffer);
+	HeapFree(hHeap, 0, buffer);
+	HeapFree(hHeap, 0, tmp_buffer);
 }
 
 void send_i(void)
@@ -1062,12 +1019,9 @@ void send_i(void)
 	SOCKET ConnectSocket;
 
 	int iResult = 0;
-	int buffer_size = 1000;
-	char* buffer = (char*)calloc(buffer_size, sizeof(char));
-	if (buffer == nullptr) {
-		ShowMemError();
-		exit(-1);
-	}
+	size_t buffer_size = 1000;
+	char* buffer = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, buffer_size);
+	if (buffer == nullptr) ShowMemErrorExit();
 
 	char tbuffer[9];
 
@@ -1076,28 +1030,9 @@ void send_i(void)
 	
 	for (;!exit_flag;)
 	{
-		//while (shares.empty() && sessions.empty() && !exit_flag)	 //пауза при бездействии   
-		//{
-		//	std::this_thread::yield();
-		//	std::this_thread::sleep_for(std::chrono::milliseconds(100));
-		//}
-		
-		//unsigned long long part = num_shares;
-		//if ((part - i > 1) && (sent_num_shares != part))
-		//{
-		//	if (use_sorting) qsort(&shares[0], part, sizeof(t_shares), comp_min);
-		//	else  qsort(&shares[0], part, sizeof(t_shares), comp_max);
-		//	for (unsigned long long j = 0; j < part; j++)
-		//	if (shares[j].to_send == 1)
-		//	{
-		//		i = j;
-		//		break;
-		//	}
-		//}
-
 		if (stopThreads == 1)
 		{
-			free(buffer);
+			HeapFree(hHeap, 0, buffer);
 			return;
 		}
 
@@ -1122,14 +1057,12 @@ void send_i(void)
 				}
 			}
 
-			ZeroMemory(&hints, sizeof(hints));
-			hints.ai_family = AF_INET; //AF_UNSPEC;  // использовать IPv4 или IPv6, нам неважно
+			RtlSecureZeroMemory(&hints, sizeof(hints));
+			hints.ai_family = AF_INET; 
 			hints.ai_socktype = SOCK_STREAM;
 			hints.ai_protocol = IPPROTO_TCP;
-			hints.ai_flags = AI_PASSIVE;
-			char nport[6];
-			_itoa((int)nodeport, nport, 10);
-			iResult = getaddrinfo(nodeaddr, nport, &hints, &result);
+
+			iResult = getaddrinfo(nodeaddr, nodeport, &hints, &result);
 			if (iResult != 0) {
 				if (network_quality > 0) network_quality--;
 				wattron(win_main, COLOR_PAIR(12));
@@ -1165,7 +1098,7 @@ void send_i(void)
 				freeaddrinfo(result);
 
 				int bytes = 0;
-				memset(buffer, 0, buffer_size);
+				RtlSecureZeroMemory(buffer, buffer_size);
 				if (miner_mode == 0)
 				{
 					bytes = sprintf_s(buffer, buffer_size, "POST /burst?requestType=submitNonce&secretPhrase=%s&nonce=%llu HTTP/1.0\r\nConnection: close\r\n\r\n", pass, iter->nonce);
@@ -1178,20 +1111,16 @@ void send_i(void)
 				}
 				if (miner_mode == 2)
 				{
-					char *f1 = (char*)calloc(MAX_PATH, sizeof(char));
-					char *str_len = (char*)calloc(MAX_PATH, sizeof(char));
-					if ((f1 == nullptr) || (str_len == nullptr))
-					{
-						ShowMemError();
-						exit(-1);
-					}
+					char* f1 = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, MAX_PATH);
+					char* str_len = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, MAX_PATH);
+					if ((f1 == nullptr) || (str_len == nullptr)) ShowMemErrorExit();
 
 					int len = sprintf_s(f1, MAX_PATH, "%llu:%llu:%llu\n", iter->account_id, iter->nonce, height);
-					_itoa_s(len, str_len, 10, 10);
+					_itoa_s(len, str_len, MAX_PATH-1, 10);
 
-					bytes = sprintf_s(buffer, buffer_size, "POST /pool/submitWork HTTP/1.0\r\nHost: %s:%llu\r\nContent-Type: text/plain;charset=UTF-8\r\nContent-Length: %i\r\n\r\n%s", nodeaddr, nodeport, len, f1);
-					free(f1);
-					free(str_len);
+					bytes = sprintf_s(buffer, buffer_size, "POST /pool/submitWork HTTP/1.0\r\nHost: %s:%s\r\nContent-Type: text/plain;charset=UTF-8\r\nContent-Length: %i\r\n\r\n%s", nodeaddr, nodeport, len, f1);
+					HeapFree(hHeap, 0, f1);
+					HeapFree(hHeap, 0, str_len);
 				}
 
 				// Sending to server
@@ -1216,7 +1145,7 @@ void send_i(void)
 					wattroff(win_main, COLOR_PAIR(9));
 
 					if (show_msg) wprintw(win_main, "send: %s\n", buffer, 0); // показываем послание
-					Log("\nSender:   Sent to server: "); Log_server(buffer);
+					Log("\nSender: Sent: "); Log_server(buffer);
 
 					EnterCriticalSection(&sessionsLock);
 					sessions.push_back({ConnectSocket, iter->account_id, dl});
@@ -1248,12 +1177,12 @@ void send_i(void)
 					wattroff(win_main, COLOR_PAIR(12));
 					continue;
 				}
-				memset(buffer, 0, buffer_size);
-				int  pos = 0;
+				RtlSecureZeroMemory(buffer, buffer_size);
+				size_t  pos = 0;
 				iResult = 0;
 				do{
-					iResult = recv(ConnectSocket, &buffer[pos], 1000 - pos - 1, 0);
-					if (iResult > 0) pos += iResult;
+					iResult = recv(ConnectSocket, &buffer[pos], (int)(buffer_size - pos - 1), 0);
+					if (iResult > 0) pos += (size_t)iResult;
 				} while ((iResult > 0) && !use_fast_rcv);
 				if (iResult == SOCKET_ERROR)
 				{
@@ -1269,7 +1198,7 @@ void send_i(void)
 				else
 				{
 					if (show_msg) wprintw(win_main, "\nReceived: %s\n", buffer, 0);
-					Log("\nSender:   Received from server: "); Log_server(buffer);
+					Log("\nSender: Received: "); Log_server(buffer);
 					if (network_quality < 100) network_quality++;
 
 					char *find = strstr(buffer, "\r\n\r\n");
@@ -1365,19 +1294,17 @@ void send_i(void)
 		std::this_thread::yield();
 		std::this_thread::sleep_for(std::chrono::milliseconds(send_interval));
 	}
-	free(buffer);
-	//free(tmp_buffer);
+	HeapFree(hHeap, 0, buffer);
 	return;
 }
 
-void procscoop4(unsigned long long nonce, unsigned long long n, char *data, size_t acc, const std::string &file_name) {
+void procscoop_m_4(unsigned long long nonce, unsigned long long n, char *data, size_t acc, const std::string &file_name) {
 	char *cache;
 	char sig0[32 + 64];
 	char sig1[32 + 64];
 	char sig2[32 + 64];
 	char sig3[32 + 64];
 	cache = data;
-	char tbuffer[9];
 	
 	memcpy(sig0, signature, 32);
 	memcpy(sig1, signature, 32);
@@ -1466,6 +1393,7 @@ void procscoop4(unsigned long long nonce, unsigned long long n, char *data, size
 				LeaveCriticalSection(&sharesLock);
 				if (use_debug)
 				{
+					char tbuffer[9];
 					_strtime(tbuffer);
 					wattron(win_main, COLOR_PAIR(2));
 					wprintw(win_main, "%s [%20llu] found DL:      %9llu\n", tbuffer, bests[acc].account_id, *wertung / baseTarget, 0);
@@ -1473,15 +1401,11 @@ void procscoop4(unsigned long long nonce, unsigned long long n, char *data, size
 				}
 			}
 		}
-
 	}
 }
-//#pragma optimize("", on)
 
 
-/*
-
-unsigned long long procscoop8(unsigned long long nonce, unsigned long long n, char *data, int acc, const std::string &file_name) {
+void procscoop_m256_8(unsigned long long nonce, unsigned long long n, char *data, size_t acc, const std::string &file_name) {
 	char *cache;
 	char sig0[32 + 64];
 	char sig1[32 + 64];
@@ -1571,47 +1495,61 @@ unsigned long long procscoop8(unsigned long long nonce, unsigned long long n, ch
 			*wertung = *wertung7;
 			posn = 7;
 		}
-
-		Log("\nЗашли");
 		
-		if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
+		if ((*wertung / baseTarget) <= bests[acc].targetDeadline)
 		{
-			
-			bests[acc].best = *wertung;
-			bests[acc].nonce = nonce + v + posn;
-			if ((bests[acc].best / baseTarget) <= bests[acc].targetDeadline) // Has to be this good before we inform the node
+			if (send_best_only)
 			{
-				Log("\nfound deadline=");	Log_llu(bests[acc].best / baseTarget); Log(" nonce=");	Log_llu(bests[acc].nonce); Log(" for account: "); Log_llu(bests[acc].account_id);
-				//printf("\rbestn_local: %llu  bestn_local: %llu  n:%llu\n", best_local, bestn_local, n);
-				pthread_mutex_lock(&byteLock);
-				shares[num_shares].best = bests[acc].best;
-				shares[num_shares].nonce = bests[acc].nonce;
-				//shares[num_shares].to_send = 1;
-				shares[num_shares].account_id = bests[acc].account_id;
-				shares[num_shares].file_name = file_name;
-				
+				if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
+				{
+					Log("\nfound deadline=");	Log_llu(*wertung / baseTarget); Log(" nonce=");	Log_llu(nonce + v + posn); Log(" for account: "); Log_llu(bests[acc].account_id); Log(" file: "); Log((char*)file_name.c_str());
+					EnterCriticalSection(&bestsLock);
+					bests[acc].best = *wertung;
+					bests[acc].nonce = nonce + v + posn;
+					bests[acc].DL = *wertung / baseTarget;
+					LeaveCriticalSection(&bestsLock);
+					EnterCriticalSection(&sharesLock);
+					shares.push_back({ file_name, bests[acc].account_id, bests[acc].best, bests[acc].nonce });
+					LeaveCriticalSection(&sharesLock);
+					if (use_debug)
+					{
+						char tbuffer[9];
+						_strtime(tbuffer);
+						wattron(win_main, COLOR_PAIR(2));
+						wprintw(win_main, "%s [%20llu] found DL:      %9llu\n", tbuffer, bests[acc].account_id, bests[acc].DL, 0);
+						wattroff(win_main, COLOR_PAIR(2));
+					}
+				}
+			}
+			else
+			{
+				if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
+				{
+					Log("\nfound deadline=");	Log_llu(*wertung / baseTarget); Log(" nonce=");	Log_llu(nonce + v); Log(" for account: "); Log_llu(bests[acc].account_id); Log(" file: "); Log((char*)file_name.c_str());
+					EnterCriticalSection(&bestsLock);
+					bests[acc].best = *wertung;
+					bests[acc].nonce = nonce + v + posn;
+					bests[acc].DL = *wertung / baseTarget;
+					LeaveCriticalSection(&bestsLock);
+				}
+				EnterCriticalSection(&sharesLock);
+				shares.push_back({ file_name, bests[acc].account_id, *wertung, nonce + v + posn });
+				LeaveCriticalSection(&sharesLock);
 				if (use_debug)
 				{
-					cls();
 					_strtime(tbuffer);
-					SetConsoleTextAttribute(hConsole, 2);
-					printf("\r%s [%20llu]\tfound deadline %llu\n", tbuffer, bests[acc].account_id, shares[num_shares].best / baseTarget);
-					SetConsoleTextAttribute(hConsole, 7);
+					wattron(win_main, COLOR_PAIR(2));
+					wprintw(win_main, "%s [%20llu] found DL:      %9llu\n", tbuffer, bests[acc].account_id, *wertung / baseTarget, 0);
+					wattroff(win_main, COLOR_PAIR(2));
 				}
-				num_shares++;
-				pthread_mutex_unlock(&byteLock);
 			}
 		}
-		//nonce++;
-		//cache += 64*8;
 	}
-
-	return v;
 }
 
-*/
 
-void procscoop(const unsigned long long nonce, const unsigned long long n, char *data, const size_t acc, const std::string &file_name) {
+
+void procscoop_sph(const unsigned long long nonce, const unsigned long long n, char *data, const size_t acc, const std::string &file_name) {
 	char *cache;
 	char sig[32 + 64];
 	cache = data;
@@ -1625,6 +1563,76 @@ void procscoop(const unsigned long long nonce, const unsigned long long n, char 
 		sph_shabal256_init(&x);
 		sph_shabal256(&x, (const unsigned char*)sig, 64 + 32);
 		sph_shabal256_close(&x, res);
+
+		unsigned long long *wertung = (unsigned long long*)res;
+
+		if ((*wertung / baseTarget) <= bests[acc].targetDeadline)
+		{
+			if (send_best_only)
+			{
+				if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
+				{
+					Log("\nfound deadline=");	Log_llu(*wertung / baseTarget); Log(" nonce=");	Log_llu(nonce + v); Log(" for account: "); Log_llu(bests[acc].account_id); Log(" file: "); Log((char*)file_name.c_str());
+					EnterCriticalSection(&bestsLock);
+					bests[acc].best = *wertung;
+					bests[acc].nonce = nonce + v;
+					bests[acc].DL = *wertung / baseTarget;
+					LeaveCriticalSection(&bestsLock);
+					EnterCriticalSection(&sharesLock);
+					shares.push_back({ file_name, bests[acc].account_id, bests[acc].best, bests[acc].nonce });
+					LeaveCriticalSection(&sharesLock);
+					if (use_debug)
+					{
+						char tbuffer[9];
+						_strtime(tbuffer);
+						wattron(win_main, COLOR_PAIR(2));
+						wprintw(win_main, "%s [%20llu] found DL:      %9llu\n", tbuffer, bests[acc].account_id, bests[acc].DL, 0);
+						wattroff(win_main, COLOR_PAIR(2));
+					}
+				}
+			}
+			else
+			{
+				if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
+				{
+					Log("\nfound deadline=");	Log_llu(*wertung / baseTarget); Log(" nonce=");	Log_llu(nonce + v); Log(" for account: "); Log_llu(bests[acc].account_id); Log(" file: "); Log((char*)file_name.c_str());
+					EnterCriticalSection(&bestsLock);
+					bests[acc].best = *wertung;
+					bests[acc].nonce = nonce + v;
+					bests[acc].DL = *wertung / baseTarget;
+					LeaveCriticalSection(&bestsLock);
+				}
+				EnterCriticalSection(&sharesLock);
+				shares.push_back({ file_name, bests[acc].account_id, *wertung, nonce + v });
+				LeaveCriticalSection(&sharesLock);
+				if (use_debug)
+				{
+					char tbuffer[9];
+					_strtime(tbuffer);
+					wattron(win_main, COLOR_PAIR(2));
+					wprintw(win_main, "%s [%20llu] found DL:      %9llu\n", tbuffer, bests[acc].account_id, *wertung / baseTarget, 0);
+					wattroff(win_main, COLOR_PAIR(2));
+				}
+			}
+		}
+	}
+}
+
+
+void procscoop_asm(const unsigned long long nonce, const unsigned long long n, char *data, const size_t acc, const std::string &file_name) {
+	char *cache;
+	char sig[32 + 64];
+	cache = data;
+	char res[32];
+	memcpy_s(sig, sizeof(sig), signature, sizeof(char) * 32);
+	asm_shabal_context x;
+	for (unsigned long long v = 0; v < n; v++)
+	{
+		memcpy_s(&sig[32], sizeof(sig) - 32, &cache[v * 64], sizeof(char) * 64);
+
+		asm_shabal_init(&x, 256);
+		asm_shabal(&x, (const unsigned char*)sig, 64 + 32);
+		asm_shabal_close(&x, 0, 0, res);
 
 		unsigned long long *wertung = (unsigned long long*)res;
 
@@ -1718,8 +1726,8 @@ void work_i(const size_t local_num) {
 		unsigned long long key, nonce, nonces, stagger;
 		QueryPerformanceCounter((LARGE_INTEGER*)&start_time_read);
 		sscanf_s(iter->Name.c_str(), "%llu_%llu_%llu_%llu", &key, &nonce, &nonces, &stagger);
-		//if ((double)(nonces % stagger) > DBL_EPSILON)
-		if ((double)(nonces % stagger) != 0)  
+		if ((double)(nonces % stagger) > DBL_EPSILON)
+		//if ((double)(nonces % stagger) != 0)  
 		{
 			wattron(win_main, COLOR_PAIR(12));
 			wprintw(win_main, "File %s wrong stagger?\n", iter->Name.c_str(), 0);
@@ -1792,10 +1800,7 @@ void work_i(const size_t local_num) {
 		}
 
 		char *cache = (char *)VirtualAlloc(nullptr, cache_size_local * 64, MEM_COMMIT, PAGE_READWRITE);
-		if (cache == nullptr) {
-			ShowMemError();
-			exit(-1);
-		}
+		if (cache == nullptr) ShowMemErrorExit();
 
 		Log("\nRead file : ");	Log((char*)iter->Name.c_str());
 		
@@ -1842,9 +1847,9 @@ void work_i(const size_t local_num) {
 				{
 					QueryPerformanceCounter((LARGE_INTEGER*)&start_time_proc);
 					#ifdef __AVX__
-						procscoop4(n + nonce + i, cache_size_local, cache, acc, iter->Name);// Process block
+						procscoop_m_4(n + nonce + i, cache_size_local, cache, acc, iter->Name);// Process block
 					#else
-						procscoop(n + nonce + i, cache_size_local, cache, acc, iter->Name);// Process block
+						procscoop_sph(n + nonce + i, cache_size_local, cache, acc, iter->Name);// Process block
 					#endif
 					QueryPerformanceCounter(&li);
 					sum_time_proc += (double)(li.QuadPart - start_time_proc);
@@ -1897,10 +1902,7 @@ void GetJSON(char* req) {
 	const unsigned BUF_SIZE = 1024;
 
 	char *buffer = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, BUF_SIZE);
-	if (buffer == nullptr) {
-		ShowMemError();
-		exit(-1);
-	}
+	if (buffer == nullptr) ShowMemErrorExit();
 
 	char *find = nullptr;
 	unsigned long long msg_len = 0;
@@ -1911,14 +1913,12 @@ void GetJSON(char* req) {
 
 	json = nullptr;
 
-	ZeroMemory(&hints, sizeof(hints));
-	hints.ai_family = AF_INET; //AF_UNSPEC;  // использовать IPv4 или IPv6, нам неважно
+	RtlSecureZeroMemory(&hints, sizeof(hints));
+	hints.ai_family = AF_INET; 
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
-	hints.ai_flags = AI_PASSIVE;
-	char iport[6];
-	_itoa((int)infoport, iport, 10);
-	iResult = getaddrinfo(infoaddr, iport, &hints, &result);
+
+	iResult = getaddrinfo(infoaddr, infoport, &hints, &result);
 	if (iResult != 0) {
 		wattron(win_main, COLOR_PAIR(12));
 		wprintw(win_main, "WINNER: Getaddrinfo failed with error: %d\n", iResult, 0);
@@ -1939,7 +1939,6 @@ void GetJSON(char* req) {
 		{
 			unsigned t = 3000;
 			setsockopt(WalletSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&t, sizeof(unsigned));
-			//Log("\n-Connecting to server: "); Log(updaterip); Log(":"); Log_u(updaterport);
 			iResult = connect(WalletSocket, result->ai_addr, (int)result->ai_addrlen);
 			if (iResult == SOCKET_ERROR) {
 				wattron(win_main, COLOR_PAIR(12));
@@ -1967,10 +1966,7 @@ void GetJSON(char* req) {
 						msg_len = msg_len + iReceived_size;
 						Log("\nrealloc: ");
 						tmp_buffer = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, msg_len + BUF_SIZE);
-						if (tmp_buffer == nullptr) {
-							ShowMemError();
-							exit(-1);
-						}
+						if (tmp_buffer == nullptr) ShowMemErrorExit();
 						memcpy(tmp_buffer, buffer, msg_len);
 						HeapFree(hHeap, 0, buffer);
 						buffer = tmp_buffer;
@@ -1991,10 +1987,7 @@ void GetJSON(char* req) {
 						if (find != nullptr)
 						{
 							json = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, msg_len);
-							if (json == nullptr) {
-								ShowMemError();
-								exit(-1);
-							}
+							if (json == nullptr) ShowMemErrorExit();
 							sprintf_s(json, HeapSize(hHeap, 0, json), "%s", find + 4 * sizeof(char));
 						}
 					} // recv() != SOCKET_ERROR
@@ -2018,16 +2011,12 @@ void GetBlockInfo(unsigned num_block)
 	char* pool_name = nullptr;
 	unsigned long long timestamp0 = 0;
 	unsigned long long timestamp1 = 0;
-	const unsigned req_size = 255;
 	char tbuffer[9];
 	// Запрос двух последних блоков из блокчейна
 
-	char* str_req = (char*)calloc(req_size, sizeof(char));
-	if (str_req == nullptr) {
-		ShowMemError();
-		exit(-1);
-	}
-	sprintf_s(str_req, req_size, "POST /burst?requestType=getBlocks&firstIndex=%u&lastIndex=%u HTTP/1.0\r\nConnection: close\r\n\r\n", num_block, num_block + 1);
+	char* str_req = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, MAX_PATH);
+	if (str_req == nullptr) ShowMemErrorExit();
+	sprintf_s(str_req, MAX_PATH, "POST /burst?requestType=getBlocks&firstIndex=%u&lastIndex=%u HTTP/1.0\r\nConnection: close\r\n\r\n", num_block, num_block + 1);
 	GetJSON(str_req);
 	//Log("\n getBlocks: ");
 
@@ -2042,17 +2031,11 @@ void GetBlockInfo(unsigned num_block)
 			{
 				const Value& bl_0 = blocks[SizeType(0)];
 				const Value& bl_1 = blocks[SizeType(1)];
-				generatorRS = (char*)calloc(strlen(bl_0["generatorRS"].GetString()) + 1, sizeof(char));
-				if (generatorRS == nullptr) {
-					ShowMemError();
-					exit(-1);
-				}
+				generatorRS = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, strlen(bl_0["generatorRS"].GetString()) + 1);
+				if (generatorRS == nullptr) ShowMemErrorExit();
 				strcpy(generatorRS, bl_0["generatorRS"].GetString());
-				generator = (char*)calloc(strlen(bl_0["generator"].GetString()) + 1, sizeof(char));
-				if (generator == nullptr) {
-					ShowMemError();
-					exit(-1);
-				}
+				generator = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, strlen(bl_0["generator"].GetString()) + 1);
+				if (generator == nullptr) ShowMemErrorExit();
 				strcpy(generator, bl_0["generator"].GetString());
 				last_block_height = bl_0["height"].GetUint();
 				timestamp0 = bl_0["timestamp"].GetUint64();
@@ -2061,18 +2044,15 @@ void GetBlockInfo(unsigned num_block)
 		}
 		else Log("\n- error parsing JSON getBlocks");
 	}
-	free(str_req);
+	HeapFree(hHeap, 0, str_req);
 	if (json != nullptr) HeapFree(hHeap, 0, json);
 	if ((generator != nullptr) && (generatorRS != nullptr) && (timestamp0 != 0) && (timestamp1 != 0))
 	if (last_block_height == height - 1)
 	{
 		// Запрос данных аккаунта
-		str_req = (char*)calloc(req_size, sizeof(char));
-		if (str_req == nullptr) {
-			ShowMemError();
-			exit(-1);
-		}
-		sprintf_s(str_req, req_size, "POST /burst?requestType=getAccount&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", generator);
+		str_req = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, MAX_PATH);
+		if (str_req == nullptr) ShowMemErrorExit();
+		sprintf_s(str_req, MAX_PATH, "POST /burst?requestType=getAccount&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", generator);
 		GetJSON(str_req);
 		//Log("\n getAccount: ");
 
@@ -2084,28 +2064,22 @@ void GetBlockInfo(unsigned num_block)
 			{
 				if (doc_acc.HasMember("name"))
 				{
-					name = (char*)calloc(strlen(doc_acc["name"].GetString()) + 1, sizeof(char));
-					if (name == nullptr) {
-						ShowMemError();
-						exit(-1);
-					}
+					name = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, strlen(doc_acc["name"].GetString()) + 1);
+					if (name == nullptr) ShowMemErrorExit();
 					strcpy(name, doc_acc["name"].GetString());
 				}
 			}
 			else Log("\n- error parsing JSON getAccount");
 		}
-		free(str_req);
+		HeapFree(hHeap, 0, str_req);
 		if (json != nullptr) HeapFree(hHeap, 0, json);
 
 		// Запрос RewardAssighnment по данному аккаунту
-		str_req = (char*)calloc(req_size, sizeof(char));
-		if (str_req == nullptr) {
-			ShowMemError();
-			exit(-1);
-		}
-		sprintf_s(str_req, req_size, "POST /burst?requestType=getRewardRecipient&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", generator);
+		str_req = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, MAX_PATH);
+		if (str_req == nullptr) ShowMemErrorExit();
+		sprintf_s(str_req, MAX_PATH, "POST /burst?requestType=getRewardRecipient&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", generator);
 		GetJSON(str_req);
-		free(str_req);
+		HeapFree(hHeap, 0, str_req);
 		//Log("\n getRewardRecipient: ");
 		
 		if (json == nullptr)	Log("\n- error in message from pool (getRewardRecipient)\n");
@@ -2116,11 +2090,8 @@ void GetBlockInfo(unsigned num_block)
 			{
 				if (doc_reward.HasMember("rewardRecipient"))
 				{
-					rewardRecipient = (char*)calloc(strlen(doc_reward["rewardRecipient"].GetString()) + 1, sizeof(char));
-					if (rewardRecipient == nullptr) {
-						ShowMemError();
-						exit(-1);
-					}
+					rewardRecipient = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, strlen(doc_reward["rewardRecipient"].GetString()) + 1);
+					if (rewardRecipient == nullptr) ShowMemErrorExit();
 					strcpy(rewardRecipient, doc_reward["rewardRecipient"].GetString());
 				}
 			}
@@ -2135,12 +2106,9 @@ void GetBlockInfo(unsigned num_block)
 			if (strcmp(generator, rewardRecipient) != 0)
 			{
 				// Запрос данных аккаунта пула
-				str_req = (char*)calloc(req_size, sizeof(char));
-				if (str_req == nullptr) {
-					ShowMemError();
-					exit(-1);
-				}
-				sprintf_s(str_req, req_size, "POST /burst?requestType=getAccount&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", rewardRecipient);
+				str_req = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, MAX_PATH);
+				if (str_req == nullptr) ShowMemErrorExit();
+				sprintf_s(str_req, MAX_PATH, "POST /burst?requestType=getAccount&account=%s HTTP/1.0\r\nConnection: close\r\n\r\n", rewardRecipient);
 				GetJSON(str_req);
 				//Log("\n getAccount: ");
 
@@ -2153,25 +2121,19 @@ void GetBlockInfo(unsigned num_block)
 					rapidjson::Document doc_pool;
 					if (doc_pool.Parse<0>(json).HasParseError() == false)
 					{
-						pool_accountRS = (char*)calloc(strlen(doc_pool["accountRS"].GetString()) + 1, sizeof(char));
-						if (pool_accountRS == nullptr) {
-							ShowMemError();
-							exit(-1);
-						}
+						pool_accountRS = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, strlen(doc_pool["accountRS"].GetString()) + 1);
+						if (pool_accountRS == nullptr) ShowMemErrorExit();
 						strcpy(pool_accountRS, doc_pool["accountRS"].GetString());
 						if (doc_pool.HasMember("name"))
 						{
-							pool_name = (char*)calloc(strlen(doc_pool["name"].GetString()) + 1, sizeof(char));
-							if (pool_name == nullptr) {
-								ShowMemError();
-								exit(-1);
-							}
+							pool_name = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, strlen(doc_pool["name"].GetString()) + 1);
+							if (pool_name == nullptr) ShowMemErrorExit();
 							strcpy(pool_name, doc_pool["name"].GetString());
 						}
 					}
 					else Log("\n- error parsing JSON pool getAccount");
 				}
-				free(str_req);
+				HeapFree(hHeap, 0, str_req);
 				HeapFree(hHeap, 0, json);
 			}
 		}
@@ -2194,36 +2156,31 @@ void GetBlockInfo(unsigned num_block)
 		wprintw(win_main, "%s Winner: no info yet\n", tbuffer, 0);
 		wattroff(win_main, COLOR_PAIR(11));
 	}
-	free(generatorRS);
-	free(generator);
-	free(name);
-	free(rewardRecipient);
-	free(pool_name);
-	free(pool_accountRS);
+	HeapFree(hHeap, 0, generatorRS);
+	HeapFree(hHeap, 0, generator);
+	HeapFree(hHeap, 0, name);
+	HeapFree(hHeap, 0, rewardRecipient);
+	HeapFree(hHeap, 0, pool_name);
+	HeapFree(hHeap, 0, pool_accountRS);
 }
 
 
 void pollLocal(void) {
-	int buffer_size = 1000;
-	char *buffer = (char*)calloc(buffer_size, sizeof(char));
-	if (buffer == nullptr) {
-		ShowMemError();
-		exit(-1);
-	}
+	size_t buffer_size = 1000;
+	char *buffer = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, buffer_size);
+	if (buffer == nullptr) ShowMemErrorExit();
 
 	int iResult;
 	struct addrinfo *result = nullptr;
 	struct addrinfo hints;
 	SOCKET UpdaterSocket = INVALID_SOCKET;
 
-	ZeroMemory(&hints, sizeof(hints));
-	hints.ai_family = AF_INET; //AF_UNSPEC;  // использовать IPv4 или IPv6, нам неважно
+	RtlSecureZeroMemory(&hints, sizeof(hints));
+	hints.ai_family = AF_INET; 
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
-	hints.ai_flags = AI_PASSIVE;
-	char uport[6];
-	_itoa((int)updaterport, uport, 10);
-	iResult = getaddrinfo(updateraddr, uport, &hints, &result);
+
+	iResult = getaddrinfo(updateraddr, updaterport, &hints, &result);
 	if (iResult != 0) {
 		if (network_quality > 0) network_quality--;
 		Log("\n*! GMI: getaddrinfo failed with error: "); Log_u(WSAGetLastError());
@@ -2238,7 +2195,7 @@ void pollLocal(void) {
 		else {
 			const unsigned t = 1000;
 			setsockopt(UpdaterSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&t, sizeof(unsigned));
-			Log("\n*Connecting to server: "); Log(updateraddr); Log(":"); Log_u(updaterport);
+			//Log("\n*Connecting to server: "); Log(updateraddr); Log(":"); Log(updaterport);
 			iResult = connect(UpdaterSocket, result->ai_addr, (int)result->ai_addrlen);
 			if (iResult == SOCKET_ERROR) {
 				if (network_quality > 0) network_quality--;
@@ -2246,7 +2203,7 @@ void pollLocal(void) {
 			}
 			else {
 				int bytes;
-				if (miner_mode == 2) bytes = sprintf_s(buffer, buffer_size, "GET /pool/getMiningInfo HTTP/1.0\r\nHost: %s:%llu\r\nContent-Type: text/plain;charset=UTF-8\r\n\r\n", updateraddr, updaterport);
+				if (miner_mode == 2) bytes = sprintf_s(buffer, buffer_size, "GET /pool/getMiningInfo HTTP/1.0\r\nHost: %s:%s\r\nContent-Type: text/plain;charset=UTF-8\r\n\r\n", updateraddr, updaterport);
 				else bytes = sprintf_s(buffer, buffer_size, "POST /burst?requestType=getMiningInfo HTTP/1.0\r\nConnection: close\r\n\r\n");
 
 				iResult = send(UpdaterSocket, buffer, bytes, 0);
@@ -2257,15 +2214,15 @@ void pollLocal(void) {
 				}
 				else{
 					if (show_updates) wprintw(win_main, "Sent: \n%s\n", buffer, 0);
-					Log("\n*Sent to server: "); Log_server(buffer);
+					Log("\n* GMI: Sent: "); Log_server(buffer);
 
 
-					memset(buffer, 0, buffer_size);
-					int  pos = 0;
+					RtlSecureZeroMemory(buffer, buffer_size);
+					size_t  pos = 0;
 					iResult = 0;
 					do{
-						iResult = recv(UpdaterSocket, &buffer[pos], 1000 - pos - 1, 0);
-						if (iResult > 0) pos += iResult;
+						iResult = recv(UpdaterSocket, &buffer[pos], (int)(buffer_size - pos - 1), 0);
+						if (iResult > 0) pos += (size_t)iResult;
 					} while ((iResult > 0) && !use_fast_rcv);
 					if (iResult == SOCKET_ERROR)
 					{
@@ -2274,7 +2231,7 @@ void pollLocal(void) {
 					}
 					else {
 						if (network_quality < 100) network_quality++;
-						Log("\n* GMI: Received from server: "); Log_server(buffer);
+						Log("\n* GMI: Received: "); Log_server(buffer);
 						if (show_updates)  wprintw(win_main, "Received: %s\n", buffer, 0);
 
 						// locate HTTP header
@@ -2315,7 +2272,7 @@ void pollLocal(void) {
 										endBaseTarget[0] = 0;
 
 										targetDeadlineInfo = _strtoui64(rtargetDeadline, 0, 10);
-										Log("\ntargetDeadlineInfo: "), Log_llu(targetDeadlineInfo);
+										//Log("\ntargetDeadlineInfo: "), Log_llu(targetDeadlineInfo);
 									}
 
 									unsigned long long  heightInfo = _strtoui64(rheight, 0, 10);
@@ -2333,15 +2290,15 @@ void pollLocal(void) {
 		}
 		freeaddrinfo(result);
 	}
-	free(buffer);
+	HeapFree(hHeap, 0, buffer);
 	return;
 }
 
 
 void updater_i(void) {
-	if ((updaterport <= 0) && (strlen(updateraddr) <= 3))
+	if (strlen(updateraddr) <= 3)
 	{
-		Log("\nGMI: ERROR in UpdaterAddr or UpdaterPort");
+		Log("\nGMI: ERROR in UpdaterAddr");
 		exit(2);
 	}
 	for (; !exit_flag;)
@@ -2353,25 +2310,38 @@ void updater_i(void) {
 }
  
 
-void hostname_to_ip(char * in, char* out)
+void hostname_to_ip(char * in_addr, char* out_addr)
 {
-	struct in_addr addr;
-    size_t i = 0;
-	
-	struct hostent *remoteHost = gethostbyname(in);
-	if (remoteHost != nullptr)
-	{
-		if (remoteHost->h_addrtype == AF_INET)
-		{
-			while (remoteHost->h_addr_list[i] != 0) {
-				addr.s_addr = *(u_long *)remoteHost->h_addr_list[i++];
-				strcpy(out, inet_ntoa(addr));
-				Log("\nAddress: "); Log(in); Log(" defined as: "); Log(out);
-			}
-		}
-		else if (remoteHost->h_addrtype == AF_NETBIOS) printf_s("NETBIOS address was returned\n");
+	struct addrinfo *result = nullptr;
+	struct addrinfo *ptr = nullptr;
+	struct addrinfo hints;
+	DWORD dwRetval;
+	struct sockaddr_in  *sockaddr_ipv4;
+
+	RtlSecureZeroMemory(&hints, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
+
+	dwRetval = getaddrinfo(in_addr, NULL, &hints, &result);
+	if (dwRetval != 0) {
+		Log("\n getaddrinfo failed with error: "); Log_llu(dwRetval);
+		WSACleanup();
+		exit(-1);
 	}
-	else strcpy(out, "Error");
+	for (ptr = result; ptr != nullptr; ptr = ptr->ai_next) {
+
+		if(ptr->ai_family == AF_INET)
+		{
+			sockaddr_ipv4 = (struct sockaddr_in *) ptr->ai_addr;
+			char str[INET_ADDRSTRLEN];
+			inet_ntop(hints.ai_family, &(sockaddr_ipv4->sin_addr), str, INET_ADDRSTRLEN);
+			//strcpy(out_addr, inet_ntoa(sockaddr_ipv4->sin_addr));
+			strcpy(out_addr, str);
+			Log("\nAddress: "); Log(in_addr); Log(" defined as: "); Log(out_addr);
+		}
+	}
+	freeaddrinfo(result);
 }
 
 
@@ -2632,11 +2602,7 @@ int GPU_init(void)
 	}
 
 	cl_platform_id *platforms = (cl_platform_id*)calloc((size_t)num_platforms, sizeof(cl_platform_id));
-	if (platforms == nullptr) {
-		ShowMemError();
-		wrefresh(win_main);
-		return -1;
-	}
+	if (platforms == nullptr) ShowMemErrorExit();
 
 	ret_err = clGetPlatformIDs(num_platforms, platforms, &num_platforms);
 	if (ret_err != CL_SUCCESS)
@@ -2680,8 +2646,8 @@ int GPU_init(void)
 	gpu_devices.devices = (cl_device_id*)calloc((size_t)gpu_devices.num_devices, sizeof(cl_device_id));
 	if (gpu_devices.devices == nullptr) 
 	{
-		ShowMemError();
 		free(platforms);
+		ShowMemErrorExit();
 		return -2;
 	}
 
@@ -2950,19 +2916,13 @@ int main(int argc, char **argv) {
 
 
 	size_t cwdsz = GetCurrentDirectoryA(0, 0);
-	p_minerPath = (char*)calloc(cwdsz + 2, sizeof(char));
-	if (p_minerPath == nullptr) {
-		ShowMemError();
-		exit(-1);
-	}
+	p_minerPath = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, cwdsz + 2);
+	if (p_minerPath == nullptr) ShowMemErrorExit();
 	GetCurrentDirectoryA(DWORD(cwdsz), LPSTR(p_minerPath));
 	strcat(p_minerPath, "\\");
 
-	char* conf_filename = (char*)calloc(MAX_PATH, sizeof(char));
-	if (conf_filename == nullptr) {
-		ShowMemError();
-		exit(-1);
-	}
+	char* conf_filename = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, MAX_PATH);
+	if (conf_filename == nullptr) ShowMemErrorExit();
 	if ((argc >= 2) && (strcmp(argv[1], "-config") == 0)){
 		if (strstr(argv[2], ":\\")) sprintf_s(conf_filename, MAX_PATH, "%s", argv[2]);
 		else sprintf_s(conf_filename, MAX_PATH, "%s%s", p_minerPath, argv[2]);
@@ -2970,7 +2930,7 @@ int main(int argc, char **argv) {
 	else sprintf_s(conf_filename, MAX_PATH, "%s%s", p_minerPath, "miner.conf");
 
 	load_config(conf_filename);
-	free(conf_filename);
+	HeapFree(hHeap, 0, conf_filename);
 
 	Log("\nMiner path: "); Log(p_minerPath);
 
@@ -2994,32 +2954,26 @@ int main(int argc, char **argv) {
 		exit(-1);
 	}
 
-	char* updaterip = (char*)calloc(50, sizeof(char));
-	if (updaterip == nullptr) {
-		ShowMemError();
-		exit(-1);
-	}
-	char* nodeip = (char*)calloc(50, sizeof(char));
-	if (nodeip == nullptr) {
-		ShowMemError();
-		exit(-1);
-	}
+	char* updaterip = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, 50);
+	if (updaterip == nullptr) ShowMemErrorExit();
+	char* nodeip = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, 50);
+	if (nodeip == nullptr) ShowMemErrorExit();
 	wattron(win_main, COLOR_PAIR(11));
 
 	hostname_to_ip(nodeaddr, nodeip);
-	wprintw(win_main, "Pool address    %s (ip %s:%Iu)\n", nodeaddr, nodeip, nodeport, 0);
+	wprintw(win_main, "Pool address    %s (ip %s:%s)\n", nodeaddr, nodeip, nodeport, 0);
 
 	if (strlen(updateraddr) > 3) hostname_to_ip(updateraddr, updaterip);
-	wprintw(win_main, "Updater address %s (ip %s:%Iu)\n", updateraddr, updaterip, updaterport, 0);
+	wprintw(win_main, "Updater address %s (ip %s:%s)\n", updateraddr, updaterip, updaterport, 0);
 
 	wattroff(win_main, COLOR_PAIR(11));
-	free(updaterip);
-	free(nodeip);
+	HeapFree(hHeap, 0, updaterip);
+	HeapFree(hHeap, 0, nodeip);
 
 
 	// обнуляем сигнатуру
-	memset(oldSignature, 0, 33);
-	memset(signature, 0, 33);
+	RtlSecureZeroMemory(oldSignature, 33);
+	RtlSecureZeroMemory(signature, 33);
 
 	// Инфа по файлам
 	wattron(win_main, COLOR_PAIR(15));
@@ -3033,7 +2987,7 @@ int main(int argc, char **argv) {
 		GetFiles(*iter, &files);
 		unsigned long long tot_size = 0;
 		for (auto it = files.begin(); it != files.end(); ++it) 	tot_size += it->Size;
-		wprintw(win_main, "%s\tfiles: %2Iu\t size: %4llu Gb\n", (char*)iter->c_str(), files.size(), tot_size / 1024 / 1024 / 1024, 0);
+		wprintw(win_main, "%s\tfiles: %2Iu\t size: %4llu Gb\n", (char*)iter->c_str(), (unsigned)files.size(), tot_size / 1024 / 1024 / 1024, 0);
 		total_size += tot_size;
 	}
 
@@ -3169,7 +3123,7 @@ int main(int argc, char **argv) {
 					if ((curr_time - end_threads_time) / pcFreq > 360)
 					{
 						std::vector<t_files> tmp_files;
-						for (auto i = 0; i < paths_dir.size(); i++)		GetFiles(paths_dir[i], &tmp_files);
+						for (size_t  i = 0; i < paths_dir.size(); i++)		GetFiles(paths_dir[i], &tmp_files);
 						if (use_debug)
 						{
 							char tbuffer[9];
@@ -3219,7 +3173,7 @@ int main(int argc, char **argv) {
 		//}
 
 	}
-
+	if (pass != nullptr) HeapFree(hHeap, 0, pass);
 	if (updater.joinable()) updater.join();
 	Log("\nUpdater stopped");
 	if (enable_proxy) proxy.join();
@@ -3232,7 +3186,7 @@ int main(int argc, char **argv) {
 	DeleteCriticalSection(&sessionsLock);
 	DeleteCriticalSection(&sharesLock);
 	DeleteCriticalSection(&bestsLock);
-	free(p_minerPath);
+	HeapFree(hHeap, 0, p_minerPath);
 
 	WSACleanup();
 	Log("\nexit");

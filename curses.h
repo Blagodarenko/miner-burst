@@ -243,7 +243,10 @@ typedef struct
 
 typedef struct _win       /* definition of a window */
 {
+	chtype _attrs;        /* standard attributes and colors */
+	chtype _bkgd;         /* background, normally blank */
 	struct _win *_parent; /* subwin's pointer to parent win */
+	chtype **_y;          /* pointer to line pointer array */
 	int   _cury;          /* current pseudo-cursor */
     int   _curx;
     int   _maxy;          /* max window coordinates */
@@ -257,9 +260,6 @@ typedef struct _win       /* definition of a window */
 	int   _bmarg;         /* bottom of scrolling region */
 	int   _delayms;       /* milliseconds of delay for getch() */
 	int   _parx, _pary;   /* coords relative to parent (0,0) */
-	chtype _attrs;        /* standard attributes and colors */
-	chtype _bkgd;         /* background, normally blank */
-	chtype **_y;          /* pointer to line pointer array */
 	bool  _clear;         /* causes clear at next refresh */
     bool  _leaveit;       /* leaves cursor where it is */
     bool  _scroll;        /* allows window scrolling */
@@ -274,46 +274,41 @@ typedef struct _win       /* definition of a window */
 
 typedef struct
 {
-    bool  alive;          /* if initscr() called, and not endwin() */
-    bool  autocr;         /* if cr -> lf */
-    bool  cbreak;         /* if terminal unbuffered */
-    bool  echo;           /* if terminal echo */
-    bool  raw_inp;        /* raw input mode (v. cooked input) */
-    bool  raw_out;        /* raw output mode (7 v. 8 bits) */
-    bool  audible;        /* FALSE if the bell is visual */
-    bool  mono;           /* TRUE if current screen is mono */
-    bool  resized;        /* TRUE if TERM has been resized */
-    bool  orig_attr;      /* TRUE if we have the original colors */
-    short orig_fore;      /* original screen foreground color */
-    short orig_back;      /* original screen foreground color */
-    int   cursrow;        /* position of physical cursor */
+	unsigned long _trap_mbe;       /* trap these mouse button events */
+	unsigned long _map_mbe_to_key; /* map mouse buttons to slk */
+	WINDOW *slk_winptr;            /* window for slk */
+	int   cursrow;        /* position of physical cursor */
     int   curscol;        /* position of physical cursor */
     int   visibility;     /* visibility of cursor */
     int   orig_cursor;    /* original cursor size */
     int   lines;          /* new value for LINES */
     int   cols;           /* new value for COLS */
-    unsigned long _trap_mbe;       /* trap these mouse button events */
-    unsigned long _map_mbe_to_key; /* map mouse buttons to slk */
-    int   mouse_wait;              /* time to wait (in ms) for a
-                                      button release after a press, in 
-                                      order to count it as a click */
-    int   slklines;                /* lines in use by slk_init() */
-    WINDOW *slk_winptr;            /* window for slk */
-    int   linesrippedoff;          /* lines ripped off via ripoffline() */
-    int   linesrippedoffontop;     /* lines ripped off on 
-                                      top via ripoffline() */
-    int   delaytenths;             /* 1/10ths second to wait block
-                                      getch() for */
-    bool  _preserve;               /* TRUE if screen background
-                                      to be preserved */
-    int   _restore;                /* specifies if screen background
-                                      to be restored, and how */
+	int   mouse_wait;              /* time to wait (in ms) for a button release after a press, in order to count it as a click */
+	int   slklines;                /* lines in use by slk_init() */
+	int   linesrippedoff;          /* lines ripped off via ripoffline() */
+	int   linesrippedoffontop;     /* lines ripped off on top via ripoffline() */
+	int   delaytenths;             /* 1/10ths second to wait block getch() for */
+	int   _restore;                /* specifies if screen background to be restored, and how */
+	short orig_fore;      /* original screen foreground color */
+	short orig_back;      /* original screen foreground color */
+	bool  _preserve;               /* TRUE if screen background to be preserved */
     bool  save_key_modifiers;      /* TRUE if each key modifiers saved
                                       with each key press */
     bool  return_key_modifiers;    /* TRUE if modifier keys are
                                       returned as "real" keys */
     bool  key_code;                /* TRUE if last key is a special key;
                                       used internally by get_wch() */
+	bool  alive;          /* if initscr() called, and not endwin() */
+	bool  autocr;         /* if cr -> lf */
+	bool  cbreak;         /* if terminal unbuffered */
+	bool  echo;           /* if terminal echo */
+	bool  raw_inp;        /* raw input mode (v. cooked input) */
+	bool  raw_out;        /* raw output mode (7 v. 8 bits) */
+	bool  audible;        /* FALSE if the bell is visual */
+	bool  mono;           /* TRUE if current screen is mono */
+	bool  resized;        /* TRUE if TERM has been resized */
+	bool  orig_attr;      /* TRUE if we have the original colors */
+
 #ifdef XCURSES
     int   XcurscrSize;    /* size of Xcurscr shared memory block */
     bool  sb_on;

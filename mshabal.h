@@ -91,7 +91,7 @@ extern "C" {
     unsigned char buf1[64];
     unsigned char buf2[64];
     unsigned char buf3[64];
-    unsigned ptr;
+    size_t ptr;
     mshabal_u32 state[(12 + 16 + 16) * 4];
     mshabal_u32 Whigh, Wlow;
     unsigned out_size;
@@ -106,6 +106,7 @@ extern "C" {
   void avx1_mshabal_init(mshabal_context *sc, unsigned out_size);
   void avx2_mshabal_init(mshabal_context *sc, unsigned out_size);
 
+  void avx1_mshabal_init2(mshabal_context *sc, unsigned out_size);
   /*
    * Process some more data bytes; four chunks of data, pointed to by
    * data0, data1, data2 and data3, are processed. The four chunks have
@@ -118,9 +119,9 @@ extern "C" {
    * corresponding instance is deactivated (the final value obtained from
    * that instance is undefined).
    */
-  void sse4_mshabal(mshabal_context *sc, const void *data0, const void *data1, const void *data2, const void *data3, unsigned len);
-  void avx1_mshabal(mshabal_context *sc, const void *data0, const void *data1, const void *data2, const void *data3, unsigned len);
-  void avx2_mshabal(mshabal_context *sc, const void *data0, const void *data1, const void *data2, const void *data3, unsigned len);
+  void sse4_mshabal(mshabal_context *sc, const void *data0, const void *data1, const void *data2, const void *data3, size_t len);
+  void avx1_mshabal(mshabal_context *sc, const void *data0, const void *data1, const void *data2, const void *data3, size_t len);
+  void avx2_mshabal(mshabal_context *sc, const void *data0, const void *data1, const void *data2, const void *data3, size_t len);
 
   /*
    * Terminate the Shabal computation incarnated by the provided context

@@ -51,9 +51,9 @@ HANDLE hHeap;
 
 bool exit_flag = false;
 #ifdef __AVX__
-char const *const version = "v1.160610_AVX";
+char const *const version = "v1.160705_AVX";
 #else
-char const *const version = "v1.160610";
+char const *const version = "v1.160705";
 #endif 
 
 unsigned long long startnonce = 0;

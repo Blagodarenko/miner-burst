@@ -1,197 +1,11 @@
-﻿//#define _CRT_SECURE_NO_WARNINGS
-#define RAPIDJSON_NO_SIZETYPEDEFINE
-
-namespace rapidjson { typedef size_t SizeType; }
-using namespace rapidjson;
-
-#include "rapidjson/document.h"		// rapidjson's DOM-style API
-#include "rapidjson/error/en.h"
+﻿
+#include "miner.h"
 
 
-#include <string.h>
-#include <sstream>
-#include <fstream>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include <map>
-#include <vector>
-#include <thread>
-
-#pragma comment(lib,"Ws2_32.lib")
-#include <ws2tcpip.h>
-
-#include "curses.h" 
-//#include "panel.h" 
-#include "sph_shabal.h"
-#include "mshabal.h"
-#include "mshabal256.h"
-#include "shabal_asm.h"
-#include "InstructionSet.h"
-
-/*
-#define GPU_ON_C 1
-//#define GPU_ON_CPP
-
-#ifdef GPU_ON_CPP
-#define __CL_ENABLE_EXCEPTIONS 100
-#include <CL\cl.hpp>
-
-#include "OpenCL_Error.h"
-#include "OpenCL_Platform.h"
-#include "OpenCL_Device.h"
-#endif
-
-#ifdef GPU_ON_C
-//#define __CL_ENABLE_EXCEPTIONS 100
-#include <CL\cl.h>
-#endif
-*/
 
 // Initialize static member data
 const InstructionSet::InstructionSet_Internal InstructionSet::CPU_Rep;
 
-
-HANDLE hHeap;
-
-bool exit_flag = false;
-#ifdef __AVX__
-	char const *const version = "v1.160610_AVX";
-#else
-char const *const version = "v1.160610";
-#endif 
-
-unsigned long long startnonce = 0;
-unsigned long nonces = 0;
-unsigned int scoop = 0;
- 
-unsigned long long deadline = 0;
-
-int network_quality = 100;
- 
-char signature[33];
-char str_signature[65];
-char oldSignature[33];
- 
-char nodeaddr[INET_ADDRSTRLEN] = "localhost";	// адрес пула
-char nodeport[INET_ADDRSTRLEN] = "8125";		// порт пула
-
-char updateraddr[INET_ADDRSTRLEN] = "localhost";// адрес пула
-char updaterport[INET_ADDRSTRLEN] = "8125";		// порт пула
-
-char infoaddr[INET_ADDRSTRLEN] = "localhost";	// адрес пула
-char infoport[INET_ADDRSTRLEN] = "8125";		// порт пула
-
-char proxyport[INET_ADDRSTRLEN] = "8125";		// порт пула
-
-char *p_minerPath = nullptr;		// путь к папке майнера
-size_t miner_mode = 0;				// режим майнера. 0=соло, 1=пул
-size_t cache_size = 100000;			// размер кэша чтения плотов
-std::vector<std::string> paths_dir; // пути
-bool show_msg = false;				// Показать общение с сервером в отправщике
-bool show_updates = false;			// Показать общение с сервером в апдейтере
-FILE * fp_Log = nullptr;			// указатель на лог-файл
-size_t send_interval = 100;			// время ожидания между отправками
-size_t update_interval = 1000;		// время ожидания между апдейтами
-short win_size_x = 80;
-short win_size_y = 60;
-bool use_fast_rcv = false;
-bool use_debug = false;
-bool enable_proxy = false;
-bool send_best_only = true;
-bool use_wakeup = false;
-bool use_log = true;				// Вести лог
-bool use_boost = false;				// Использовать повышенный приоритет для потоков
-bool show_winner = true;			// показывать победителя
-
-
-
-unsigned long long my_target_deadline = MAXDWORD;	// 4294967295;
-SYSTEMTIME cur_time;				// Текущее время
-unsigned long long total_size = 0;	// Общий объем плотов
-
-WINDOW * win_main;
-//PANEL  *panel_main;
-
-std::vector<std::thread> worker;
-
-struct t_worker_progress{
-	size_t Number;
-	unsigned long long Reads_bytes;
-	bool isAlive;
-};
-
-std::vector<t_worker_progress> worker_progress;
-
-std::map <u_long, unsigned long long> satellite_size; // Структура с объемами плотов сателлитов
-
-struct t_files{
-	std::string Path;
-	std::string Name;
-	unsigned long long Size;// = 0;
-	unsigned long long Key;
-	unsigned long long StartNonce;
-	unsigned long long Nonces;
-	unsigned long long Stagger;
-	//unsigned State;// = 0;
-	//t_files(std::string p_Path, std::string p_Name, unsigned long long p_Size, unsigned p_State) : Path(std::move(p_Path)), Name(std::move(p_Name)), Size(p_Size), State(p_State){};
-	//t_files(t_files &&fill) : Path(std::move(fill.Path)), Name(std::move(fill.Name)), Size(fill.Size), State(fill.State){};
-	//t_files& operator=(const t_files& fill) = default;
-};
-
-struct t_shares{
-	std::string file_name;
-	unsigned long long account_id;// = 0;
-	unsigned long long best;// = 0;
-	unsigned long long nonce;// = 0;
-	//t_shares(std::string p_file_name, unsigned long long p_account_id, unsigned long long p_best, unsigned long long p_nonce) : file_name(std::move(p_file_name)), account_id(p_account_id), best(p_best), nonce(p_nonce){};
-}; 
-
-std::vector<t_shares> shares;
-
-struct t_best{
-	unsigned long long account_id;// = 0;
-	unsigned long long best;// = 0;
-	unsigned long long nonce;// = 0;
-	unsigned long long DL;// = 0;
-	unsigned long long targetDeadline;// = 0;
-	//t_best(unsigned long long p_account_id, unsigned long long p_best, unsigned long long p_nonce, unsigned long long p_DL, unsigned long long p_targetDeadline) : account_id(p_account_id), best(p_best), nonce(p_nonce), DL(p_DL), targetDeadline(p_targetDeadline){};
-};
-
-std::vector<t_best> bests;
-
-struct t_session{
-	SOCKET Socket;
-	unsigned long long ID;
-	unsigned long long deadline;
-};
-
-std::vector<t_session> sessions;
-
-#ifdef GPU_ON_C
-struct t_gpu{
-	size_t max_WorkGroupSize = 1;
-	size_t use_gpu_platform = 0;
-	size_t use_gpu_device = 0;
-	cl_device_id *devices = nullptr;
-	cl_uint num_devices = 0;
-	cl_uint max_ComputeUnits = 1;
-};
-t_gpu gpu_devices;
-#endif
-
-unsigned long long height = 0;
-unsigned long long baseTarget = 0;
-unsigned long long targetDeadlineInfo = 0;	// Максимальный дедлайн пула
-volatile int stopThreads = 0;
-char *pass = nullptr;						// пароль
- 
-CRITICAL_SECTION sessionsLock;	// обновление sessions
-CRITICAL_SECTION bestsLock;		// обновление bests
-CRITICAL_SECTION sharesLock;	// обновление shares
-
-
-void ShowMemErrorExit(void);
 
 void Log_init(void)
 {
@@ -302,7 +116,6 @@ void ShowMemErrorExit(void)
 	system("pause");
 	exit(-1);
 }
-
 
 int load_config(char const *const filename)
 {
@@ -600,8 +413,6 @@ void GetPass(char const *const p_strFolderPath)
 	HeapFree(hHeap, 0, buffer);
 }
 
-
-
 size_t GetFiles(const std::string &str, std::vector <t_files> *p_files)
 {
     HANDLE hFile = INVALID_HANDLE_VALUE;
@@ -658,7 +469,6 @@ size_t GetFiles(const std::string &str, std::vector <t_files> *p_files)
 	return count;
 }
 
-
 size_t Get_index_acc(unsigned long long const key)
 {
 	EnterCriticalSection(&bestsLock);
@@ -676,120 +486,76 @@ size_t Get_index_acc(unsigned long long const key)
 	LeaveCriticalSection(&bestsLock);
 	return bests.size() - 1;
 }
-
-
 /*
-void gen_nonce(unsigned long long addr, unsigned long long n, unsigned long long size) {
+void gen_nonce(unsigned long long addr, unsigned long long start_nonce, unsigned long long count) {
 	#define PLOT_SIZE	(4096 * 64)
 	#define HASH_SIZE	32
 	#define HASH_CAP	4096
-	char * final = (char *)calloc(sizeof(char)*32);
-	char * gendata = (char *)calloc(sizeof(char)*(16 + PLOT_SIZE));
-	char * cache = (char *)calloc(sizeof(char)*(64*1000));
+	char * final = (char *)calloc(32, 1);
+	char * gendata = (char *)calloc(16 + PLOT_SIZE, 1);
+	char * cache = (char *)calloc(64 * count, 1);
 	char *xv = (char*)&addr;
-	
-	gendata[PLOT_SIZE] = xv[7]; gendata[PLOT_SIZE+1] = xv[6]; gendata[PLOT_SIZE+2] = xv[5]; gendata[PLOT_SIZE+3] = xv[4];
-	gendata[PLOT_SIZE+4] = xv[3]; gendata[PLOT_SIZE+5] = xv[2]; gendata[PLOT_SIZE+6] = xv[1]; gendata[PLOT_SIZE+7] = xv[0];
-
 	sph_shabal_context x;
-	unsigned int i, len;
-	unsigned long long z;
-	for (z = n; (z < (n + size)) && (!stopThreads); z++)
-	{
+	size_t i;
+	size_t len;
+	//gendata[PLOT_SIZE] = xv[7]; gendata[PLOT_SIZE+1] = xv[6]; gendata[PLOT_SIZE+2] = xv[5]; gendata[PLOT_SIZE+3] = xv[4];
+	//gendata[PLOT_SIZE+4] = xv[3]; gendata[PLOT_SIZE+5] = xv[2]; gendata[PLOT_SIZE+6] = xv[1]; gendata[PLOT_SIZE+7] = xv[0];
+	for (size_t i = 0; i < 8; i++) gendata[PLOT_SIZE+i] = xv[7-i];
+	 
+	for (unsigned long long z = start_nonce; z < (start_nonce + count); z++) {
 		xv = (char*)&z;
-		gendata[PLOT_SIZE + 8] = xv[7]; gendata[PLOT_SIZE + 9] = xv[6]; gendata[PLOT_SIZE + 10] = xv[5]; gendata[PLOT_SIZE + 11] = xv[4];
-		gendata[PLOT_SIZE + 12] = xv[3]; gendata[PLOT_SIZE + 13] = xv[2]; gendata[PLOT_SIZE + 14] = xv[1]; gendata[PLOT_SIZE + 15] = xv[0];
+		//gendata[PLOT_SIZE + 8] = xv[7]; gendata[PLOT_SIZE + 9] = xv[6]; gendata[PLOT_SIZE + 10] = xv[5]; gendata[PLOT_SIZE + 11] = xv[4];
+		//gendata[PLOT_SIZE + 12] = xv[3]; gendata[PLOT_SIZE + 13] = xv[2]; gendata[PLOT_SIZE + 14] = xv[1]; gendata[PLOT_SIZE + 15] = xv[0];
+		for (i = 8; i < 16; i++) gendata[PLOT_SIZE + i] = xv[15 - i];
 
-		for (i = PLOT_SIZE; i > 0; i -= HASH_SIZE)
-		{
-			shabal_init(&x, 256);
+		for (i = PLOT_SIZE; i > 0; i -= HASH_SIZE) {
+			sph_shabal256_init(&x);
 			len = PLOT_SIZE + 16 - i;
 			if (len > HASH_CAP)	len = HASH_CAP;
-			shabal_core(&x, (const unsigned char*)&gendata[i], len);
-			shabal_close(&x, 0, 0, &gendata[i - HASH_SIZE], 8);
+			sph_shabal256(&x, (const unsigned char*)&gendata[i], len);
+			sph_shabal256_close(&x, &gendata[i - HASH_SIZE]);
 		}
 
-		shabal_init(&x, 256);
-		shabal_core(&x, (const unsigned char*)gendata, 16 + PLOT_SIZE);
-		shabal_close(&x, 0, 0, final, 8);
+		sph_shabal256_init(&x);
+		sph_shabal256(&x, (const unsigned char*)gendata, 16 + PLOT_SIZE);
+		sph_shabal256_close(&x, final);
 
 		// XOR with final
-		//for(i = 0; i < PLOT_SIZE; i ++)
-		//	gendata[i] ^= (final[i % HASH_SIZE]);
-		for (i = scoop * 64; i < ((scoop + 1) * 64); i++)
-			gendata[i] ^= (final[i % HASH_SIZE]);
-		memmove(&cache[(z-n)*64], &gendata[scoop * 64], 64);
+		//for(i = 0; i < PLOT_SIZE; i ++)	gendata[i] ^= (final[i % HASH_SIZE]);
+		//for (i = scoop * 64; i < ((scoop + 1) * 64); i++)	gendata[i] ^= (final[i % HASH_SIZE]);
+		gendata[scoop * 64] ^= (final[(scoop * 64) % HASH_SIZE]);
+		memmove(&cache[(z - start_nonce) * 64], &gendata[scoop * 64], 64);
 	}
 	free(final);
 	free(gendata);
 	
 
-
-        char sig[32 + 64];
-		unsigned acc = 0;
-		char res[32];
-        memmove(sig, signature, 32);
-		
-		for (z = 0; (z < size) && (!stopThreads); z++)
-        {
-			memmove(&sig[32], &cache[z*64], 64);
-                //memmove(&sig[32], &gendata[scoop*64], 64);
-				
-                
-				shabal_init(&x, 256);
-                shabal_core(&x, (const unsigned char*) sig, 64 + 32);
-                shabal_close(&x, 0, 0, res, 8);
-				
-                unsigned long long *wertung = (unsigned long long*)res;
-				//printf("\r[%20llu][%llu]\tfound deadline %llu\n", bests[acc].account_id, nonce, *wertung / baseTarget);
-              
-				if (bests[acc].nonce == 0 || *wertung <= bests[acc].best)  
-				{
-                    bests[acc].best = *wertung;
-					bests[acc].nonce = n;
-					if ((bests[acc].best / baseTarget) <= bests[acc].targetDeadline) 
-					{       
-							Log("\nMEM: found deadline=");	Log_llu(bests[acc].best/baseTarget); Log(" nonce=");	Log_llu(bests[acc].nonce); Log(" for account: "); Log_llu(bests[acc].account_id);
-							pthread_mutex_lock(&byteLock);
-								shares[num_shares].best = bests[acc].best;
-								shares[num_shares].nonce = bests[acc].nonce;
-								shares[num_shares].to_send = 1;
-								shares[num_shares].account_id = bests[acc].account_id;
-								shares[num_shares].file_name = "Memory";
-								//if(use_debug)
-								{
-									cls();
-									SetConsoleTextAttribute(hConsole, 2);
-									printf("\r[%llu]\tMEM: found deadline %llu\n", bests[acc].account_id, shares[num_shares].best / baseTarget);
-									SetConsoleTextAttribute(hConsole, 7);
-								}
-								num_shares++;
-							pthread_mutex_unlock(&byteLock);
-                     }
-					
-				}
-        }
-		free(cache);
-		
+	//acc = Get_index_acc(key);
+	//procscoop_sph(n, size, cache, 0, std::string("generator"));
+	procscoop_m_4(start_nonce, count, cache, 0, std::string("generator"));
 }
 
-void *generator_i(void *x_void_ptr)
+
+void generator_i(size_t number)
 {
-	unsigned long long nonce = 100000000;// * (local_num + 1);
-	unsigned long long size = 100;
+	unsigned long long start_nonce = 100000000 * (number + 1);// * (local_num + 1);
+	unsigned long long size = 400;
 	clock_t start_work_time;
-	do
+	//wprintw(win_main, "\ngenerator RUNING !");
+	while (!stopThreads)
 	{
 		start_work_time = clock();
-		gen_nonce(bests[0].account_id, nonce, size);
-		cls();
-		printf_s("\r[%llu]  noces/min:  %llu \n", bests[0].account_id, ((clock() - start_work_time)*size / CLOCKS_PER_SEC) / 60);
-		nonce = nonce + size;
-	} while (!stopThreads);
-	return 0;
+		gen_nonce(bests[0].account_id, start_nonce, size);
+		
+		wprintw(win_main, "\n%llu\tnoces/min: %f", start_nonce, (float)((float)size * CLOCKS_PER_SEC * 60 / (float)(clock() - start_work_time)));
+		//wrefresh(win_main);
+		
+		start_nonce = start_nonce + size;
+	};
+	return;
 }
-
 */
+
 
 void proxy_i(void)
 {
@@ -1108,7 +874,7 @@ void send_i(void)
 					char* str_len = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, MAX_PATH);
 					if ((f1 == nullptr) || (str_len == nullptr)) ShowMemErrorExit();
 
-					int len = sprintf_s(f1, MAX_PATH, "%llu:%llu:%llu\n", iter->account_id, iter->nonce, height);
+					int len = sprintf_s(f1, MAX_PATH, "%llu:%llu:%llu", iter->account_id, iter->nonce, height);
 					_itoa_s(len, str_len, MAX_PATH-1, 10);
 
 					bytes = sprintf_s(buffer, buffer_size, "POST /pool/submitWork HTTP/1.0\r\nHost: %s:%s\r\nContent-Type: text/plain;charset=UTF-8\r\nContent-Length: %i\r\n\r\n%s", nodeaddr, nodeport, len, f1);
@@ -1177,15 +943,17 @@ void send_i(void)
 					iResult = recv(ConnectSocket, &buffer[pos], (int)(buffer_size - pos - 1), 0);
 					if (iResult > 0) pos += (size_t)iResult;
 				} while ((iResult > 0) && !use_fast_rcv);
+				
 				if (iResult == SOCKET_ERROR)
 				{
 					if (WSAGetLastError() != WSAEWOULDBLOCK)
 					{
 						if (network_quality > 0) network_quality--;
-						Log("\nSender: ! Error getting deadline's confirmation: "); Log_u(WSAGetLastError());
-						wattron(win_main, COLOR_PAIR(12));
-						wprintw(win_main, "SENDER: receiving confirmation failed: %ld\n", WSAGetLastError(), 0);
-						wattroff(win_main, COLOR_PAIR(12));
+						wattron(win_main, COLOR_PAIR(6));
+						wprintw(win_main, "%s [%20llu] NOT confirmed DL %9llu\n", tbuffer, iter->ID, iter->deadline, 0);
+						wattroff(win_main, COLOR_PAIR(6));
+						Log("\nSender: ! Error getting confirmation for DL: "); Log_llu(iter->ID);  Log("  code: "); Log_u(WSAGetLastError());
+						iter = sessions.erase(iter);
 					}
 				}
 				else
@@ -1252,7 +1020,15 @@ void send_i(void)
 										wattroff(win_main, COLOR_PAIR(6));
 									}
 								}
-
+								else{
+									if (answ.HasMember("errorDescription")) {
+										wprintw(win_main, "[ERROR %u] %s\n", answ["errorCode"].GetInt(), answ["errorDescription"].GetString());
+										wattron(win_main, COLOR_PAIR(12));
+										if (answ["errorCode"].GetInt() == 1004) wprintw(win_main, "You need change reward assignment and wait 4 blocks (~16 minutes)\n"); //error 1004
+										wattroff(win_main, COLOR_PAIR(12));
+									}
+									else wprintw(win_main, "%s\n", find); 
+								}
 							}
 						}
 						else
@@ -1278,9 +1054,9 @@ void send_i(void)
 					else
 					{
 						wattron(win_main, COLOR_PAIR(6));
-						wprintw(win_main, "%s [%20llu] NOT confirmed DL\n", tbuffer, iter->ID, 0);
+						wprintw(win_main, "%s [%20llu] NOT confirmed DL %9llu\n", tbuffer, iter->ID, iter->deadline, 0);
 						wattroff(win_main, COLOR_PAIR(6));
-						Log("\nSender: wrong message");
+						Log("\nSender: wrong message for DL: "); Log_llu(iter->ID);
 						iResult = closesocket(ConnectSocket);
 						Log("\nSender: Close socket. Code = "); Log_u(WSAGetLastError());
 						iter = sessions.erase(iter);
@@ -1402,7 +1178,6 @@ void procscoop_m_4(unsigned long long const nonce, unsigned long long const n, c
 		}
 	}
 }
-
 
 void procscoop_m256_8(unsigned long long const nonce, unsigned long long const n, char const *const data, size_t const acc, const std::string &file_name) {
 	char const *cache;
@@ -1546,8 +1321,6 @@ void procscoop_m256_8(unsigned long long const nonce, unsigned long long const n
 	}
 }
 
-
-
 void procscoop_sph(const unsigned long long nonce, const unsigned long long n, char const *const data, const size_t acc, const std::string &file_name) {
 	char const *cache;
 	char sig[32 + 64];
@@ -1616,7 +1389,6 @@ void procscoop_sph(const unsigned long long nonce, const unsigned long long n, c
 		}
 	}
 }
-
 
 void procscoop_asm(const unsigned long long nonce, const unsigned long long n, char const *const data, const size_t acc, const std::string &file_name) {
 	char const *cache;
@@ -1687,7 +1459,6 @@ void procscoop_asm(const unsigned long long nonce, const unsigned long long n, c
 	}
 }
 
-
 void work_i(const size_t local_num) {
 	
 	__int64 start_work_time, end_work_time;
@@ -1724,7 +1495,6 @@ void work_i(const size_t local_num) {
 	{
 		unsigned long long key, nonce, nonces, stagger;
 		QueryPerformanceCounter((LARGE_INTEGER*)&start_time_read);
-		//sscanf_s(iter->Name.c_str(), "%llu_%llu_%llu_%llu", &key, &nonce, &nonces, &stagger);
 		key = iter->Key;
 		nonce = iter->StartNonce;
 		nonces = iter->Nonces;
@@ -1900,7 +1670,6 @@ void work_i(const size_t local_num) {
 	}
 	return;
 }
-
 
 char* GetJSON(char const *const req) {
 	const unsigned BUF_SIZE = 1024;
@@ -2414,22 +2183,17 @@ void pollLocal(void) {
 	HeapFree(hHeap, 0, buffer);
 }
 
-
-
 void updater_i(void) {
-	if (strlen(updateraddr) <= 3)
-	{
+	if (strlen(updateraddr) <= 3) {
 		Log("\nGMI: ERROR in UpdaterAddr");
 		exit(2);
 	}
-	for (; !exit_flag;)
-	{
+	for (; !exit_flag;)	{
 		pollLocal();
 		std::this_thread::yield();
 		std::this_thread::sleep_for(std::chrono::milliseconds(update_interval));
 	}
 }
- 
 
 void hostname_to_ip(char const *const  in_addr, char* out_addr)
 {
@@ -2464,7 +2228,6 @@ void hostname_to_ip(char const *const  in_addr, char* out_addr)
 	}
 	freeaddrinfo(result);
 }
-
 
 void GetCPUInfo(void)
 {
@@ -2963,6 +2726,7 @@ int main(int argc, char **argv) {
 	double pcFreq = double(li.QuadPart);
 
 	std::thread proxy;
+	std::vector<std::thread> generator;
 
 	InitializeCriticalSection(&sessionsLock);
 	InitializeCriticalSection(&bestsLock);
@@ -3137,6 +2901,15 @@ int main(int argc, char **argv) {
 	wprintw(win_main, "TOTAL: %llu Gb\n", total_size / 1024 / 1024 / 1024, 0);
 	wattroff(win_main, COLOR_PAIR(15));
 
+	if (total_size == 0) {
+		wattron(win_main, COLOR_PAIR(12));
+		wprintw(win_main, "\n Plot files not found...please check the \"PATHS\" parameter in your config file.\n Press any key for exit...");
+		wattroff(win_main, COLOR_PAIR(12));
+		wrefresh(win_main);
+		system("pause");
+		exit(0);
+	}
+
 	// Check overlapped plots
 	for (auto cx = 0; cx < all_files.size(); cx++)	{
 		for (auto cy = cx + 1; cy < all_files.size(); cy++)		{
@@ -3178,15 +2951,14 @@ int main(int argc, char **argv) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(2));
 	};
 
-
+	
 	// Main loop
 	for (; !exit_flag;)
 	{
 		worker.clear();
 		worker_progress.clear();
 		stopThreads = 0;
-
-
+		
 		char scoopgen[40];
 		memmove(scoopgen, signature, 32);
 		const char *mov = (char*)&height;
@@ -3241,7 +3013,7 @@ int main(int argc, char **argv) {
 		// Run Threads
 		QueryPerformanceCounter((LARGE_INTEGER*)&start_threads_time);
 		double threads_speed = 0;
-
+		
 		for (size_t i = 0; i < paths_dir.size(); i++)
 		{
 			worker_progress.push_back({ i, 0, true });
@@ -3254,6 +3026,7 @@ int main(int argc, char **argv) {
 		unsigned long long old_height = height;
 		wclear(win_progress);
 
+
 		// Wait until signature changed or exit
 		while ((memcmp(signature, oldSignature, 32) == 0) && !exit_flag)
 		{
@@ -3262,7 +3035,6 @@ int main(int argc, char **argv) {
 			case 'q':
 				exit_flag = true;
 				break;
-
 			}
 			box(win_progress, 0, 0);
 			bytesRead = 0;
@@ -3279,7 +3051,15 @@ int main(int argc, char **argv) {
 				QueryPerformanceCounter((LARGE_INTEGER*)&end_threads_time);
 				threads_speed = (double)(bytesRead / (1024 * 1024)) / ((double)(end_threads_time - start_threads_time) / pcFreq);
 			}
-			else
+			else{
+				/*
+				if (can_generate == 1)
+				{
+					Log("\nStart Generator. ");
+					for (size_t i = 0; i < std::thread::hardware_concurrency()-1; i++)	generator.push_back(std::thread(generator_i, i));
+					can_generate = 2;
+				}
+				*/
 				if (use_wakeup)
 				{
 					QueryPerformanceCounter((LARGE_INTEGER*)&curr_time);
@@ -3298,6 +3078,7 @@ int main(int argc, char **argv) {
 						end_threads_time = curr_time;
 					}
 				}
+			}
 
 			wmove(win_progress, 1, 1);
 			wattron(win_progress, COLOR_PAIR(14));
@@ -3326,6 +3107,15 @@ int main(int argc, char **argv) {
 
 		Log("\nInterrupt Sender. ");
 		if (sender.joinable()) sender.join();
+		/*
+		if (can_generate != 0){
+			Log("\nInterrupt Generator. ");
+			for (auto it = generator.begin(); it != generator.end(); ++it){
+				if (it->joinable()) it->join();
+			}
+			can_generate = 1;
+		}
+		*/
 	}
 
 	if (pass != nullptr) HeapFree(hHeap, 0, pass);

@@ -27,6 +27,7 @@ using namespace rapidjson;
 #include "mshabal256.h"
 #include "shabal_asm.h"
 #include "InstructionSet.h"
+#include "picohttpparser.h"
 
 /*
 #define GPU_ON_C 1
@@ -50,10 +51,14 @@ using namespace rapidjson;
 HANDLE hHeap;
 
 bool exit_flag = false;
-#ifdef __AVX__
-char const *const version = "v1.160705_AVX";
+#ifdef __AVX2__
+	char const *const version = "v1.170601_AVX2";
 #else
-char const *const version = "v1.160705";
+	#ifdef __AVX__
+		char const *const version = "v1.170601_AVX";
+	#else
+		char const *const version = "v1.170601";
+	#endif
 #endif 
 
 unsigned long long startnonce = 0;
@@ -71,16 +76,16 @@ unsigned long long my_target_deadline = MAXDWORD;	// 4294967295;
 volatile int stopThreads = 0;
 char *pass = nullptr;							// пароль
 
-char nodeaddr[INET_ADDRSTRLEN] = "localhost";	// адрес пула
-char nodeport[INET_ADDRSTRLEN] = "8125";		// порт пула
+std::string nodeaddr = "localhost";	// адрес пула
+std::string nodeport = "8125";		// порт пула
 
-char updateraddr[INET_ADDRSTRLEN] = "localhost";// адрес пула
-char updaterport[INET_ADDRSTRLEN] = "8125";		// порт пула
+std::string updateraddr = "localhost";// адрес пула
+std::string updaterport = "8125";		// порт пула
 
-char infoaddr[INET_ADDRSTRLEN] = "localhost";	// адрес пула
-char infoport[INET_ADDRSTRLEN] = "8125";		// порт пула
+std::string infoaddr = "localhost";	// адрес пула
+std::string infoport = "8125";		// порт пула
 
-char proxyport[INET_ADDRSTRLEN] = "8125";		// порт пула
+std::string proxyport = "8125";		// порт пула
 
 char *p_minerPath = nullptr;		// путь к папке майнера
 size_t miner_mode = 0;				// режим майнера. 0=соло, 1=пул
@@ -159,8 +164,11 @@ std::vector<t_best> bests;
 
 struct t_session{
 	SOCKET Socket;
-	unsigned long long ID;
+//	unsigned long long ID;
 	unsigned long long deadline;
+	t_shares body;
+	//	unsigned long long best;// = 0;
+//	unsigned long long nonce;// = 0;
 };
 
 std::vector<t_session> sessions;

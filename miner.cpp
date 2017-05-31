@@ -169,15 +169,15 @@ int load_config(char const *const filename)
 		}
 
 		Log("\nServer: "); 
-		if(document.HasMember("Server") &&	document["Server"].IsString())	strcpy_s(nodeaddr, document["Server"].GetString());
-		Log(nodeaddr);
+		if (document.HasMember("Server") && document["Server"].IsString())	nodeaddr = document["Server"].GetString();//strcpy_s(nodeaddr, document["Server"].GetString());
+		Log(nodeaddr.c_str());
 
 		Log("\nPort: "); 
 		if (document.HasMember("Port"))
 		{
-			if (document["Port"].IsString())	strcpy_s(nodeport, document["Port"].GetString());
-			else if (document["Port"].IsUint())	_itoa_s(document["Port"].GetUint(), nodeport, INET_ADDRSTRLEN-1, 10);
-			Log(nodeport);
+			if (document["Port"].IsString())	nodeport = document["Port"].GetString();
+			else if (document["Port"].IsUint())	nodeport = std::to_string(document["Port"].GetUint()); //_itoa_s(document["Port"].GetUint(), nodeport, INET_ADDRSTRLEN-1, 10);
+			Log(nodeport.c_str());
 		}
 
 		if(document.HasMember("Paths") && document["Paths"].IsArray()){
@@ -223,30 +223,30 @@ int load_config(char const *const filename)
 		Log_u(use_debug);
 				
 		Log("\nUpdater address: ");
-		if (document.HasMember("UpdaterAddr") && document["UpdaterAddr"].IsString()) strcpy_s(updateraddr, document["UpdaterAddr"].GetString());
-		Log(updateraddr);
+		if (document.HasMember("UpdaterAddr") && document["UpdaterAddr"].IsString()) updateraddr =document["UpdaterAddr"].GetString(); //strcpy_s(updateraddr, document["UpdaterAddr"].GetString());
+		Log(updateraddr.c_str());
 
 		Log("\nUpdater port: ");
 		if (document.HasMember("UpdaterPort"))
 		{
-			if (document["UpdaterPort"].IsString())	strcpy_s(updaterport, document["UpdaterPort"].GetString());
-			else if (document["UpdaterPort"].IsUint())	_itoa_s(document["UpdaterPort"].GetUint(), updaterport, INET_ADDRSTRLEN-1, 10);
+			if (document["UpdaterPort"].IsString())	updaterport = document["UpdaterPort"].GetString();
+			else if (document["UpdaterPort"].IsUint())	 updaterport = std::to_string(document["UpdaterPort"].GetUint());
 		}
-		Log(updaterport);
+		Log(updaterport.c_str());
 
 		Log("\nInfo address: ");
-		if (document.HasMember("InfoAddr") && document["InfoAddr"].IsString())	strcpy_s(infoaddr, document["InfoAddr"].GetString());
-		else strcpy_s(infoaddr, updateraddr);
-		Log(infoaddr);
+		if (document.HasMember("InfoAddr") && document["InfoAddr"].IsString())	infoaddr = document["InfoAddr"].GetString();
+		else infoaddr = updateraddr;
+		Log(infoaddr.c_str());
 
 		Log("\nInfo port: ");
 		if (document.HasMember("InfoPort"))
 		{
-			if (document["InfoPort"].IsString())	strcpy_s(infoport, document["InfoPort"].GetString());
-			else if (document["InfoPort"].IsUint())	_itoa_s(document["InfoPort"].GetUint(), infoport, INET_ADDRSTRLEN-1, 10);
+			if (document["InfoPort"].IsString())	infoport = document["InfoPort"].GetString();
+			else if (document["InfoPort"].IsUint())	infoport = std::to_string(document["InfoPort"].GetUint());
 		}
-		else strcpy_s(infoport, updaterport);
-		Log(infoport);
+		else infoport = updaterport;
+		Log(infoport.c_str());
 
 		Log("\nEnableProxy: ");
 		if (document.HasMember("EnableProxy") && (document["EnableProxy"].IsBool())) enable_proxy = document["EnableProxy"].GetBool();
@@ -255,10 +255,10 @@ int load_config(char const *const filename)
 		Log("\nProxyPort: ");
 		if (document.HasMember("ProxyPort"))
 		{
-			if (document["ProxyPort"].IsString())	strcpy_s(proxyport, document["ProxyPort"].GetString());
-			else if (document["ProxyPort"].IsUint())	_itoa_s(document["ProxyPort"].GetUint(), proxyport, INET_ADDRSTRLEN-1, 10);
+			if (document["ProxyPort"].IsString())	proxyport = document["ProxyPort"].GetString();
+			else if (document["ProxyPort"].IsUint())	proxyport = std::to_string(document["ProxyPort"].GetUint());
 		}
-		Log(proxyport);
+		Log(proxyport.c_str());
 
 		Log("\nShowWinner: "); 
 		if (document.HasMember("ShowWinner") && (document["ShowWinner"].IsBool()))	show_winner = document["ShowWinner"].GetBool();
@@ -380,6 +380,7 @@ void GetPass(char const *const p_strFolderPath)
 	  wattron(win_main, COLOR_PAIR(12));
 	  wprintw(win_main, "passphrases.txt not found\n", 0);
 	  wattroff(win_main, COLOR_PAIR(12));
+	  system("pause");
 	  exit (-1);
   }
   HeapFree(hHeap, 0, filename);
@@ -577,7 +578,7 @@ void proxy_i(void)
 	hints.ai_protocol = IPPROTO_TCP;
 	hints.ai_flags = AI_PASSIVE;
 
-	iResult = getaddrinfo(nullptr, proxyport, &hints, &result);
+	iResult = getaddrinfo(nullptr, proxyport.c_str(), &hints, &result);
 	if (iResult != 0) {
 		wattron(win_main, COLOR_PAIR(12));
 		wprintw(win_main, "PROXY: getaddrinfo failed with error: %d\n", iResult, 0);
@@ -786,8 +787,8 @@ void send_i(void)
 
 	struct addrinfo *result = nullptr;
 	struct addrinfo hints;
-	
-	for (;!exit_flag;)
+
+	for (; !exit_flag;)
 	{
 		if (stopThreads == 1)
 		{
@@ -817,11 +818,11 @@ void send_i(void)
 			}
 
 			RtlSecureZeroMemory(&hints, sizeof(hints));
-			hints.ai_family = AF_INET; 
+			hints.ai_family = AF_INET;
 			hints.ai_socktype = SOCK_STREAM;
 			hints.ai_protocol = IPPROTO_TCP;
 
-			iResult = getaddrinfo(nodeaddr, nodeport, &hints, &result);
+			iResult = getaddrinfo(nodeaddr.c_str(), nodeport.c_str(), &hints, &result);
 			if (iResult != 0) {
 				if (network_quality > 0) network_quality--;
 				wattron(win_main, COLOR_PAIR(12));
@@ -866,7 +867,7 @@ void send_i(void)
 				{
 					unsigned long long total = total_size / 1024 / 1024 / 1024;
 					for (auto It = satellite_size.begin(); It != satellite_size.end(); ++It) total = total + It->second;
-					bytes = sprintf_s(buffer, buffer_size, "POST /burst?requestType=submitNonce&accountId=%llu&nonce=%llu&deadline=%llu HTTP/1.0\r\nX-Miner: Blago %s\r\nX-Capacity: %llu\r\nConnection: close\r\n\r\n", iter->account_id, iter->nonce, iter->best, version, total);
+					bytes = sprintf_s(buffer, buffer_size, "POST /burst?requestType=submitNonce&accountId=%llu&nonce=%llu&deadline=%llu HTTP/1.0\r\nHost: %s:%s\r\nX-Miner: Blago %s\r\nX-Capacity: %llu\r\nContent-Length: 0\r\nConnection: close\r\n\r\n", iter->account_id, iter->nonce, iter->best, nodeaddr.c_str(), nodeport.c_str(), version, total, 0);
 				}
 				if (miner_mode == 2)
 				{
@@ -875,15 +876,15 @@ void send_i(void)
 					if ((f1 == nullptr) || (str_len == nullptr)) ShowMemErrorExit();
 
 					int len = sprintf_s(f1, MAX_PATH, "%llu:%llu:%llu", iter->account_id, iter->nonce, height);
-					_itoa_s(len, str_len, MAX_PATH-1, 10);
+					_itoa_s(len, str_len, MAX_PATH - 1, 10);
 
-					bytes = sprintf_s(buffer, buffer_size, "POST /pool/submitWork HTTP/1.0\r\nHost: %s:%s\r\nContent-Type: text/plain;charset=UTF-8\r\nContent-Length: %i\r\n\r\n%s", nodeaddr, nodeport, len, f1);
+					bytes = sprintf_s(buffer, buffer_size, "POST /pool/submitWork HTTP/1.0\r\nHost: %s:%s\r\nContent-Type: text/plain;charset=UTF-8\r\nContent-Length: %i\r\n\r\n%s", nodeaddr.c_str(), nodeport.c_str(), len, f1);
 					HeapFree(hHeap, 0, f1);
 					HeapFree(hHeap, 0, str_len);
 				}
 
 				// Sending to server
-				
+
 				iResult = send(ConnectSocket, buffer, bytes, 0);
 				if (iResult == SOCKET_ERROR)
 				{
@@ -907,7 +908,8 @@ void send_i(void)
 					Log("\nSender: Sent: "); Log_server(buffer);
 
 					EnterCriticalSection(&sessionsLock);
-					sessions.push_back({ConnectSocket, iter->account_id, dl});
+					//sessions.push_back({ ConnectSocket, iter->account_id, dl, iter->best, iter->nonce });
+					sessions.push_back({ ConnectSocket, dl, *iter });
 					LeaveCriticalSection(&sessionsLock);
 
 					if (send_best_only) bests[Get_index_acc(iter->account_id)].targetDeadline = dl;
@@ -917,7 +919,7 @@ void send_i(void)
 				}
 			}
 		}
-		
+
 		if (!sessions.empty())
 		{
 			EnterCriticalSection(&sessionsLock);
@@ -943,29 +945,37 @@ void send_i(void)
 					iResult = recv(ConnectSocket, &buffer[pos], (int)(buffer_size - pos - 1), 0);
 					if (iResult > 0) pos += (size_t)iResult;
 				} while ((iResult > 0) && !use_fast_rcv);
-				
+
 				if (iResult == SOCKET_ERROR)
 				{
-					if (WSAGetLastError() != WSAEWOULDBLOCK)
+					if (WSAGetLastError() != WSAEWOULDBLOCK) //разрыв соединения, молча переотправляем дедлайн
 					{
 						if (network_quality > 0) network_quality--;
-						wattron(win_main, COLOR_PAIR(6));
-						wprintw(win_main, "%s [%20llu] NOT confirmed DL %9llu\n", tbuffer, iter->ID, iter->deadline, 0);
-						wattroff(win_main, COLOR_PAIR(6));
-						Log("\nSender: ! Error getting confirmation for DL: "); Log_llu(iter->ID);  Log("  code: "); Log_u(WSAGetLastError());
+						//wattron(win_main, COLOR_PAIR(6));
+						//wprintw(win_main, "%s [%20llu] not confirmed DL %10llu\n", tbuffer, iter->body.account_id, iter->deadline, 0);
+						//wattroff(win_main, COLOR_PAIR(6));
+						Log("\nSender: ! Error getting confirmation for DL: "); Log_llu(iter->deadline);  Log("  code: "); Log_u(WSAGetLastError());
 						iter = sessions.erase(iter);
+						shares.push_back({ iter->body.file_name, iter->body.account_id, iter->body.best, iter->body.nonce });
 					}
 				}
-				else
+				else //что-то получили от сервера
 				{
 					if (show_msg) wprintw(win_main, "\nReceived: %s\n", buffer, 0);
 					Log("\nSender: Received: "); Log_server(buffer);
 					if (network_quality < 100) network_quality++;
 
-					char *find = strstr(buffer, "\r\n\r\n");
-					if (find != nullptr)
+
+					//получили пустую строку, переотправляем дедлайн
+					if (buffer[0] == '\0')
 					{
-						find = find + 4;
+						Log("\nSender: zero-length message for DL: "); Log_llu(iter->deadline);
+						shares.push_back({ iter->body.file_name, iter->body.account_id, iter->body.best, iter->body.nonce });
+					}
+					else //получили ответ пула
+					{
+						char *find = strstr(buffer, "\r\n\r\n");
+						if (find != nullptr) find = find + 4;
 
 						unsigned long long ndeadline;
 						unsigned long long naccountId = 0;
@@ -1009,7 +1019,7 @@ void send_i(void)
 										wprintw(win_main, "%s [%20llu] confirmed DL: %10llu %5llud %02u:%02u:%02u\n", tbuffer, naccountId, ndeadline, days, hours, min, sec, 0);
 										if (use_debug) wprintw(win_main, "%s [%20llu] set targetDL: %10llu\n", tbuffer, naccountId, ntargetDeadline, 0);
 									}
-									else wprintw(win_main, "%s [%20llu] confirmed DL: %10llu %5llud %02u:%02u:%02u\n", tbuffer, iter->ID, ndeadline, days, hours, min, sec, 0);
+									else wprintw(win_main, "%s [%20llu] confirmed DL: %10llu %5llud %02u:%02u:%02u\n", tbuffer, iter->body.account_id, ndeadline, days, hours, min, sec, 0);
 									wattroff(win_main, COLOR_PAIR(10));
 									if (ndeadline < deadline || deadline == 0)  deadline = ndeadline;
 
@@ -1022,45 +1032,64 @@ void send_i(void)
 								}
 								else{
 									if (answ.HasMember("errorDescription")) {
-										wprintw(win_main, "[ERROR %u] %s\n", answ["errorCode"].GetInt(), answ["errorDescription"].GetString());
+										wattron(win_main, COLOR_PAIR(15));
+										wprintw(win_main, "[ERROR %u] %s\n", answ["errorCode"].GetInt(), answ["errorDescription"].GetString(),0);
+										wattroff(win_main, COLOR_PAIR(15));
 										wattron(win_main, COLOR_PAIR(12));
 										if (answ["errorCode"].GetInt() == 1004) wprintw(win_main, "You need change reward assignment and wait 4 blocks (~16 minutes)\n"); //error 1004
 										wattroff(win_main, COLOR_PAIR(12));
 									}
-									else wprintw(win_main, "%s\n", find); 
+									else {
+										wattron(win_main, COLOR_PAIR(15));
+										wprintw(win_main, "%s\n", find);
+										wattroff(win_main, COLOR_PAIR(15));
+									}
 								}
 							}
 						}
 						else
-						if (strstr(find, "Received share") != nullptr)
 						{
-							_strtime_s(tbuffer);
-							deadline = bests[Get_index_acc(iter->ID)].DL; //может лучше iter->deadline ?
-							// if(deadline > iter->deadline) deadline = iter->deadline;
-							wattron(win_main, COLOR_PAIR(10));
-							wprintw(win_main, "%s [%20llu] confirmed DL   %9llu\n", tbuffer, iter->ID, iter->deadline, 0);
-							wattroff(win_main, COLOR_PAIR(10));
+							if (strstr(find, "Received share") != nullptr)
+							{
+								_strtime_s(tbuffer);
+								deadline = bests[Get_index_acc(iter->body.account_id)].DL; //может лучше iter->deadline ?
+								// if(deadline > iter->deadline) deadline = iter->deadline;
+								wattron(win_main, COLOR_PAIR(10));
+								wprintw(win_main, "%s [%20llu] confirmed DL   %10llu\n", tbuffer, iter->body.account_id, iter->deadline, 0);
+								wattroff(win_main, COLOR_PAIR(10));
+							}
+							else //получили нераспознанный ответ
+							{
+								int minor_version;
+								int status = 0;
+								const char *msg;
+								size_t msg_len;
+								struct phr_header headers[12];
+								size_t num_headers = sizeof(headers) / sizeof(headers[0]);
+								phr_parse_response(buffer, strlen(buffer), &minor_version, &status, &msg, &msg_len, headers, &num_headers, 0);
+
+								if (status != 0)
+								{
+									wattron(win_main, COLOR_PAIR(6));
+									//wprintw(win_main, "%s [%20llu] NOT confirmed DL %10llu\n", tbuffer, iter->body.account_id, iter->deadline, 0);
+									std::string error_str(msg, msg_len);
+									wprintw(win_main, "Server error: %d %s\n", status, error_str.c_str());
+									wattroff(win_main, COLOR_PAIR(6));
+									Log("\nSender: server error for DL: "); Log_llu(iter->deadline);
+									shares.push_back({ iter->body.file_name, iter->body.account_id, iter->body.best, iter->body.nonce });
+								}
+								else //получили непонятно что
+								{
+									wattron(win_main, COLOR_PAIR(7));
+									wprintw(win_main, "%s\n", buffer);
+									wattroff(win_main, COLOR_PAIR(7));
+								}
+							}
 						}
-						else
-						{
-							wattron(win_main, COLOR_PAIR(15));
-							wprintw(win_main, "%s\n", find, 0);
-							wattroff(win_main, COLOR_PAIR(15));
-						}
-						iResult = closesocket(ConnectSocket);
-						Log("\nSender: Close socket. Code = "); Log_u(WSAGetLastError());
-						iter = sessions.erase(iter);
 					}
-					else
-					{
-						wattron(win_main, COLOR_PAIR(6));
-						wprintw(win_main, "%s [%20llu] NOT confirmed DL %9llu\n", tbuffer, iter->ID, iter->deadline, 0);
-						wattroff(win_main, COLOR_PAIR(6));
-						Log("\nSender: wrong message for DL: "); Log_llu(iter->ID);
-						iResult = closesocket(ConnectSocket);
-						Log("\nSender: Close socket. Code = "); Log_u(WSAGetLastError());
-						iter = sessions.erase(iter);
-					}
+					iResult = closesocket(ConnectSocket);
+					Log("\nSender: Close socket. Code = "); Log_u(WSAGetLastError());
+					iter = sessions.erase(iter);
 				}
 				if (iter != sessions.end()) ++iter;
 			}
@@ -1493,12 +1522,13 @@ void work_i(const size_t local_num) {
 
 	for (auto iter = files.begin(); iter != files.end(); ++iter)
 	{
-		unsigned long long key, nonce, nonces, stagger;
+		unsigned long long key, nonce, nonces, stagger, tail;
 		QueryPerformanceCounter((LARGE_INTEGER*)&start_time_read);
 		key = iter->Key;
 		nonce = iter->StartNonce;
 		nonces = iter->Nonces;
 		stagger = iter->Stagger;
+		tail = 0;
 		// Проверка кратности нонсов стаггеру
 		if ((double)(nonces % stagger) > DBL_EPSILON)
 		{
@@ -1516,7 +1546,7 @@ void work_i(const size_t local_num) {
 			if (nonces != stagger)
 				nonces = (((iter->Size) / (4096 * 64)) / stagger) * stagger; //обрезаем плот по размеру и стаггеру
 			else
-			if (scoop > (iter->Size) / (stagger * 64)) //если номер скупа попадает в поврежденный смерженный плот, то все нормально
+			if (scoop > (iter->Size) / (stagger * 64)) //если номер скупа попадает в поврежденный смерженный плот, то пропускаем
 			{
 				wattron(win_main, COLOR_PAIR(12));
 				wprintw(win_main, "skipped\n", 0);
@@ -1551,27 +1581,30 @@ void work_i(const size_t local_num) {
 			continue;
 		}
 
-		if ((stagger == nonces) && (cache_size < stagger)) cache_size_local = cache_size;  // смерженный плот
-		else cache_size_local = stagger; // обычный плот
-
-		// Выравниваем cache_size_local по размеру сектора
-		//cache_size_local = round((double)cache_size_local / (double)(bytesPerSector / 64)) * (bytesPerSector / 64);
-		cache_size_local = (cache_size_local / (size_t)(bytesPerSector / 64)) * (size_t)(bytesPerSector / 64);
-		//wprintw(win_main, "round: %llu\n", cache_size_local);
-
-		// Если стаггер не выровнен по сектору - можем читать сдвигая посследний стагер назад (доделать)
+		// Если стаггер не выровнен по сектору - можем читать сдвигая последний стагер назад (доделать)
 		if ((stagger % (bytesPerSector/64)) != 0)
 		{
 			wattron(win_main, COLOR_PAIR(12));
 			wprintw(win_main, "stagger (%llu) must be a multiple of %llu\n", stagger, bytesPerSector / 64, 0);
-			stagger = (stagger / (bytesPerSector / 64)) * (bytesPerSector / 64);
-			nonces = (nonces/stagger) * stagger;
+			//unsigned long long new_stagger = (stagger / (bytesPerSector / 64)) * (bytesPerSector / 64);
+			//tail = stagger - new_stagger;
+			//stagger = new_stagger;
+			//nonces = (nonces/stagger) * stagger;
 			//Нужно добавить остаток от предыдущего значения стаггера для компенсации сдвига по нонсам
-			wprintw(win_main, "stagger changed to %llu\n", stagger, 0);
-			wprintw(win_main, "nonces changed to %llu\n", nonces, 0);
+			//wprintw(win_main, "stagger changed to %llu\n", stagger, 0);
+			//wprintw(win_main, "nonces changed to %llu\n", nonces, 0);
 			wattroff(win_main, COLOR_PAIR(12));
 			//continue;
 		}
+
+
+		if ((stagger == nonces) && (cache_size < stagger)) cache_size_local = cache_size;  // оптимизированный плот
+		else cache_size_local = stagger; // обычный плот
+
+		// Выравниваем cache_size_local по размеру сектора
+		cache_size_local = (cache_size_local / (size_t)(bytesPerSector / 64)) * (size_t)(bytesPerSector / 64);
+		//wprintw(win_main, "round: %llu\n", cache_size_local);
+
 
 		char *cache = (char *)VirtualAlloc(nullptr, cache_size_local * 64, MEM_COMMIT, PAGE_READWRITE);
 		if (cache == nullptr) ShowMemErrorExit();
@@ -1583,7 +1616,7 @@ void work_i(const size_t local_num) {
 		if (ifile == INVALID_HANDLE_VALUE)
 		{
 			wattron(win_main, COLOR_PAIR(12));
-			wprintw(win_main, "File \"%s\" error opening\n", iter->Name.c_str(), 0);
+			wprintw(win_main, "File \"%s\" error opening. code = %llu\n", iter->Name.c_str(), GetLastError(), 0);
 			wattroff(win_main, COLOR_PAIR(12));
 			VirtualFree(cache, 0, MEM_RELEASE);
 			continue;
@@ -1602,16 +1635,26 @@ void work_i(const size_t local_num) {
 			{
 				if (i + cache_size_local > stagger)
 				{
-					cache_size_local = stagger - i;
+					cache_size_local = stagger - i;  // остаток
 					//wprintw(win_main, "%llu\n", cache_size_local);
 				}
 				bytes = 0;
 				b = 0;
 				liDistanceToMove.QuadPart = start + i*64;
-				if (!SetFilePointerEx(ifile, liDistanceToMove, nullptr, FILE_BEGIN)) wprintw(win_main, "error SetFilePointerEx\n", 0);
+				if (!SetFilePointerEx(ifile, liDistanceToMove, nullptr, FILE_BEGIN))
+				{
+					wprintw(win_main, "error SetFilePointerEx. code = %llu\n", GetLastError(), 0);
+					continue;
+				}
 
 				do {
-					if (!ReadFile(ifile, &cache[bytes], (DWORD)(cache_size_local * 64), &b, NULL)) wprintw(win_main, "error ReadFile\n", 0);
+					if (!ReadFile(ifile, &cache[bytes], (DWORD)(cache_size_local * 64), &b, NULL))
+					{
+						wattron(win_main, COLOR_PAIR(12));
+						wprintw(win_main, "error ReadFile. code = %llu\n", GetLastError(), 0);
+						wattroff(win_main, COLOR_PAIR(12));
+						break;
+					}
 					bytes += b;
 					//wprintw(win_main, "%llu   %llu\n", bytes, readsize);
 				} while (bytes < cache_size_local * 64);
@@ -1619,11 +1662,14 @@ void work_i(const size_t local_num) {
 				if (bytes == cache_size_local * 64)
 				{
 					QueryPerformanceCounter((LARGE_INTEGER*)&start_time_proc);
-					#ifdef __AVX__
-						procscoop_m_4(n + nonce + i, cache_size_local, cache, acc, iter->Name);// Process block
-						//procscoop_m256_8(n + nonce + i, cache_size_local, cache, acc, iter->Name);// Process block AVX2
+					#ifdef __AVX2__
+						procscoop_m256_8(n + nonce + i, cache_size_local, cache, acc, iter->Name);// Process block AVX2
 					#else
-						procscoop_sph(n + nonce + i, cache_size_local, cache, acc, iter->Name);// Process block
+						#ifdef __AVX__
+							procscoop_m_4(n + nonce + i, cache_size_local, cache, acc, iter->Name);// Process block AVX
+						#else
+							procscoop_sph(n + nonce + i, cache_size_local, cache, acc, iter->Name);// Process block SSE4
+						#endif
 					#endif
 					QueryPerformanceCounter(&li);
 					sum_time_proc += (double)(li.QuadPart - start_time_proc);
@@ -1635,6 +1681,7 @@ void work_i(const size_t local_num) {
 					wattron(win_main, COLOR_PAIR(12));
 					wprintw(win_main, "Unexpected end of file %s\n", iter->Name.c_str(), 0);
 					wattroff(win_main, COLOR_PAIR(12));
+					break;
 				}
 
 				if (stopThreads) // New block while processing: Stop.
@@ -1691,7 +1738,7 @@ char* GetJSON(char const *const req) {
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
-	iResult = getaddrinfo(infoaddr, infoport, &hints, &result);
+	iResult = getaddrinfo(infoaddr.c_str(), infoport.c_str(), &hints, &result);
 	if (iResult != 0) {
 		wattron(win_main, COLOR_PAIR(12));
 		wprintw(win_main, "WINNER: Getaddrinfo failed with error: %d\n", iResult, 0);
@@ -1940,136 +1987,6 @@ void GetBlockInfo(unsigned const num_block)
 	HeapFree(hHeap, 0, pool_accountRS);
 }
 
-/*
-void pollLocal(void) {
-	size_t buffer_size = 1000;
-	char *buffer = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, buffer_size);
-	if (buffer == nullptr) ShowMemErrorExit();
-
-	int iResult;
-	struct addrinfo *result = nullptr;
-	struct addrinfo hints;
-	SOCKET UpdaterSocket = INVALID_SOCKET;
-
-	RtlSecureZeroMemory(&hints, sizeof(hints));
-	hints.ai_family = AF_INET; 
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
-
-	iResult = getaddrinfo(updateraddr, updaterport, &hints, &result);
-	if (iResult != 0) {
-		if (network_quality > 0) network_quality--;
-		Log("\n*! GMI: getaddrinfo failed with error: "); Log_u(WSAGetLastError());
-	}
-	else {
-		UpdaterSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
-		if (UpdaterSocket == INVALID_SOCKET)
-		{
-			if (network_quality > 0) network_quality--;
-			Log("\n*! GMI: socket function failed with error: "); Log_u(WSAGetLastError());
-		}
-		else {
-			const unsigned t = 1000;
-			setsockopt(UpdaterSocket, SOL_SOCKET, SO_RCVTIMEO, (char *)&t, sizeof(unsigned));
-			//Log("\n*Connecting to server: "); Log(updateraddr); Log(":"); Log(updaterport);
-			iResult = connect(UpdaterSocket, result->ai_addr, (int)result->ai_addrlen);
-			if (iResult == SOCKET_ERROR) {
-				if (network_quality > 0) network_quality--;
-				Log("\n*! GMI: connect function failed with error: "); Log_u(WSAGetLastError());
-			}
-			else {
-				int bytes;
-				if (miner_mode == 2) bytes = sprintf_s(buffer, buffer_size, "GET /pool/getMiningInfo HTTP/1.0\r\nHost: %s:%s\r\nContent-Type: text/plain;charset=UTF-8\r\n\r\n", updateraddr, updaterport);
-				else bytes = sprintf_s(buffer, buffer_size, "POST /burst?requestType=getMiningInfo HTTP/1.0\r\nConnection: close\r\n\r\n");
-
-				iResult = send(UpdaterSocket, buffer, bytes, 0);
-				if (iResult == SOCKET_ERROR)
-				{
-					if (network_quality > 0) network_quality--;
-					Log("\n*! GMI: send request failed: "); Log_u(WSAGetLastError());
-				}
-				else{
-					if (show_updates) wprintw(win_main, "Sent: \n%s\n", buffer, 0);
-					Log("\n* GMI: Sent: "); Log_server(buffer);
-
-
-					RtlSecureZeroMemory(buffer, buffer_size);
-					size_t  pos = 0;
-					iResult = 0;
-					do{
-						iResult = recv(UpdaterSocket, &buffer[pos], (int)(buffer_size - pos - 1), 0);
-						if (iResult > 0) pos += (size_t)iResult;
-					} while ((iResult > 0) && !use_fast_rcv);
-					if (iResult == SOCKET_ERROR)
-					{
-						if (network_quality > 0) network_quality--;
-						Log("\n*! GMI: get mining info failed:: "); Log_u(WSAGetLastError());
-					}
-					else {
-						if (network_quality < 100) network_quality++;
-						Log("\n* GMI: Received: "); Log_server(buffer);
-						if (show_updates)  wprintw(win_main, "Received: %s\n", buffer, 0);
-
-						// locate HTTP header
-						char *find = strstr(buffer, "\r\n\r\n");
-						if (find == nullptr)	Log("\n*! GMI: error in message from pool");
-						else {
-							char *rbaseTarget = strstr(buffer, "\"baseTarget\":");
-							char *rheight = strstr(buffer, "\"height\":");
-							char *generationSignature = strstr(buffer, "\"generationSignature\":");
-							if (generationSignature != nullptr) generationSignature = strstr(generationSignature + strlen("\"generationSignature\":"), "\"") + 1; //+1 убираем начальные ковычки
-							char* rtargetDeadline = strstr(buffer, "\"targetDeadline\"");
-
-							if (rbaseTarget == nullptr || rheight == nullptr || generationSignature == nullptr)
-							{
-								Log("\n*! GMI: error parsing (1) message from server");
-							}
-							else {
-								rbaseTarget = strpbrk(rbaseTarget, "0123456789");
-								char *endBaseTarget = strpbrk(rbaseTarget, "\"");
-								rheight = strpbrk(rheight, "0123456789");
-								char *endHeight = strpbrk(rheight, "\"");
-								char *endGenerationSignature = strstr(generationSignature, "\"");
-
-								if (endBaseTarget == nullptr || endHeight == nullptr || endGenerationSignature == nullptr){
-									Log("\n*! GMI: error parsing (2) message from server");
-								}
-								else {
-									// Set endpoints
-									endBaseTarget[0] = 0;
-									endHeight[0] = 0;
-									endGenerationSignature[0] = 0;
-
-									if (rtargetDeadline != nullptr)
-									{
-										rtargetDeadline = strpbrk(rtargetDeadline, "0123456789");
-										char* endBaseTarget = strpbrk(rtargetDeadline, "\"");
-										if (endBaseTarget == nullptr) endBaseTarget = strpbrk(rtargetDeadline, "}");
-										endBaseTarget[0] = 0;
-
-										targetDeadlineInfo = _strtoui64(rtargetDeadline, 0, 10);
-										//Log("\ntargetDeadlineInfo: "), Log_llu(targetDeadlineInfo);
-									}
-
-									unsigned long long  heightInfo = _strtoui64(rheight, 0, 10);
-									height = heightInfo;
-									baseTarget = _strtoui64(rbaseTarget, 0, 10);
-									strcpy(str_signature, generationSignature);
-									if (xstr2strr(signature, 33, generationSignature) == 0)	Log("\n*! GMI: Node response: Error decoding generationsignature\n");
-								}
-							}
-						}
-					}
-				}
-			}
-			iResult = closesocket(UpdaterSocket);
-		}
-		freeaddrinfo(result);
-	}
-	HeapFree(hHeap, 0, buffer);
-	return;
-}
-*/
 
 void pollLocal(void) {
 	size_t const buffer_size = 1000;
@@ -2086,7 +2003,7 @@ void pollLocal(void) {
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
-	iResult = getaddrinfo(updateraddr, updaterport, &hints, &result);
+	iResult = getaddrinfo(updateraddr.c_str(), updaterport.c_str(), &hints, &result);
 	if (iResult != 0) {
 		if (network_quality > 0) network_quality--;
 		Log("\n*! GMI: getaddrinfo failed with error: "); Log_u(WSAGetLastError());
@@ -2109,9 +2026,8 @@ void pollLocal(void) {
 			}
 			else {
 				int bytes;
-				if (miner_mode == 2) bytes = sprintf_s(buffer, buffer_size, "GET /pool/getMiningInfo HTTP/1.0\r\nHost: %s:%s\r\nContent-Type: text/plain;charset=UTF-8\r\n\r\n", updateraddr, updaterport);
-				else bytes = sprintf_s(buffer, buffer_size, "POST /burst?requestType=getMiningInfo HTTP/1.0\r\nConnection: close\r\n\r\n");
-
+				if (miner_mode == 2) bytes = sprintf_s(buffer, buffer_size, "GET /pool/getMiningInfo HTTP/1.0\r\nHost: %s:%s\r\nContent-Type: text/plain;charset=UTF-8\r\n\r\n", updateraddr.c_str(), updaterport.c_str());
+				else bytes = sprintf_s(buffer, buffer_size, "POST /burst?requestType=getMiningInfo HTTP/1.0\r\nHost: %s:%s\r\nContent-Length: 0\r\nConnection: close\r\n\r\n", nodeaddr.c_str(), nodeport.c_str());
 				iResult = send(UpdaterSocket, buffer, bytes, 0);
 				if (iResult == SOCKET_ERROR)
 				{
@@ -2184,7 +2100,7 @@ void pollLocal(void) {
 }
 
 void updater_i(void) {
-	if (strlen(updateraddr) <= 3) {
+	if (updateraddr.length() <= 3) {
 		Log("\nGMI: ERROR in UpdaterAddr");
 		exit(2);
 	}
@@ -2260,8 +2176,9 @@ void GetCPUInfo(void)
 			unsigned long long xcrFeatureMask = _xgetbv(_XCR_XFEATURE_ENABLED_MASK);
 			avxSupported = (xcrFeatureMask & 0x6) == 0x6;
 		}
-		if (avxSupported)	wprintw(win_main, "     [recomend use AVX]", 0);;
+		if (avxSupported)	wprintw(win_main, "     [recomend use AVX]", 0);
 #endif
+		if (InstructionSet::AVX2()) wprintw(win_main, "     [recomend use AVX2]", 0);
 		SYSTEM_INFO sysinfo;
 		GetSystemInfo(&sysinfo);
 		wprintw(win_main, "\n%s", InstructionSet::Vendor().c_str(), 0);
@@ -2726,7 +2643,7 @@ int main(int argc, char **argv) {
 	double pcFreq = double(li.QuadPart);
 
 	std::thread proxy;
-	std::vector<std::thread> generator;
+	//std::vector<std::thread> generator;
 
 	InitializeCriticalSection(&sessionsLock);
 	InitializeCriticalSection(&bestsLock);
@@ -2863,11 +2780,11 @@ int main(int argc, char **argv) {
 	if (nodeip == nullptr) ShowMemErrorExit();
 	wattron(win_main, COLOR_PAIR(11));
 
-	hostname_to_ip(nodeaddr, nodeip);
-	wprintw(win_main, "Pool address    %s (ip %s:%s)\n", nodeaddr, nodeip, nodeport, 0);
+	hostname_to_ip(nodeaddr.c_str(), nodeip);
+	wprintw(win_main, "Pool address    %s (ip %s:%s)\n", nodeaddr.c_str(), nodeip, nodeport.c_str(), 0);
 
-	if (strlen(updateraddr) > 3) hostname_to_ip(updateraddr, updaterip);
-	wprintw(win_main, "Updater address %s (ip %s:%s)\n", updateraddr, updaterip, updaterport, 0);
+	if (updateraddr.length() > 3) hostname_to_ip(updateraddr.c_str(), updaterip);
+	wprintw(win_main, "Updater address %s (ip %s:%s)\n", updateraddr.c_str(), updaterip, updaterport.c_str(), 0);
 
 	wattroff(win_main, COLOR_PAIR(11));
 	HeapFree(hHeap, 0, updaterip);
@@ -2911,8 +2828,8 @@ int main(int argc, char **argv) {
 	}
 
 	// Check overlapped plots
-	for (auto cx = 0; cx < all_files.size(); cx++)	{
-		for (auto cy = cx + 1; cy < all_files.size(); cy++)		{
+	for (size_t cx = 0; cx < all_files.size(); cx++)	{
+		for (size_t cy = cx + 1; cy < all_files.size(); cy++)		{
 			if (all_files[cy].Key == all_files[cx].Key)
 				if (all_files[cy].StartNonce >= all_files[cx].StartNonce) {
 					if (all_files[cy].StartNonce < all_files[cx].StartNonce + all_files[cx].Nonces){
@@ -2929,7 +2846,7 @@ int main(int argc, char **argv) {
 					}
 		}
 	}
-	all_files.~vector();
+	//all_files.~vector();   // ???
 
 	// Run Proxy
 	if (enable_proxy)
@@ -3035,6 +2952,11 @@ int main(int argc, char **argv) {
 			case 'q':
 				exit_flag = true;
 				break;
+			case 'r':
+				wattron(win_main, COLOR_PAIR(15));
+				wprintw(win_main, "Recommended size for this block: %llu Gb\n", (4398046511104 / baseTarget)*1024 / targetDeadlineInfo);
+				wattroff(win_main, COLOR_PAIR(15));
+				break;
 			}
 			box(win_progress, 0, 0);
 			bytesRead = 0;
@@ -3063,7 +2985,7 @@ int main(int argc, char **argv) {
 				if (use_wakeup)
 				{
 					QueryPerformanceCounter((LARGE_INTEGER*)&curr_time);
-					if ((curr_time - end_threads_time) / pcFreq > 360)
+					if ((curr_time - end_threads_time) / pcFreq > 180)  // 3 minutes
 					{
 						std::vector<t_files> tmp_files;
 						for (size_t i = 0; i < paths_dir.size(); i++)		GetFiles(paths_dir[i], &tmp_files);
@@ -3083,9 +3005,9 @@ int main(int argc, char **argv) {
 			wmove(win_progress, 1, 1);
 			wattron(win_progress, COLOR_PAIR(14));
 			if (deadline == 0)
-				wprintw(win_progress, "%3llu%% %6llu GB (%.2f Mb/s). no deadline            Network quality: %3u%%", (bytesRead * 4096 * 100 / total_size), (bytesRead / (256 * 1024)), threads_speed, network_quality, 0);
+				wprintw(win_progress, "%3llu%% %6llu GB (%.2f MB/s). no deadline            Network quality: %3u%%", (bytesRead * 4096 * 100 / total_size), (bytesRead / (256 * 1024)), threads_speed, network_quality, 0);
 			else
-				wprintw(win_progress, "%3llu%% %6llu GB (%.2f Mb/s). Deadline =%10llu   Network quality: %3u%%", (bytesRead * 4096 * 100 / total_size), (bytesRead / (256 * 1024)), threads_speed, deadline, network_quality, 0);
+				wprintw(win_progress, "%3llu%% %6llu GB (%.2f MB/s). Deadline =%10llu   Network quality: %3u%%", (bytesRead * 4096 * 100 / total_size), (bytesRead / (256 * 1024)), threads_speed, deadline, network_quality, 0);
 			wattroff(win_progress, COLOR_PAIR(14));
 
 			wrefresh(win_main);
@@ -3138,3 +3060,6 @@ int main(int argc, char **argv) {
 	fclose(fp_Log);
 	return 0;
 }
+
+// todo list
+// проблема с облаками / разрыв связи

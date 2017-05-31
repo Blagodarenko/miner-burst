@@ -215,6 +215,7 @@
     <ClCompile Include="mshabal_avx1.c" />
     <ClCompile Include="mshabal_avx2.c" />
     <ClCompile Include="mshabal_sse4.c" />
+    <ClCompile Include="picohttpparser.c" />
     <ClCompile Include="sph_shabal.c" />
   </ItemGroup>
   <ItemGroup>
@@ -223,6 +224,7 @@
     <ClInclude Include="mshabal.h" />
     <ClInclude Include="mshabal256.h" />
     <ClInclude Include="panel.h" />
+    <ClInclude Include="picohttpparser.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="shabal_asm.h" />
     <ClInclude Include="sph_shabal.h" />

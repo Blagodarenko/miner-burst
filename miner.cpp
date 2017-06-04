@@ -974,8 +974,13 @@ void send_i(void)
 					}
 					else //получили ответ пула
 					{
-						char *find = strstr(buffer, "\r\n\r\n");
-						if (find != nullptr) find = find + 4;
+						char *find = strstr(buffer, "{");
+						if (find == nullptr)
+						{
+							find = strstr(buffer, "\r\n\r\n");
+							if (find != nullptr) find = find + 4;
+							else find = buffer;
+						}
 
 						unsigned long long ndeadline;
 						unsigned long long naccountId = 0;
@@ -2956,6 +2961,9 @@ int main(int argc, char **argv) {
 				wattron(win_main, COLOR_PAIR(15));
 				wprintw(win_main, "Recommended size for this block: %llu Gb\n", (4398046511104 / baseTarget)*1024 / targetDeadlineInfo);
 				wattroff(win_main, COLOR_PAIR(15));
+				break;
+			case 'c':
+				wprintw(win_main, "*** Chance to find a block: %.5f%%  (%llu Gb)\n", ((double)((total_size / 1024 / 1024) * 100 * 60)*(double)baseTarget) / 1152921504606846976, total_size / 1024 / 1024 / 1024, 0);
 				break;
 			}
 			box(win_progress, 0, 0);

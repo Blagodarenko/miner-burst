@@ -44,6 +44,7 @@ extern "C" {
     const unsigned char *buf6, const unsigned char *buf7,
     size_t num)
   {
+    _mm256_zeroupper();
     union {
       u32 words[64 * MSHABAL256_FACTOR];
       __m256i data[16];
@@ -235,6 +236,7 @@ extern "C" {
       _mm256_storeu_si256((__m256i *)sc->state + j + 28, C[j]);
     }
 
+	_mm256_zeroupper();
 #undef M
   }
 

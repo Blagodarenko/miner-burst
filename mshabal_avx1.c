@@ -222,7 +222,7 @@ extern "C" {
 		  _mm_storeu_si128((__m128i *)sc->state + j + 12, B[j]);
 		  _mm_storeu_si128((__m128i *)sc->state + j + 28, C[j]);
 	  }
-
+	 // _mm256_zeroupper();
 #undef M
   }
 
@@ -264,53 +264,6 @@ extern "C" {
 	  sc->ptr = 0;
 	  sc->out_size = out_size;
   }
-
- 
-
-  static const mshabal_u32 A_init_256[] = {
-	  C32(0x52F84552), C32(0xE54B7999), C32(0x2D8EE3EC), C32(0xB9645191),
-	  C32(0xE0078B86), C32(0xBB7C44C9), C32(0xD2B5C1CA), C32(0xB0D2EB8C),
-	  C32(0x14CE5A45), C32(0x22AF50DC), C32(0xEFFDBC6B), C32(0xEB21B74A)
-  };
-
-  static const mshabal_u32 B_init_256[] = {
-	  C32(0xB555C6EE), C32(0x3E710596), C32(0xA72A652F), C32(0x9301515F),
-	  C32(0xDA28C1FA), C32(0x696FD868), C32(0x9CB6BF72), C32(0x0AFE4002),
-	  C32(0xA6E03615), C32(0x5138C1D4), C32(0xBE216306), C32(0xB38B8890),
-	  C32(0x3EA8B96B), C32(0x3299ACE4), C32(0x30924DD4), C32(0x55CB34A5)
-  };
-
-  static const mshabal_u32 C_init_256[] = {
-	  C32(0xB405F031), C32(0xC4233EBA), C32(0xB3733979), C32(0xC0DD9D55),
-	  C32(0xC51C28AE), C32(0xA327B8E1), C32(0x56C56167), C32(0xED614433),
-	  C32(0x88B59D60), C32(0x60E2CEBA), C32(0x758B4B8B), C32(0x83E82A7F),
-	  C32(0xBC968828), C32(0xE6E00BF7), C32(0xBA839E55), C32(0x9B491C60)
-  };
-
-
-  void  avx1_mshabal_init2(mshabal_context *cc, unsigned out_size)
-  {
-	  //for (unsigned u = 0; u < 176; u++)  cc->state[u] = 0;
-
-	  memset(cc->buf0, 0, sizeof cc->buf0);
-	  memset(cc->buf1, 0, sizeof cc->buf1);
-	  memset(cc->buf2, 0, sizeof cc->buf2);
-	  memset(cc->buf3, 0, sizeof cc->buf3);
-
-	  for (unsigned u = 0; u < 176; u = u + 12 + 16 + 16)
-	  {
-		  memcpy(cc->state + u, A_init_256, sizeof(u32) * 12);
-		  memcpy(cc->state + u + 12, B_init_256, sizeof(u32) * 16);
-		  memcpy(cc->state + u + 12 + 16, C_init_256, sizeof(u32) * 16);
-	  }
-
-	  cc->Wlow = 1;
-	  cc->Whigh = 0;
-	  cc->ptr = 0;
-	  //cc->Whigh = cc->Wlow = C32(0xFFFFFFFF);
-	  cc->out_size = out_size;
-  }
-  
 
 
   /* see shabal_small.h */
@@ -435,7 +388,6 @@ extern "C" {
 		  out = (u32*)dst3;
 		  for (z = 0; z < out_size_w32; z++)  out[(size_t)z] = sc->state[off + (size_t)(z << 2) + 3];
 	  }
-	  _mm256_zeroupper();
   }
   //#pragma optimize("", on)
 

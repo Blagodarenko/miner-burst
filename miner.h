@@ -19,6 +19,7 @@ using namespace rapidjson;
 
 #pragma comment(lib,"Ws2_32.lib")
 #include <ws2tcpip.h>
+#include <mswsock.h> // Need for SO_UPDATE_CONNECT_CONTEXT
 
 #include "curses.h" 
 //#include "panel.h" 
@@ -52,12 +53,12 @@ HANDLE hHeap;
 
 bool exit_flag = false;
 #ifdef __AVX2__
-	char const *const version = "v1.170603_AVX2";
+	char const *const version = "v1.170820_AVX2";
 #else
 	#ifdef __AVX__
-		char const *const version = "v1.170603_AVX";
+		char const *const version = "v1.170820_AVX";
 	#else
-		char const *const version = "v1.170603";
+		char const *const version = "v1.170820";
 	#endif
 #endif 
 
@@ -91,22 +92,22 @@ char *p_minerPath = nullptr;		// путь к папке майнера
 size_t miner_mode = 0;				// режим майнера. 0=соло, 1=пул
 size_t cache_size = 100000;			// размер кэша чтения плотов
 std::vector<std::string> paths_dir; // пути
-bool show_msg = false;				// Показать общение с сервером в отправщике
-bool show_updates = false;			// Показать общение с сервером в апдейтере
+//bool show_msg = false;				// Показать общение с сервером в отправщике
+//bool show_updates = false;			// Показать общение с сервером в апдейтере
 FILE * fp_Log = nullptr;			// указатель на лог-файл
 size_t send_interval = 100;			// время ожидания между отправками
 size_t update_interval = 1000;		// время ожидания между апдейтами
 short win_size_x = 80;
 short win_size_y = 60;
-bool use_fast_rcv = false;
+//bool use_fast_rcv = false;
 bool use_debug = false;
 bool enable_proxy = false;
-bool send_best_only = true;
+//bool send_best_only = true;
 bool use_wakeup = false;
 bool use_log = true;				// Вести лог
 bool use_boost = false;				// Использовать повышенный приоритет для потоков
 bool show_winner = false;			// показывать победителя
-//short can_generate = 1;				// 0 - disable; 1 - can start generate; 2 - already run generate
+//short can_generate = 0;				// 0 - disable; 1 - can start generate; 2 - already run generator
 
 
 SYSTEMTIME cur_time;				// Текущее время

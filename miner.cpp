@@ -25,19 +25,20 @@ void Log_init(void)
 		ss << "Logs\\" << cur_time.wYear << "-" << cur_time.wMonth << "-" << cur_time.wDay << "_" << cur_time.wHour << "_" << cur_time.wMinute << "_" << cur_time.wSecond << ".log";
 		std::string filename = ss.str();
 		
-		if (fopen_s(&fp_Log, filename.c_str(), "wt") != 0)
+		if ((fp_Log = _fsopen(filename.c_str(), "wt", _SH_DENYNO)) == NULL)
 		{
 			wattron(win_main, COLOR_PAIR(12));
 			wprintw(win_main, "LOG: file openinig error\n", 0);
 			wattroff(win_main, COLOR_PAIR(12));
 			use_log = false;
 		}
+		Log(version);
 	}
 }
 
 void Log(char const *const strLog)
 {
-	if (use_log && fp_Log)
+	if (use_log)
 	{
 		// если строка содержит интер, то добавить время  
 		if (strLog[0] == '\n')
@@ -53,7 +54,7 @@ void Log(char const *const strLog)
 void Log_server(char const *const strLog)
 {
 	size_t len_str = strlen(strLog);
-	if ((len_str> 0) && use_log && fp_Log)
+	if ((len_str> 0) && use_log)
 	{
 		char * Msg_log = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, len_str * 2 + 1);
 		if (Msg_log == nullptr)	ShowMemErrorExit();
@@ -90,7 +91,7 @@ void Log_server(char const *const strLog)
 
 void Log_llu(unsigned long long const llu_num)
 {
-	if (use_log && fp_Log)
+	if (use_log)
 	{
 		fprintf_s(fp_Log, "%llu", llu_num);
 		fflush(fp_Log);
@@ -99,7 +100,7 @@ void Log_llu(unsigned long long const llu_num)
 
 void Log_u(size_t const u_num)
 {
-	if (use_log && fp_Log)
+	if (use_log)
 	{
 		fprintf_s(fp_Log, "%u", (unsigned)u_num);
 		fflush(fp_Log);
@@ -161,10 +162,7 @@ int load_config(char const *const filename)
 		{
 			Log("\nMode: ");
 			if(strcmp(document["Mode"].GetString(), "solo") == 0) miner_mode = 0;
-			else 
-				if(strcmp(document["Mode"].GetString(), "pool") == 0) miner_mode = 1;
-				else
-					if (strcmp(document["Mode"].GetString(), "poolV2") == 0) miner_mode = 2;
+			else miner_mode = 1;
 			Log_u(miner_mode);
 		}
 
@@ -198,14 +196,6 @@ int load_config(char const *const filename)
 		if(document.HasMember("UseHDDWakeUp") && (document["UseHDDWakeUp"].IsBool())) use_wakeup = document["UseHDDWakeUp"].GetBool();
 		Log_u(use_wakeup);
 
-		Log("\nShowMsg: ");
-		if(document.HasMember("ShowMsg") && (document["ShowMsg"].IsBool()))	show_msg = document["ShowMsg"].GetBool();
-		Log_u(show_msg);
-
-		Log("\nShowUpdates: ");
-		if(document.HasMember("ShowUpdates") && (document["ShowUpdates"].IsBool()))	show_updates = document["ShowUpdates"].GetBool();
-		Log_u(show_updates);
-
 		Log("\nSendInterval: "); 
 		if(document.HasMember("SendInterval") && (document["SendInterval"].IsUint())) send_interval = (size_t)document["SendInterval"].GetUint();
 		Log_u(send_interval);
@@ -213,10 +203,6 @@ int load_config(char const *const filename)
 		Log("\nUpdateInterval: "); 
 		if(document.HasMember("UpdateInterval") && (document["UpdateInterval"].IsUint())) update_interval = (size_t)document["UpdateInterval"].GetUint();
 		Log_u(update_interval);
-
-		Log("\nUseFastRcv: ");
-		if(document.HasMember("UseFastRcv") && (document["UseFastRcv"].IsBool())) use_fast_rcv = document["UseFastRcv"].GetBool();
-		Log_u(use_fast_rcv);
 
 		Log("\nDebug: ");
 		if(document.HasMember("Debug") && (document["Debug"].IsBool()))	use_debug = document["Debug"].GetBool();
@@ -263,10 +249,6 @@ int load_config(char const *const filename)
 		Log("\nShowWinner: "); 
 		if (document.HasMember("ShowWinner") && (document["ShowWinner"].IsBool()))	show_winner = document["ShowWinner"].GetBool();
 		Log_u(show_winner);
-
-		Log("\nSendBestOnly: ");
-		if (document.HasMember("SendBestOnly") && (document["SendBestOnly"].IsBool())) send_best_only = document["SendBestOnly"].GetBool();
-		Log_u(send_best_only);
 
 		Log("\nTargetDeadline: ");
 		if (document.HasMember("TargetDeadline") && (document["TargetDeadline"].IsInt64()))	my_target_deadline = document["TargetDeadline"].GetUint64();
@@ -487,49 +469,113 @@ size_t Get_index_acc(unsigned long long const key)
 	LeaveCriticalSection(&bestsLock);
 	return bests.size() - 1;
 }
+
+////////////////////////
 /*
 void gen_nonce(unsigned long long addr, unsigned long long start_nonce, unsigned long long count) {
 	#define PLOT_SIZE	(4096 * 64)
 	#define HASH_SIZE	32
 	#define HASH_CAP	4096
-	char * final = (char *)calloc(32, 1);
-	char * gendata = (char *)calloc(16 + PLOT_SIZE, 1);
+	#define SCOOP_SIZE	64
+
+	unsigned long long nonce1;
+	unsigned long long nonce2;
+	unsigned long long nonce3;
+	unsigned long long nonce4;
+	//char * final = (char *)calloc(32, 1);
+	char *final1 = new char[32];
+	char *final2 = new char[32];
+	char *final3 = new char[32];
+	char *final4 = new char[32];
+
+	char *gendata1 = new char[16 + PLOT_SIZE];
+	char *gendata2 = new char[16 + PLOT_SIZE];
+	char *gendata3 = new char[16 + PLOT_SIZE];
+	char *gendata4 = new char[16 + PLOT_SIZE];
+
 	char * cache = (char *)calloc(64 * count, 1);
 	char *xv = (char*)&addr;
-	sph_shabal_context x;
-	size_t i;
-	size_t len;
-	//gendata[PLOT_SIZE] = xv[7]; gendata[PLOT_SIZE+1] = xv[6]; gendata[PLOT_SIZE+2] = xv[5]; gendata[PLOT_SIZE+3] = xv[4];
-	//gendata[PLOT_SIZE+4] = xv[3]; gendata[PLOT_SIZE+5] = xv[2]; gendata[PLOT_SIZE+6] = xv[1]; gendata[PLOT_SIZE+7] = xv[0];
-	for (size_t i = 0; i < 8; i++) gendata[PLOT_SIZE+i] = xv[7-i];
-	 
-	for (unsigned long long z = start_nonce; z < (start_nonce + count); z++) {
-		xv = (char*)&z;
-		//gendata[PLOT_SIZE + 8] = xv[7]; gendata[PLOT_SIZE + 9] = xv[6]; gendata[PLOT_SIZE + 10] = xv[5]; gendata[PLOT_SIZE + 11] = xv[4];
-		//gendata[PLOT_SIZE + 12] = xv[3]; gendata[PLOT_SIZE + 13] = xv[2]; gendata[PLOT_SIZE + 14] = xv[1]; gendata[PLOT_SIZE + 15] = xv[0];
-		for (i = 8; i < 16; i++) gendata[PLOT_SIZE + i] = xv[15 - i];
+	mshabal_context *mx = new mshabal_context[sizeof(mshabal_context)];
 
-		for (i = PLOT_SIZE; i > 0; i -= HASH_SIZE) {
-			sph_shabal256_init(&x);
-			len = PLOT_SIZE + 16 - i;
-			if (len > HASH_CAP)	len = HASH_CAP;
-			sph_shabal256(&x, (const unsigned char*)&gendata[i], len);
-			sph_shabal256_close(&x, &gendata[i - HASH_SIZE]);
+	size_t len;
+	for (size_t i = 0; i < 8; i++)
+	{
+		gendata1[PLOT_SIZE + i] = xv[7 - i];
+		gendata2[PLOT_SIZE + i] = xv[7 - i];
+		gendata3[PLOT_SIZE + i] = xv[7 - i];
+		gendata4[PLOT_SIZE + i] = xv[7 - i];
+	}
+
+	for (unsigned long long z = start_nonce; z < (start_nonce + count); z+=4) {
+//		xv = (char*)&z;
+//		for (i = 8; i < 16; i++) gendata[PLOT_SIZE + i] = xv[15 - i];
+
+		nonce1 = z + 0;
+		nonce2 = z + 1;
+		nonce3 = z + 2;
+		nonce4 = z + 3;
+		char *xv1 = (char*)&nonce1;
+		char *xv2 = (char*)&nonce2;
+		char *xv3 = (char*)&nonce3;
+		char *xv4 = (char*)&nonce4;
+		for (size_t i = 8; i < 16; i++)
+		{
+			gendata1[PLOT_SIZE + i] = xv1[15 - i];
+			gendata2[PLOT_SIZE + i] = xv2[15 - i];
+			gendata3[PLOT_SIZE + i] = xv3[15 - i];
+			gendata4[PLOT_SIZE + i] = xv4[15 - i];
 		}
 
-		sph_shabal256_init(&x);
-		sph_shabal256(&x, (const unsigned char*)gendata, 16 + PLOT_SIZE);
-		sph_shabal256_close(&x, final);
+		for (size_t i = PLOT_SIZE; i > 0; i -= HASH_SIZE)
+		{
+			avx1_mshabal_init(mx, 256);
+			len = PLOT_SIZE + 16 - i;
+			if (len > HASH_CAP)   len = HASH_CAP;
+			avx1_mshabal(mx, &gendata1[i], &gendata2[i], &gendata3[i], &gendata4[i], len);
+			avx1_mshabal_close(mx, 0, 0, 0, 0, 0, &gendata1[i - HASH_SIZE], &gendata2[i - HASH_SIZE], &gendata3[i - HASH_SIZE], &gendata4[i - HASH_SIZE]);
+
+			// ceil because (4096*32*2-32)/64 == 4095,5 but scoop 4095 is not complete yet
+			//int scoopNumberReady = i / SCOOP_SIZE;
+			//if (i % SCOOP_SIZE)	++scoopNumberReady;
+			//if (scoopNumberReady == scoop) break;
+			if ((i / SCOOP_SIZE == scoop) && (i % SCOOP_SIZE == 0))  break;
+
+		}
+
+
+		//avx1_mshabal_init(mx, 256);
+		//avx1_mshabal(mx, gendata1, gendata2, gendata3, gendata4, 16 + PLOT_SIZE);
+		//avx1_mshabal_close(mx, 0, 0, 0, 0, 0, final1, final2, final3, final4);
 
 		// XOR with final
-		//for(i = 0; i < PLOT_SIZE; i ++)	gendata[i] ^= (final[i % HASH_SIZE]);
-		//for (i = scoop * 64; i < ((scoop + 1) * 64); i++)	gendata[i] ^= (final[i % HASH_SIZE]);
-		gendata[scoop * 64] ^= (final[(scoop * 64) % HASH_SIZE]);
-		memmove(&cache[(z - start_nonce) * 64], &gendata[scoop * 64], 64);
+		for (size_t i = scoop * SCOOP_SIZE; i < scoop * SCOOP_SIZE + SCOOP_SIZE; i++)
+		{
+			gendata1[i] ^= (final1[i % 32]);
+			gendata2[i] ^= (final2[i % 32]);
+			gendata3[i] ^= (final3[i % 32]);
+			gendata4[i] ^= (final4[i % 32]);
+		}
+		gendata1[scoop * 64] ^= (final1[(scoop * 64) % HASH_SIZE]);
+		gendata2[scoop * 64] ^= (final2[(scoop * 64) % HASH_SIZE]);
+		gendata3[scoop * 64] ^= (final3[(scoop * 64) % HASH_SIZE]);
+		gendata4[scoop * 64] ^= (final4[(scoop * 64) % HASH_SIZE]);
+
+		memmove(&cache[(z - start_nonce) * 64], &gendata1[scoop * 64], 64);
+		memmove(&cache[(z - start_nonce + 1) * 64], &gendata2[scoop * 64], 64);
+		memmove(&cache[(z - start_nonce + 2) * 64], &gendata3[scoop * 64], 64);
+		memmove(&cache[(z - start_nonce + 3) * 64], &gendata4[scoop * 64], 64);
 	}
-	free(final);
-	free(gendata);
-	
+	//free(final);
+	//free(gendata);
+	delete[] gendata1;
+	delete[] gendata2;
+	delete[] gendata3;
+	delete[] gendata4;
+	delete[] final1;
+	delete[] final2;
+	delete[] final3;
+	delete[] final4;
+	delete[] mx;
 
 	//acc = Get_index_acc(key);
 	//procscoop_sph(n, size, cache, 0, std::string("generator"));
@@ -539,24 +585,25 @@ void gen_nonce(unsigned long long addr, unsigned long long start_nonce, unsigned
 
 void generator_i(size_t number)
 {
-	unsigned long long start_nonce = 100000000 * (number + 1);// * (local_num + 1);
-	unsigned long long size = 400;
+	unsigned long long start_nonce = 10000000000 * (number + 1);// * (local_num + 1);
+	unsigned long long size = 1000;
 	clock_t start_work_time;
-	//wprintw(win_main, "\ngenerator RUNING !");
+	wprintw(win_main, "\ngenerator RUNING !");
 	while (!stopThreads)
 	{
 		start_work_time = clock();
 		gen_nonce(bests[0].account_id, start_nonce, size);
 		
-		wprintw(win_main, "\n%llu\tnoces/min: %f", start_nonce, (float)((float)size * CLOCKS_PER_SEC * 60 / (float)(clock() - start_work_time)));
+		wprintw(win_main, "\n%llu\tnoces/min: %f   (scoop %llu)", start_nonce, (float)((float)size * CLOCKS_PER_SEC * 60 / (float)(clock() - start_work_time)), scoop);
 		//wrefresh(win_main);
 		
 		start_nonce = start_nonce + size;
 	};
 	return;
 }
-*/
 
+*/
+////////////////////////////
 
 void proxy_i(void)
 {
@@ -647,7 +694,7 @@ void proxy_i(void)
 				RtlSecureZeroMemory(tmp_buffer, buffer_size);
 				iResult = recv(ClientSocket, tmp_buffer, (int)(buffer_size - 1), 0);
 				strcat_s(buffer, buffer_size, tmp_buffer);
-			} while ((iResult > 0) && !use_fast_rcv);
+			} while (iResult > 0);
 
 			Log("\nProxy get info: ");  Log_server(buffer);
 			unsigned long long get_accountId = 0;
@@ -758,7 +805,7 @@ void proxy_i(void)
 						{
 							find[0] = 0;
 							wattron(win_main, COLOR_PAIR(15));
-							wprintw(win_main, "PROXY: %s\n", buffer, 0);
+							wprintw(win_main, "PROXY: %s\n", buffer, 0);//You can crash the miner when the proxy is enabled and you open the address in a browser.  wprintw(win_main, "PROXY: %s\n", "Error", 0);
 							wattroff(win_main, COLOR_PAIR(15));
 						}
 					}
@@ -799,8 +846,7 @@ void send_i(void)
 		for (auto iter = shares.begin(); iter != shares.end();)
 		{
 
-			if (send_best_only) //Гасим шару если она больше текущего targetDeadline, актуально для режима Proxy
-			{
+		//Гасим шару если она больше текущего targetDeadline, актуально для режима Proxy
 				if ((iter->best / baseTarget) > bests[Get_index_acc(iter->account_id)].targetDeadline)
 				{
 					if (use_debug)
@@ -815,7 +861,6 @@ void send_i(void)
 					LeaveCriticalSection(&sharesLock);
 					continue;
 				}
-			}
 
 			RtlSecureZeroMemory(&hints, sizeof(hints));
 			hints.ai_family = AF_INET;
@@ -867,24 +912,10 @@ void send_i(void)
 				{
 					unsigned long long total = total_size / 1024 / 1024 / 1024;
 					for (auto It = satellite_size.begin(); It != satellite_size.end(); ++It) total = total + It->second;
-					bytes = sprintf_s(buffer, buffer_size, "POST /burst?requestType=submitNonce&accountId=%llu&nonce=%llu&deadline=%llu HTTP/1.0\r\nHost: %s:%s\r\nX-Miner: Blago %s\r\nX-Capacity: %llu\r\nContent-Length: 0\r\nConnection: close\r\n\r\n", iter->account_id, iter->nonce, iter->best, nodeaddr.c_str(), nodeport.c_str(), version, total, 0);
-				}
-				if (miner_mode == 2)
-				{
-					char* f1 = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, MAX_PATH);
-					char* str_len = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, MAX_PATH);
-					if ((f1 == nullptr) || (str_len == nullptr)) ShowMemErrorExit();
-
-					int len = sprintf_s(f1, MAX_PATH, "%llu:%llu:%llu", iter->account_id, iter->nonce, height);
-					_itoa_s(len, str_len, MAX_PATH - 1, 10);
-
-					bytes = sprintf_s(buffer, buffer_size, "POST /pool/submitWork HTTP/1.0\r\nHost: %s:%s\r\nContent-Type: text/plain;charset=UTF-8\r\nContent-Length: %i\r\n\r\n%s", nodeaddr.c_str(), nodeport.c_str(), len, f1);
-					HeapFree(hHeap, 0, f1);
-					HeapFree(hHeap, 0, str_len);
+					bytes = sprintf_s(buffer, buffer_size, "POST /burst?requestType=submitNonce&accountId=%llu&nonce=%llu&deadline=%llu HTTP/1.0\r\nHost: %s:%s\r\nX-Miner: Blago %s\r\nX-Capacity: %llu\r\nContent-Length: 0\r\nConnection: close\r\n\r\n", iter->account_id, iter->nonce, iter->best, nodeaddr.c_str(), nodeport.c_str(), version, total);
 				}
 
 				// Sending to server
-
 				iResult = send(ConnectSocket, buffer, bytes, 0);
 				if (iResult == SOCKET_ERROR)
 				{
@@ -904,15 +935,12 @@ void send_i(void)
 					wprintw(win_main, "%s [%20llu] sent DL: %15llu %5llud %02llu:%02llu:%02llu\n", tbuffer, iter->account_id, dl, (dl) / (24 * 60 * 60), (dl % (24 * 60 * 60)) / (60 * 60), (dl % (60 * 60)) / 60, dl % 60, 0);
 					wattroff(win_main, COLOR_PAIR(9));
 
-					if (show_msg) wprintw(win_main, "send: %s\n", buffer, 0); // показываем послание
-					Log("\nSender: Sent: "); Log_server(buffer);
-
 					EnterCriticalSection(&sessionsLock);
 					//sessions.push_back({ ConnectSocket, iter->account_id, dl, iter->best, iter->nonce });
 					sessions.push_back({ ConnectSocket, dl, *iter });
 					LeaveCriticalSection(&sessionsLock);
 
-					if (send_best_only) bests[Get_index_acc(iter->account_id)].targetDeadline = dl;
+					bests[Get_index_acc(iter->account_id)].targetDeadline = dl;
 					EnterCriticalSection(&sharesLock);
 					iter = shares.erase(iter);
 					LeaveCriticalSection(&sharesLock);
@@ -944,7 +972,7 @@ void send_i(void)
 				do{
 					iResult = recv(ConnectSocket, &buffer[pos], (int)(buffer_size - pos - 1), 0);
 					if (iResult > 0) pos += (size_t)iResult;
-				} while ((iResult > 0) && !use_fast_rcv);
+				} while (iResult > 0);
 
 				if (iResult == SOCKET_ERROR)
 				{
@@ -961,10 +989,7 @@ void send_i(void)
 				}
 				else //что-то получили от сервера
 				{
-					if (show_msg) wprintw(win_main, "\nReceived: %s\n", buffer, 0);
-					Log("\nSender: Received: "); Log_server(buffer);
 					if (network_quality < 100) network_quality++;
-
 
 					//получили пустую строку, переотправляем дедлайн
 					if (buffer[0] == '\0')
@@ -1125,7 +1150,8 @@ void procscoop_m_4(unsigned long long const nonce, unsigned long long const n, c
 	char res2[32];
 	char res3[32];
 	unsigned posn;
-	mshabal_context x;
+	mshabal_context x, init_x;
+	avx1_mshabal_init(&init_x, 256);
 
 	for (unsigned long long v = 0; v < n; v += 4)
 	{
@@ -1133,9 +1159,8 @@ void procscoop_m_4(unsigned long long const nonce, unsigned long long const n, c
 		memcpy(&sig1[32], &cache[(v + 1) * 64], 64);
 		memcpy(&sig2[32], &cache[(v + 2) * 64], 64);
 		memcpy(&sig3[32], &cache[(v + 3) * 64], 64);
-
 		
-		avx1_mshabal_init(&x, 256);
+		memcpy(&x, &init_x, sizeof(init_x)); // optimization: avx1_mshabal_init(&x, 256);
 		avx1_mshabal(&x, (const unsigned char*)sig0, (const unsigned char*)sig1, (const unsigned char*)sig2, (const unsigned char*)sig3, 64 + 32);
 		avx1_mshabal_close(&x, 0, 0, 0, 0, 0, res0, res1, res2, res3);
 
@@ -1163,8 +1188,6 @@ void procscoop_m_4(unsigned long long const nonce, unsigned long long const n, c
 
 		if ((*wertung / baseTarget) <= bests[acc].targetDeadline)
 		{
-			if (send_best_only)
-			{
 				if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
 				{
 					Log("\nfound deadline=");	Log_llu(*wertung / baseTarget); Log(" nonce=");	Log_llu(nonce + v + posn); Log(" for account: "); Log_llu(bests[acc].account_id); Log(" file: "); Log((char*)file_name.c_str());
@@ -1185,30 +1208,6 @@ void procscoop_m_4(unsigned long long const nonce, unsigned long long const n, c
 						wattroff(win_main, COLOR_PAIR(2));
 					}
 				}
-			}
-			else
-			{
-				if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
-				{
-					Log("\nfound deadline=");	Log_llu(*wertung / baseTarget); Log(" nonce=");	Log_llu(nonce + v); Log(" for account: "); Log_llu(bests[acc].account_id); Log(" file: "); Log((char*)file_name.c_str());
-					EnterCriticalSection(&bestsLock);
-					bests[acc].best = *wertung;
-					bests[acc].nonce = nonce + v + posn;
-					bests[acc].DL = *wertung / baseTarget;
-					LeaveCriticalSection(&bestsLock);
-				}
-				EnterCriticalSection(&sharesLock);
-				shares.push_back({ file_name, bests[acc].account_id, *wertung, nonce + v + posn });
-				LeaveCriticalSection(&sharesLock);
-				if (use_debug)
-				{
-					char tbuffer[9];
-					_strtime_s(tbuffer);
-					wattron(win_main, COLOR_PAIR(2));
-					wprintw(win_main, "%s [%20llu] found DL:      %9llu\n", tbuffer, bests[acc].account_id, *wertung / baseTarget, 0);
-					wattroff(win_main, COLOR_PAIR(2));
-				}
-			}
 		}
 	}
 }
@@ -1223,10 +1222,17 @@ void procscoop_m256_8(unsigned long long const nonce, unsigned long long const n
 	char sig5[32 + 64];
 	char sig6[32 + 64];
 	char sig7[32 + 64];
+	char res0[32];
+	char res1[32];
+	char res2[32];
+	char res3[32];
+	char res4[32];
+	char res5[32];
+	char res6[32];
+	char res7[32];
 	cache = data;
 	unsigned long long v;
-	char tbuffer[9];
-
+	
 	memmove(sig0, signature, 32);
 	memmove(sig1, signature, 32);
 	memmove(sig2, signature, 32);
@@ -1235,6 +1241,9 @@ void procscoop_m256_8(unsigned long long const nonce, unsigned long long const n
 	memmove(sig5, signature, 32);
 	memmove(sig6, signature, 32);
 	memmove(sig7, signature, 32);
+
+	mshabal256_context x, init_x;
+	mshabal256_init(&init_x, 256);
 
 	for (v = 0; v<n; v += 8) {
 		memmove(&sig0[32], &cache[(v + 0) * 64], 64);
@@ -1245,17 +1254,8 @@ void procscoop_m256_8(unsigned long long const nonce, unsigned long long const n
 		memmove(&sig5[32], &cache[(v + 5) * 64], 64);
 		memmove(&sig6[32], &cache[(v + 6) * 64], 64);
 		memmove(&sig7[32], &cache[(v + 7) * 64], 64);
-		char res0[32];
-		char res1[32];
-		char res2[32];
-		char res3[32];
-		char res4[32];
-		char res5[32];
-		char res6[32];
-		char res7[32];
 
-		mshabal256_context x;
-		mshabal256_init(&x, 256);
+		memcpy(&x, &init_x, sizeof(init_x)); // optimization: mshabal256_init(&x, 256);
 		mshabal256(&x, (const unsigned char*)sig0, (const unsigned char*)sig1, (const unsigned char*)sig2, (const unsigned char*)sig3, (const unsigned char*)sig4, (const unsigned char*)sig5, (const unsigned char*)sig6, (const unsigned char*)sig7, 64 + 32);
 		mshabal256_close(&x, 0, 0, 0, 0, 0, 0, 0, 0, 0, res0, res1, res2, res3, res4, res5, res6, res7);
 
@@ -1306,8 +1306,6 @@ void procscoop_m256_8(unsigned long long const nonce, unsigned long long const n
 		
 		if ((*wertung / baseTarget) <= bests[acc].targetDeadline)
 		{
-			if (send_best_only)
-			{
 				if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
 				{
 					Log("\nfound deadline=");	Log_llu(*wertung / baseTarget); Log(" nonce=");	Log_llu(nonce + v + posn); Log(" for account: "); Log_llu(bests[acc].account_id); Log(" file: "); Log((char*)file_name.c_str());
@@ -1328,29 +1326,6 @@ void procscoop_m256_8(unsigned long long const nonce, unsigned long long const n
 						wattroff(win_main, COLOR_PAIR(2));
 					}
 				}
-			}
-			else
-			{
-				if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
-				{
-					Log("\nfound deadline=");	Log_llu(*wertung / baseTarget); Log(" nonce=");	Log_llu(nonce + v); Log(" for account: "); Log_llu(bests[acc].account_id); Log(" file: "); Log((char*)file_name.c_str());
-					EnterCriticalSection(&bestsLock);
-					bests[acc].best = *wertung;
-					bests[acc].nonce = nonce + v + posn;
-					bests[acc].DL = *wertung / baseTarget;
-					LeaveCriticalSection(&bestsLock);
-				}
-				EnterCriticalSection(&sharesLock);
-				shares.push_back({ file_name, bests[acc].account_id, *wertung, nonce + v + posn });
-				LeaveCriticalSection(&sharesLock);
-				if (use_debug)
-				{
-					_strtime_s(tbuffer);
-					wattron(win_main, COLOR_PAIR(2));
-					wprintw(win_main, "%s [%20llu] found DL:      %9llu\n", tbuffer, bests[acc].account_id, *wertung / baseTarget, 0);
-					wattroff(win_main, COLOR_PAIR(2));
-				}
-			}
 		}
 	}
 }
@@ -1361,12 +1336,14 @@ void procscoop_sph(const unsigned long long nonce, const unsigned long long n, c
 	cache = data;
 	char res[32];
 	memcpy_s(sig, sizeof(sig), signature, sizeof(char) * 32);
-	sph_shabal_context x;
+	
+	sph_shabal_context x, init_x;
+	sph_shabal256_init(&init_x);
 	for (unsigned long long v = 0; v < n; v++)
 	{
 		memcpy_s(&sig[32], sizeof(sig)-32, &cache[v * 64], sizeof(char)* 64);
 		
-		sph_shabal256_init(&x);
+		memcpy(&x, &init_x, sizeof(init_x)); // optimization: sph_shabal256_init(&x);
 		sph_shabal256(&x, (const unsigned char*)sig, 64 + 32);
 		sph_shabal256_close(&x, res);
 
@@ -1374,8 +1351,6 @@ void procscoop_sph(const unsigned long long nonce, const unsigned long long n, c
 
 		if ((*wertung / baseTarget) <= bests[acc].targetDeadline)
 		{
-			if (send_best_only)
-			{
 				if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
 				{
 					Log("\nfound deadline=");	Log_llu(*wertung / baseTarget); Log(" nonce=");	Log_llu(nonce + v); Log(" for account: "); Log_llu(bests[acc].account_id); Log(" file: "); Log((char*)file_name.c_str());
@@ -1396,30 +1371,6 @@ void procscoop_sph(const unsigned long long nonce, const unsigned long long n, c
 						wattroff(win_main, COLOR_PAIR(2));
 					}
 				}
-			}
-			else
-			{
-				if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
-				{
-					Log("\nfound deadline=");	Log_llu(*wertung / baseTarget); Log(" nonce=");	Log_llu(nonce + v); Log(" for account: "); Log_llu(bests[acc].account_id); Log(" file: "); Log((char*)file_name.c_str());
-					EnterCriticalSection(&bestsLock);
-					bests[acc].best = *wertung;
-					bests[acc].nonce = nonce + v;
-					bests[acc].DL = *wertung / baseTarget;
-					LeaveCriticalSection(&bestsLock);
-				}
-				EnterCriticalSection(&sharesLock);
-				shares.push_back({ file_name, bests[acc].account_id, *wertung, nonce + v });
-				LeaveCriticalSection(&sharesLock);
-				if (use_debug)
-				{
-					char tbuffer[9];
-					_strtime_s(tbuffer);
-					wattron(win_main, COLOR_PAIR(2));
-					wprintw(win_main, "%s [%20llu] found DL:      %9llu\n", tbuffer, bests[acc].account_id, *wertung / baseTarget, 0);
-					wattroff(win_main, COLOR_PAIR(2));
-				}
-			}
 		}
 	}
 }
@@ -1443,8 +1394,6 @@ void procscoop_asm(const unsigned long long nonce, const unsigned long long n, c
 
 		if ((*wertung / baseTarget) <= bests[acc].targetDeadline)
 		{
-			if (send_best_only)
-			{
 				if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
 				{
 					Log("\nfound deadline=");	Log_llu(*wertung / baseTarget); Log(" nonce=");	Log_llu(nonce + v); Log(" for account: "); Log_llu(bests[acc].account_id); Log(" file: "); Log((char*)file_name.c_str());
@@ -1465,30 +1414,6 @@ void procscoop_asm(const unsigned long long nonce, const unsigned long long n, c
 						wattroff(win_main, COLOR_PAIR(2));
 					}
 				}
-			}
-			else
-			{
-				if (bests[acc].nonce == 0 || *wertung < bests[acc].best)
-				{
-					Log("\nfound deadline=");	Log_llu(*wertung / baseTarget); Log(" nonce=");	Log_llu(nonce + v); Log(" for account: "); Log_llu(bests[acc].account_id); Log(" file: "); Log((char*)file_name.c_str());
-					EnterCriticalSection(&bestsLock);
-					bests[acc].best = *wertung;
-					bests[acc].nonce = nonce + v;
-					bests[acc].DL = *wertung / baseTarget;
-					LeaveCriticalSection(&bestsLock);
-				}
-				EnterCriticalSection(&sharesLock);
-				shares.push_back({ file_name, bests[acc].account_id, *wertung, nonce + v });
-				LeaveCriticalSection(&sharesLock);
-				if (use_debug)
-				{
-					char tbuffer[9];
-					_strtime_s(tbuffer);
-					wattron(win_main, COLOR_PAIR(2));
-					wprintw(win_main, "%s [%20llu] found DL:      %9llu\n", tbuffer, bests[acc].account_id, *wertung / baseTarget, 0);
-					wattroff(win_main, COLOR_PAIR(2));
-				}
-			}
 		}
 	}
 }
@@ -1641,7 +1566,23 @@ void work_i(const size_t local_num) {
 				if (i + cache_size_local > stagger)
 				{
 					cache_size_local = stagger - i;  // остаток
-					//wprintw(win_main, "%llu\n", cache_size_local);
+					#ifdef __AVX2__
+					if (cache_size_local < 8)
+					{
+						wattron(win_main, COLOR_PAIR(12));
+						wprintw(win_main, "WARNING: %llu\n", cache_size_local);
+						wattroff(win_main, COLOR_PAIR(12));
+					}
+					#else
+						#ifdef __AVX__
+						if (cache_size_local < 4)
+						{
+						wattron(win_main, COLOR_PAIR(12));
+						wprintw(win_main, "WARNING: %llu\n", cache_size_local);
+						wattroff(win_main, COLOR_PAIR(12));
+						}
+						#endif
+					#endif
 				}
 				bytes = 0;
 				b = 0;
@@ -2030,9 +1971,7 @@ void pollLocal(void) {
 				Log("\n*! GMI: connect function failed with error: "); Log_u(WSAGetLastError());
 			}
 			else {
-				int bytes;
-				if (miner_mode == 2) bytes = sprintf_s(buffer, buffer_size, "GET /pool/getMiningInfo HTTP/1.0\r\nHost: %s:%s\r\nContent-Type: text/plain;charset=UTF-8\r\n\r\n", updateraddr.c_str(), updaterport.c_str());
-				else bytes = sprintf_s(buffer, buffer_size, "POST /burst?requestType=getMiningInfo HTTP/1.0\r\nHost: %s:%s\r\nContent-Length: 0\r\nConnection: close\r\n\r\n", nodeaddr.c_str(), nodeport.c_str());
+				int bytes = sprintf_s(buffer, buffer_size, "POST /burst?requestType=getMiningInfo HTTP/1.0\r\nHost: %s:%s\r\nContent-Length: 0\r\nConnection: close\r\n\r\n", nodeaddr.c_str(), nodeport.c_str());
 				iResult = send(UpdaterSocket, buffer, bytes, 0);
 				if (iResult == SOCKET_ERROR)
 				{
@@ -2040,17 +1979,13 @@ void pollLocal(void) {
 					Log("\n*! GMI: send request failed: "); Log_u(WSAGetLastError());
 				}
 				else{
-					if (show_updates) wprintw(win_main, "Sent: \n%s\n", buffer, 0);
-					Log("\n* GMI: Sent: "); Log_server(buffer);
-
-
 					RtlSecureZeroMemory(buffer, buffer_size);
 					size_t  pos = 0;
 					iResult = 0;
 					do{
 						iResult = recv(UpdaterSocket, &buffer[pos], (int)(buffer_size - pos - 1), 0);
 						if (iResult > 0) pos += (size_t)iResult;
-					} while ((iResult > 0) && !use_fast_rcv);
+					} while (iResult > 0);
 					if (iResult == SOCKET_ERROR)
 					{
 						if (network_quality > 0) network_quality--;
@@ -2059,8 +1994,7 @@ void pollLocal(void) {
 					else {
 						if (network_quality < 100) network_quality++;
 						Log("\n* GMI: Received: "); Log_server(buffer);
-						if (show_updates)  wprintw(win_main, "Received: %s\n", buffer, 0);
-
+						
 						// locate HTTP header
 						char *find = strstr(buffer, "\r\n\r\n");
 						if (find == nullptr)	Log("\n*! GMI: error message from pool");
@@ -2103,6 +2037,100 @@ void pollLocal(void) {
 	}
 	HeapFree(hHeap, 0, buffer);
 }
+
+
+void pollLocal2(void) {
+	size_t const buffer_size = 1000;
+	char *buffer = (char*)HeapAlloc(hHeap, HEAP_ZERO_MEMORY, buffer_size);
+	if (buffer == nullptr) ShowMemErrorExit();
+
+	int iResult = 0;
+	SOCKET UpdaterSocket = INVALID_SOCKET;
+	SOCKADDR_STORAGE LocalAddr = { 0 };
+	SOCKADDR_STORAGE RemoteAddr = { 0 };
+	DWORD dwLocalAddr = sizeof(LocalAddr);
+	DWORD dwRemoteAddr = sizeof(RemoteAddr);
+	BOOL bSuccess;
+
+	UpdaterSocket = socket(AF_INET, SOCK_STREAM, 0);
+	timeval  timeout;
+	timeout.tv_sec = 1;
+	timeout.tv_usec = 0;
+
+	bSuccess = WSAConnectByNameA(UpdaterSocket, (LPCSTR)updateraddr.c_str(), (LPCSTR)updaterport.c_str(), &dwLocalAddr, (SOCKADDR*)&LocalAddr, &dwRemoteAddr, (SOCKADDR*)&RemoteAddr, &timeout, NULL);
+	if (!bSuccess) {
+		if (network_quality > 0) network_quality--;
+		Log("\n*! GMI: WsaConnectByName failed with error: "); Log_u(WSAGetLastError());
+		Log(updateraddr.c_str());
+	}
+	else {
+			setsockopt(UpdaterSocket, SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, NULL, 0);
+
+			int bytes = sprintf_s(buffer, buffer_size, "POST /burst?requestType=getMiningInfo HTTP/1.0\r\nHost: %s:%s\r\nContent-Length: 0\r\nConnection: close\r\n\r\n", nodeaddr.c_str(), nodeport.c_str());
+				iResult = send(UpdaterSocket, buffer, bytes, 0);
+				if (iResult == SOCKET_ERROR)
+				{
+					if (network_quality > 0) network_quality--;
+					Log("\n*! GMI: send request failed: "); Log_u(WSAGetLastError());
+				}
+				else{
+					RtlSecureZeroMemory(buffer, buffer_size);
+					size_t  pos = 0;
+					iResult = 0;
+					do{
+						iResult = recv(UpdaterSocket, &buffer[pos], (int)(buffer_size - pos - 1), 0);
+						if (iResult > 0) pos += (size_t)iResult;
+					} while (iResult > 0);
+					if (iResult == SOCKET_ERROR)
+					{
+						if (network_quality > 0) network_quality--;
+						Log("\n*! GMI: get mining info failed:: "); Log_u(WSAGetLastError());
+					}
+					else {
+						if (network_quality < 100) network_quality++;
+						Log("\n* GMI: Received: "); Log_server(buffer);
+
+						// locate HTTP header
+						char *find = strstr(buffer, "\r\n\r\n");
+						if (find == nullptr)	Log("\n*! GMI: error message from pool");
+						else {
+							rapidjson::Document gmi;
+							if (gmi.Parse<0>(find).HasParseError()) Log("\n*! GMI: error parsing JSON message from pool");
+							else {
+								if (gmi.IsObject())
+								{
+									if (gmi.HasMember("baseTarget")) {
+										if (gmi["baseTarget"].IsString())	baseTarget = _strtoui64(gmi["baseTarget"].GetString(), 0, 10);
+										else
+											if (gmi["baseTarget"].IsInt64()) baseTarget = gmi["baseTarget"].GetInt64();
+									}
+
+									if (gmi.HasMember("height")) {
+										if (gmi["height"].IsString())	height = _strtoui64(gmi["height"].GetString(), 0, 10);
+										else
+											if (gmi["height"].IsInt64()) height = gmi["height"].GetInt64();
+									}
+
+									if (gmi.HasMember("generationSignature")) {
+										strcpy_s(str_signature, gmi["generationSignature"].GetString());
+										if (xstr2strr(signature, 33, gmi["generationSignature"].GetString()) == 0)	Log("\n*! GMI: Node response: Error decoding generationsignature\n");
+									}
+									if (gmi.HasMember("targetDeadline")) {
+										if (gmi["targetDeadline"].IsString())	targetDeadlineInfo = _strtoui64(gmi["targetDeadline"].GetString(), 0, 10);
+										else
+											if (gmi["targetDeadline"].IsInt64()) targetDeadlineInfo = gmi["targetDeadline"].GetInt64();
+									}
+								}
+							}
+						}
+					}
+				}
+	}
+	closesocket(UpdaterSocket);
+	HeapFree(hHeap, 0, buffer);
+}
+
+
 
 void updater_i(void) {
 	if (updateraddr.length() <= 3) {
@@ -2648,7 +2676,7 @@ int main(int argc, char **argv) {
 	double pcFreq = double(li.QuadPart);
 
 	std::thread proxy;
-	//std::vector<std::thread> generator;
+	std::vector<std::thread> generator;
 
 	InitializeCriticalSection(&sessionsLock);
 	InitializeCriticalSection(&bestsLock);
@@ -2656,6 +2684,7 @@ int main(int argc, char **argv) {
 
 	char tbuffer[9];
 	unsigned long long bytesRead = 0;
+	FILE * pFileStat;
 
 	shares.reserve(20);
 	bests.reserve(4);
@@ -3013,9 +3042,9 @@ int main(int argc, char **argv) {
 			wmove(win_progress, 1, 1);
 			wattron(win_progress, COLOR_PAIR(14));
 			if (deadline == 0)
-				wprintw(win_progress, "%3llu%% %6llu GB (%.2f MB/s). no deadline            Network quality: %3u%%", (bytesRead * 4096 * 100 / total_size), (bytesRead / (256 * 1024)), threads_speed, network_quality, 0);
+				wprintw(win_progress, "%3llu%% %6llu GB (%.2f MB/s). no deadline            Connection: %3u%%", (bytesRead * 4096 * 100 / total_size), (bytesRead / (256 * 1024)), threads_speed, network_quality, 0);
 			else
-				wprintw(win_progress, "%3llu%% %6llu GB (%.2f MB/s). Deadline =%10llu   Network quality: %3u%%", (bytesRead * 4096 * 100 / total_size), (bytesRead / (256 * 1024)), threads_speed, deadline, network_quality, 0);
+				wprintw(win_progress, "%3llu%% %6llu GB (%.2f MB/s). Deadline =%10llu   Connection: %3u%%", (bytesRead * 4096 * 100 / total_size), (bytesRead / (256 * 1024)), threads_speed, deadline, network_quality, 0);
 			wattroff(win_progress, COLOR_PAIR(14));
 
 			wrefresh(win_main);
@@ -3037,6 +3066,7 @@ int main(int argc, char **argv) {
 
 		Log("\nInterrupt Sender. ");
 		if (sender.joinable()) sender.join();
+		
 		/*
 		if (can_generate != 0){
 			Log("\nInterrupt Generator. ");
@@ -3046,6 +3076,16 @@ int main(int argc, char **argv) {
 			can_generate = 1;
 		}
 		*/
+
+		
+		fopen_s(&pFileStat, "stat.csv", "a+t");
+		if (pFileStat != nullptr)
+		{
+			fprintf(pFileStat, "%llu;%llu;%llu\n", old_height, old_baseTarget, deadline);
+			fclose(pFileStat);
+		}
+
+
 	}
 
 	if (pass != nullptr) HeapFree(hHeap, 0, pass);
